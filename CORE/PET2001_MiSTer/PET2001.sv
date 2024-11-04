@@ -233,7 +233,7 @@ pll pll
 (
 	.refclk(CLK_50M),
 	.rst(0),
-	.outclk_0(clk_sys),
+	.outclk_0(clk_sys),	// 56 MHz
 	.locked(pll_locked)
 );
 
