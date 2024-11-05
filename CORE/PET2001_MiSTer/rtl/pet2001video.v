@@ -22,7 +22,7 @@ module pet2001video
 );
 
 assign video_on   = (vc < 200);
-assign video_addr = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc[8:3];
+assign video_addr = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc[8:3];	// 40 * line + charpos
 assign charaddr   = {video_gfx, video_data[6:0], vc[2:0]};
 
 reg  [8:0] hc;

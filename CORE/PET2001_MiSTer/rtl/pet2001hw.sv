@@ -90,8 +90,12 @@ wire [7:0] 	chardata;
 
 wire rom_wr = dma_we & dma_addr[15];
 
-dpram #(.addr_width(15), .mem_init_file("./roms/PET2001-BASIC4.mif")) pet2001rom
-(
+// dpram #(.addr_width(15), .mem_init_file("./roms/PET2001-BASIC4.mif")) pet2001rom
+dualport_2clk_ram #(
+	.addr_width(15),
+	.rom_preload(true),
+	.rom_file("./roms/PET2001-BASIC4.rom")
+) pet2001rom (
 	.q_a(rom_data),
 	.q_b(chardata),
 	.data_a(dma_din),
@@ -112,7 +116,7 @@ wire [10:0] video_addr;
 wire	ram_we  = we && ~addr[15];
 
 //32KB RAM
-dpram #(.addr_width(15)) pet2001ram
+dualport_2clk_ram #(.addr_width(15)) pet2001ram
 (
 	.clock(clk),
 
@@ -129,7 +133,8 @@ dpram #(.addr_width(15)) pet2001ram
 
 wire	vram_we = we && (addr[15:12] == 4'h8);
 
-dpram #(.addr_width(10)) pet2001vram
+// was dpram
+dualport_2clk_ram #(.addr_width(10)) pet2001vram
 (
 	.clock(clk),
 
