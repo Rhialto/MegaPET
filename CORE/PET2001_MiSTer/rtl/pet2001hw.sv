@@ -85,7 +85,7 @@ module pet2001hw
 /////////////////////////////////////////////////////////////
 wire [7:0]	rom_data;
 
-wire [10:0] charaddr;
+wire [10:0]	charaddr;
 wire [7:0] 	chardata;
 
 wire rom_wr = dma_we & dma_addr[15];
@@ -93,16 +93,20 @@ wire rom_wr = dma_we & dma_addr[15];
 // dpram #(.addr_width(15), .mem_init_file("./roms/PET2001-BASIC4.mif")) pet2001rom
 dualport_2clk_ram #(
 	.addr_width(15),
-	.rom_preload(true),
-	.rom_file("./roms/PET2001-BASIC4.rom")
+	.data_width(8),
+	.rom_preload(1),
+	// /home/rhialto/mega65/PET_MEGA65/CORE/PET2001_MiSTer/roms/PET2001-BASIC4.rom
+	.rom_file_hex(1),
+	.rom_file("/home/rhialto/mega65/PET_MEGA65/CORE/PET2001_MiSTer/roms/PET2001-BASIC4.hex")
 ) pet2001rom (
 	.q_a(rom_data),
 	.q_b(chardata),
 	.data_a(dma_din),
 	.wren_a(rom_wr),
 	.address_a(rom_wr ? dma_addr[14:0] : addr[14:0]), // 1 line added so to support Rom space over 16KB
+	.clock_a(clk),
 	.address_b({5'b1110_1,charaddr}), 
-	.clock(clk)
+	.clock_b(clk)
 );
 	
 //////////////////////////////////////////////////////////////
@@ -118,13 +122,13 @@ wire	ram_we  = we && ~addr[15];
 //32KB RAM
 dualport_2clk_ram #(.addr_width(15)) pet2001ram
 (
-	.clock(clk),
-
+	.clock_a(clk),
 	.q_a(ram_data),
 	.data_a(data_in),
 	.address_a(addr[14:0]),
 	.wren_a(ram_we),
 
+	.clock_b(clk),
 	.q_b(dma_dout),
 	.data_b(dma_din),
 	.address_b(dma_addr[14:0]),
@@ -136,13 +140,13 @@ wire	vram_we = we && (addr[15:12] == 4'h8);
 // was dpram
 dualport_2clk_ram #(.addr_width(10)) pet2001vram
 (
-	.clock(clk),
-
+	.clock_a(clk),
 	.address_a(addr[9:0]),
 	.data_a(data_in),
 	.wren_a(vram_we),
 	.q_a(vram_data),
 
+	.clock_b(clk),
 	.address_b(video_addr),
 	.q_b(video_data)
 );
@@ -151,9 +155,9 @@ dualport_2clk_ram #(.addr_width(10)) pet2001vram
 // Video hardware.
 //////////////////////////////////////
 wire	video_on;    // signal indicating VGA is scanning visible
-				       // rows.  Used to generate tick interrupts.
+		     // rows.  Used to generate tick interrupts.
 wire 	video_blank; // blank screen during scrolling
-wire	video_gfx;	 // display graphic characters vs. lower-case
+wire	video_gfx;   // display graphic characters vs. lower-case
 
 pet2001video vid(.*);
  
@@ -161,7 +165,7 @@ pet2001video vid(.*);
 // I/O hardware
 ////////////////////////////////////////////////////////
 wire [7:0] 	io_read_data;
-wire        io_sel = addr[15:8] == 8'hE8;
+wire      	io_sel = addr[15:8] == 8'hE8;
 
 pet2001io io
 (
