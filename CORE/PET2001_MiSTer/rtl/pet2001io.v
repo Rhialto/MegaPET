@@ -17,6 +17,8 @@
 //		0xE820-0xE823		PIA2
 //		0xE840-0xE84F		VIA
 //
+//      Signals for the IEEE-488 port come out.
+//
 /////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -71,6 +73,22 @@ module pet2001io
 
 	input        diag_l, 	// diag jumper input
 
+        // IEEE-488
+        output [7:0] ieee488_data_i,
+        output [7:0] ieee488_data_o,
+        input        ieee488_atn_i,
+        output       ieee488_atn_o,
+        output       ieee488_ifc_o,
+        input        ieee488_srq_i,
+        input        ieee488_dav_i,
+        output       ieee488_dav_o,
+        input        ieee488_eoi_i,
+        output       ieee488_eoi_o,
+        input        ieee488_nrfd_i,
+        output       ieee488_nrfd_o,
+        input        ieee488_ndac_i,
+        output       ieee488_ndac_o,
+
 	input        ce,
 	input        clk,
 	input        reset
@@ -80,16 +98,20 @@ module pet2001io
 reg strobe_io;
 always @(negedge clk) strobe_io <= ce;
 
+assign ieee488_ifc_o = reset;
+
 wire pia1_sel = cs & addr[4];
 wire pia2_sel = cs & addr[5];
 wire via_sel  = cs & addr[6];
 
 /////////////////////////// 6520 PIA1 ////////////////////////////////////
 //
+// Has some IEEE-488 port connections, but most of them are on PIA2.
+//
 wire [7:0] pia1_data_out;
 wire       pia1_irq;
 wire [7:0] pia1_porta_out;
-wire [7:0] pia1_porta_in = {diag_l, 2'b00, cass_sense_n, 4'b0000};
+wire [7:0] pia1_porta_in = {diag_l, ieee488_eoi_i & ieee488_eoi_o, 1'b1, cass_sense_n, 4'b1111};
 wire       pia1_ca1_in = !cass_read;
 wire       pia1_ca2_out;
 
@@ -120,38 +142,44 @@ pia6520 pia1
 );
  
 assign video_blank = !pia1_ca2_out;
+assign ieee488_eoi_o = pia1_ca2_out;
 assign keyrow = pia1_porta_out[3:0];
 
  
 ////////////////////////// 6520 PIA2 ////////////////////////////////////
-// (does nothing for now)
+//
+// Mostly IEEE-488 port connections.
+// For now we ignore the bus drivers/transceivers (MC3446) since our
+// IEEE-488 bus module essentially does the same thing. They are
+// hard-wired to output anyway.
+//
 wire [7:0] pia2_data_out;
 wire       pia2_irq;
 
 pia6520 pia2
 (
-	.data_out(pia2_data_out),
-	.data_in(data_in),
-	.addr(addr[1:0]),
-	.strobe(strobe_io & pia2_sel),
-	.we(we),
+        .data_out(pia2_data_out),
+        .data_in(data_in),
+        .addr(addr[1:0]),
+        .strobe(strobe_io & pia2_sel),
+        .we(we),
 
-	.irq(pia2_irq),
-	.porta_out(),
-	.porta_in(8'h00),
-	.portb_out(),
-	.portb_in(8'h00),
+        .irq(pia2_irq),
+        .porta_out(),                   // tranceiver would ignore output to DI lines.
+        .porta_in(ieee488_data_i),      // real input from bus transceiver; tranceiver would "& ieee488_data_o".
+        .portb_out(ieee488_data_o),     // real output to bus tranceiver
+        .portb_in(ieee488_data_i),
 
-	.ca1_in(1'b0),
-	.ca2_out(),
-	.ca2_in(1'b0),
+        .ca1_in(ieee488_atn_i),
+        .ca2_out(ieee488_ndac_o),
+        .ca2_in(1'b1),                  // loopback via bus driver
 
-	.cb1_in(1'b0),
-	.cb2_out(),
-	.cb2_in(1'b0),
+        .cb1_in(ieee488_srq_i),
+        .cb2_out(ieee488_dav_o),
+        .cb2_in(1'b1),                  // loopback via bus driver
 
-	.clk(clk),
-	.reset(reset)
+        .clk(clk),
+        .reset(reset)
 );
 
 
@@ -160,7 +188,7 @@ pia6520 pia2
 wire [7:0] via_data_out;
 wire       via_irq;
 wire [7:0] via_portb_out;
-wire [7:0] via_portb_in = {2'b00, video_sync, 5'b0_0000};
+wire [7:0] via_portb_in = {ieee488_dav_i, ieee488_nrfd_i, video_sync, 4'b0_000, ieee488_ndac_i}; // msb first
 
 via6522 via
 (
@@ -191,6 +219,8 @@ via6522 via
 	.reset(reset)
 );
 
+assign ieee488_nrfd_o = via_portb_out[1];
+assign ieee488_atn_o = via_portb_out[2];
 assign cass_write = via_portb_out[3];
 
 
@@ -199,9 +229,9 @@ assign cass_write = via_portb_out[3];
 //
 always @(posedge clk) begin
 	data_out <= 8'hFF
-					& (pia1_sel ? pia1_data_out : 8'hFF)
-					& (pia2_sel ? pia2_data_out : 8'hFF)
-					& (via_sel  ? via_data_out  : 8'hFF);
+                    & (pia1_sel ? pia1_data_out : 8'hFF)
+                    & (pia2_sel ? pia2_data_out : 8'hFF)
+                    & (via_sel  ? via_data_out  : 8'hFF);
 end
  
 assign irq = pia1_irq || pia2_irq || via_irq;

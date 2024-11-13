@@ -55,7 +55,7 @@ assign    pix = (vdata[7] ^ inv) & ~video_blank;
 always @(posedge clk) begin
 	if(ce_7mn) begin
 		if(!hc[2:0]) begin
-			{inv, vdata} <= ((hc<320) && (vc<200)) ? {video_data[7], chardata | 8'b00000001} : 9'd0; // test signal 1
+			{inv, vdata} <= ((hc<320) && (vc<200)) ? {video_data[7], chardata} : 9'd0;
 			HBlank <= (hc>=320);
 			VBlank <= (vc>=200);
 		end else vdata <= {vdata[6:0], 1'b0};

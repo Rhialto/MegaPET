@@ -63,6 +63,22 @@ module pet2001hw
 	input            cass_read,
 	output           audio, // CB2 audio
 
+        // IEEE-488
+        output     [7:0] ieee488_data_i,
+        output     [7:0] ieee488_data_o,
+        output           ieee488_atn_i,
+        output           ieee488_atn_o,
+        output           ieee488_ifc_o,
+        input            ieee488_srq_i,
+        input            ieee488_dav_i,
+        output           ieee488_dav_o,
+        input            ieee488_eoi_i,
+        output           ieee488_eoi_o,
+        input            ieee488_nrfd_i,
+        output           ieee488_nrfd_o,
+        input            ieee488_ndac_i,
+        output           ieee488_ndac_o,
+
 	input  [15:0]    dma_addr, // 1 line added so to support 32KB RAM PRG Injection
 	input   [7:0]    dma_din,
 	output  [7:0]    dma_dout,
@@ -98,6 +114,8 @@ dualport_2clk_ram #(
 	// /home/rhialto/mega65/PET_MEGA65/CORE/PET2001_MiSTer/roms/PET2001-BASIC4.rom
 	.rom_file_hex(1),
 	.rom_file("/home/rhialto/mega65/PET_MEGA65/CORE/PET2001_MiSTer/roms/PET2001-BASIC4.hex")
+    // relative to this source file:
+//	.rom_file("../roms/PET2001-BASIC4.hex")
 ) pet2001rom (
 	.q_a(rom_data),
 	.q_b(chardata),
@@ -169,13 +187,27 @@ wire      	io_sel = addr[15:8] == 8'hE8;
 
 pet2001io io
 (
-	.*,
-	.ce(ce_1m),
-	.data_out(io_read_data),
-	.data_in(data_in),
-	.addr(addr[10:0]),
-	.cs(io_sel),
-	.video_sync(video_on)
+        .*,
+        .ce(ce_1m),
+        .data_out(io_read_data),
+        .data_in(data_in),
+        .addr(addr[10:0]),
+        .cs(io_sel),
+        .video_sync(video_on),
+        // IEEE-488
+        .ieee488_data_i(ieee488_data_i),
+        .ieee488_data_o(ieee488_data_o),
+        .ieee488_atn_o( ieee488_atn_o),
+        .ieee488_ifc_o( ieee488_ifc_o),
+        .ieee488_srq_i( ieee488_srq_i),
+        .ieee488_dav_i( ieee488_dav_i),
+        .ieee488_dav_o( ieee488_dav_o),
+        .ieee488_eoi_i( ieee488_eoi_i),
+        .ieee488_eoi_o( ieee488_eoi_o),
+        .ieee488_nrfd_i(ieee488_nrfd_i),
+        .ieee488_nrfd_o(ieee488_nrfd_o),
+        .ieee488_ndac_i(ieee488_ndac_i),
+        .ieee488_ndac_o(ieee488_ndac_o)
 );
 
 /////////////////////////////////////
@@ -183,16 +215,16 @@ pet2001io io
 /////////////////////////////////////
 always @(*)
 casex(addr[15:11])
-	5'b1111_x: data_out = rom_data;     // F000-FFFF
-	5'b1110_1: data_out = io_read_data; // E800-EFFF I/O (ROM contains chargen here, not accessible by CPU)
-	5'b1110_0: data_out = rom_data;     // E000-E7FF
-	5'b110x_x: data_out = rom_data;     // C000-DFFF
-	5'b1011_x: data_out = rom_data;		// B000-BFFF BASIC
-	5'b1010_x: data_out = rom_data;		// A000-AFFF OPT ROM 2
-	5'b1001_x: data_out = rom_data;		// 9000-9FFF OPT ROM 1
-	5'b1000_x: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
-	5'b0xxx_x: data_out = ram_data;     // 0000-7FFF 32KB RAM
-	default:   data_out = 8'h55;
+        5'b1111_x: data_out = rom_data;     // F000-FFFF
+        5'b1110_1: data_out = io_read_data; // E800-EFFF I/O (ROM contains chargen here, not accessible by CPU)
+        5'b1110_0: data_out = rom_data;     // E000-E7FF
+        5'b110x_x: data_out = rom_data;     // C000-DFFF
+        5'b1011_x: data_out = rom_data;     // B000-BFFF BASIC
+        5'b1010_x: data_out = rom_data;     // A000-AFFF OPT ROM 2
+        5'b1001_x: data_out = rom_data;     // 9000-9FFF OPT ROM 1
+        5'b1000_x: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
+        5'b0xxx_x: data_out = ram_data;     // 0000-7FFF 32KB RAM
+        default:   data_out = 8'h55;
 endcase
 
 endmodule // pet2001hw
