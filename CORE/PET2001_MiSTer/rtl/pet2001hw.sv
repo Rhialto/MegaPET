@@ -225,6 +225,6 @@ casex(addr[15:11])
         5'b1000_x: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
         5'b0xxx_x: data_out = ram_data;     // 0000-7FFF 32KB RAM
         default:   data_out = 8'h55;
-endcase
+endcase;
 
 endmodule // pet2001hw

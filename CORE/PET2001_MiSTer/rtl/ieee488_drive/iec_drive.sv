@@ -2,10 +2,11 @@
 //
 // C1541/C1581 selector
 // (C) 2021 Alexey Melnikov
+// Extended for 2031 (IEEE-488) option by Olaf 'Rhialto' Seibert, 2024.
 //
 //-------------------------------------------------------------------------------
  
-module iec_drive #(parameter PARPORT=1,DUALROM=1,DRIVES=2)
+module iec_drive #(parameter IEEE=1,PARPORT=0,DUALROM=0,DRIVES=2)
 (
 	//clk ports
 	input         clk,
@@ -37,6 +38,22 @@ module iec_drive #(parameter PARPORT=1,DUALROM=1,DRIVES=2)
 	output  [7:0] par_data_o,
 	output        par_stb_o,
 
+	// IEEE-488 port
+	input   [7:0] ieee_data_i,      // could re-use the above par port?
+	output  [7:0] ieee_data_o,
+	input         ieee_atn_i,
+	output        ieee_atn_o,
+	input         ieee_ifc_i,
+	output        ieee_srq_o,
+	input         ieee_dav_i,
+	output        ieee_dav_o,
+	input         ieee_eoi_i,
+	output        ieee_eoi_o,
+	input         ieee_nrfd_i,
+	output        ieee_nrfd_o,
+	input         ieee_ndac_i,
+	output        ieee_ndac_o,
+
 	//clk_sys ports
 	input         clk_sys,
 
@@ -57,6 +74,12 @@ module iec_drive #(parameter PARPORT=1,DUALROM=1,DRIVES=2)
 	input         rom_std_i
 );
 
+initial begin
+    if (IEEE && PARPORT) begin
+	$error("Impossible parameter combination. IEEE and PARPORT can not both be true.");
+    end;
+end;
+
 localparam NDR = (DRIVES < 1) ? 1 : (DRIVES > 4) ? 4 : DRIVES;
 localparam N   = NDR - 1;
 
@@ -68,6 +91,8 @@ assign iec_data_o   = /*c1581_iec_data  &*/ c1541_iec_data;
 assign iec_clk_o    = /*c1581_iec_clk   &*/ c1541_iec_clk;
 assign par_stb_o    = c1581_stb_o     & c1541_stb_o;
 assign par_data_o   = c1581_par_o     & c1541_par_o;
+// The IEEE-488 bus isn't connected to the c1581 since it doesn't have such
+// a connector.
 
 always_comb for(int i=0; i<NDR; i=i+1) begin
 	sd_buff_din[i] = (dtype[1][i] ? c1581_sd_buff_dout[i] : c1541_sd_buff_dout[i] );
@@ -85,7 +110,7 @@ wire [31:0] c1541_sd_lba[NDR];
 wire  [N:0] c1541_sd_rd, c1541_sd_wr;
 wire  [5:0] c1541_sd_blk_cnt[NDR];
 
-c1541_multi #(.PARPORT(PARPORT), .DUALROM(DUALROM), .DRIVES(DRIVES)) c1541
+c1541_multi #(.IEEE(IEEE), .PARPORT(PARPORT), .DUALROM(DUALROM), .DRIVES(DRIVES)) c1541
 (
 	.clk(clk),
 	.reset(reset | dtype[1]),
@@ -105,6 +130,22 @@ c1541_multi #(.PARPORT(PARPORT), .DUALROM(DUALROM), .DRIVES(DRIVES)) c1541
 	.par_stb_i(par_stb_i),
 	.par_data_o(c1541_par_o),
 	.par_stb_o(c1541_stb_o),
+
+        // IEEE-488 port
+	.ieee_data_i(ieee_data_i),
+	.ieee_data_o(ieee_data_o),
+	.ieee_atn_i (ieee_atn_i),
+	.ieee_atn_o (ieee_atn_o),
+	.ieee_ifc_i (ieee_ifc_i),
+	.ieee_srq_o (ieee_srq_o),
+	.ieee_dav_i (ieee_dav_i),
+	.ieee_dav_o (ieee_dav_o),
+	.ieee_eoi_i (ieee_eoi_i),
+	.ieee_eoi_o (ieee_eoi_o),
+	.ieee_nrfd_i(ieee_nrfd_i),
+	.ieee_nrfd_o(ieee_nrfd_o),
+	.ieee_ndac_i(ieee_ndac_i),
+	.ieee_ndac_o(ieee_ndac_o),
 
 	.clk_sys(clk_sys),
 	.pause(pause),

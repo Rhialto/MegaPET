@@ -1,6 +1,12 @@
 -- ****
 -- T65(b) core. In an effort to merge and maintain bug fixes ....
 --
+-- Ver 315-2-c64mega65 sy2002 November 2022
+--   Merged upstream fixes by gyurco from https://github.com/mist-devel/T65 at commit 7027ad1
+--
+-- Ver 315-1-c64mega65 sy2002 March 2021
+--   Handled Vivado bug (?). Scroll down to "March, 2 2022" to learn more
+--
 -- Ver 315 SzGy April 2020
 --   Reduced the IRQ detection delay when RDY is not asserted (NMI?)
 --   Undocumented opcodes behavior change during not RDY and page boundary crossing (VICE tests - cpu/sha, cpu/shs, cpu/shxy)
@@ -110,15 +116,15 @@
 --   The enable signal allows clock gating / throttling without using the ready signal.
 --   Set it to constant '1' when using the Clk input as the CPU clock directly.
 --
---   TAKE CARE you route the DO signal back to the DI signal while R_W_n='0',
+--   TAKE CARE you route the dout signal back to the din signal while R_W_n='0',
 --   otherwise some undocumented opcodes won't work correctly.
 --   EXAMPLE:
 --      CPU : entity work.T65
 --          port map (
 --              R_W_n   => cpu_rwn_s,
 --              [....all other ports....]
---              DI      => cpu_din_s,
---              DO      => cpu_dout_s
+--              din      => cpu_din_s,
+--              dout     => cpu_dout_s
 --          );
 --      cpu_din_s <= cpu_dout_s when cpu_rwn_s='0' else 
 --                   [....other sources from peripherals and memories...]
@@ -131,35 +137,50 @@ library IEEE;
   use IEEE.numeric_std.all;
   use work.T65_Pack.all;
 
+/* March, 2 2022: Be aware of the following when migrating updates from upstream:
+
+   Entity T65 changed to lowercase by sy2002 during the C64MEGA65 porting efforts due to the fact
+   that I got "[Synth 8-448] named port connection '...' does not exist for instance 'cpu' of module 'T65'
+   ["/media/psf/Home/Documents/Privat/GNR/dev/MEGA65/C64MEGA65/C64_MiSTerMEGA65/rtl/iec_drive/c1541_logic.sv":77]"
+   errors. After some googling I found this here:
+   https://support.xilinx.com/s/question/0D52E00006hpQNjSAM/synth-8448-named-port-port-does-not-exist-for-instance-vhdl-instantiated-in-verilog?language=en_US
+   
+   That means: Vivado does not seem to be able to process upper case VHDL entities within SystemVerilog, so i changed everything
+   to lower case here. 
+    
+   The next challenge then came with the "do" port: Written lower case, it is the "do" keyword in Verilog. So I needed to change
+   this, too (to "dout" and "din") and adjust all references throughout the project.
+*/
+
 entity T65 is
   port(
-    Mode    : in  std_logic_vector(1 downto 0);      -- "00" => 6502, "01" => 65C02, "10" => 65C816
-    BCD_en  : in  std_logic := '1';             -- '0' => 2A03/2A07, '1' => others
+    mode    : in  std_logic_vector(1 downto 0);       -- "00" => 6502, "01" => 65C02, "10" => 65C816
+    bcd_en  : in  std_logic := '1';                   -- '0' => 2A03/2A07, '1' => others
 
-    Res_n   : in  std_logic;
-    Enable  : in  std_logic;
-    Clk     : in  std_logic;
-    Rdy     : in  std_logic := '1';
-    Abort_n : in  std_logic := '1';
-    IRQ_n   : in  std_logic := '1';
-    NMI_n   : in  std_logic := '1';
-    SO_n    : in  std_logic := '1';
-    R_W_n   : out std_logic;
-    Sync    : out std_logic;
-    EF      : out std_logic;
-    MF      : out std_logic;
-    XF      : out std_logic;
-    ML_n    : out std_logic;
-    VP_n    : out std_logic;
-    VDA     : out std_logic;
-    VPA     : out std_logic;
-    A       : out std_logic_vector(23 downto 0);
-    DI      : in  std_logic_vector(7 downto 0);
-    DO      : out std_logic_vector(7 downto 0);
+    res_n   : in  std_logic;
+    enable  : in  std_logic;
+    clk     : in  std_logic;
+    rdy     : in  std_logic := '1';
+    abort_n : in  std_logic := '1';
+    irq_n   : in  std_logic := '1';
+    nmi_n   : in  std_logic := '1';
+    so_n    : in  std_logic := '1';
+    r_w_n   : out std_logic;
+    sync    : out std_logic;
+    ef      : out std_logic;
+    mf      : out std_logic;
+    xf      : out std_logic;
+    ml_n    : out std_logic;
+    vp_n    : out std_logic;
+    vda     : out std_logic;
+    vpa     : out std_logic;
+    a       : out std_logic_vector(23 downto 0);
+    din     : in  std_logic_vector(7 downto 0);
+    dout    : out std_logic_vector(7 downto 0);
     -- 6502 registers (MSB) PC, SP, P, Y, X, A (LSB)
-    Regs    : out std_logic_vector(63 downto 0);
-    DEBUG   : out T_t65_dbg;
-    NMI_ack : out std_logic
+    regs    : out std_logic_vector(63 downto 0);
+    debug   : out T_t65_dbg;
+    nmi_ack : out std_logic
   );
 end T65;
 
@@ -194,6 +215,8 @@ architecture rtl of T65 is
   signal RstCycle           : std_logic;
   signal IRQCycle           : std_logic;
   signal NMICycle           : std_logic;
+  signal IRQReq             : std_logic;
+  signal NMIReq             : std_logic;
 
   signal SO_n_o             : std_logic;
   signal IRQ_n_o            : std_logic;
@@ -354,6 +377,9 @@ begin
       MF_i <= '1';
       XF_i <= '1';
 
+      NMICycle <= '0';
+      IRQCycle <= '0';
+
     elsif Clk'event and Clk = '1' then  
       if (Enable = '1') then
         -- some instructions behavior changed by the Rdy line. Detect this at the correct cycles.
@@ -376,14 +402,22 @@ begin
             Mode_r <= Mode;
             BCD_en_r <= BCD_en;
 
-            if IRQCycle = '0' and NMICycle = '0' then
+            if IRQReq = '0' and NMIReq = '0' then
               PC <= PC + 1;
             end if;
 
-            if IRQCycle = '1' or NMICycle = '1' then
+            if IRQReq = '1' or NMIReq = '1' then
               IR <= "00000000";
             else
-              IR <= DI;
+              IR <= din;
+            end if;
+
+            IRQCycle <= '0';
+            NMICycle <= '0';
+            if NMIReq = '1' then
+              NMICycle <= '1';
+            elsif IRQReq = '1' then
+              IRQCycle <= '1';
             end if;
 
             if LDS = '1' then -- LAS won't work properly if not limited to machine cycle 0
@@ -402,7 +436,7 @@ begin
           if Inc_S = '1' then
             S <= S + 1;
           end if;
-          if Dec_S = '1' and RstCycle = '0' then
+          if Dec_S = '1' and (RstCycle = '0' or Mode = "00") then -- Decrement during reset - 6502 only?
             S <= S - 1;
           end if;
 
@@ -416,7 +450,7 @@ begin
             when "01" =>
               PC <= PC + 1;
             when "10" =>
-              PC <= unsigned(DI & DL);
+              PC <= unsigned(din & DL);
             when "11" =>
               if PCAdder(8) = '1' then
                 if DL(7) = '0' then
@@ -499,14 +533,6 @@ begin
 
         end if;
 
-        -- detect irq even if not rdy
-        if IR(4 downto 0)/="10000" or Jump/="01" or really_rdy = '0' then -- delay interrupts during branches (checked with Lorenz test and real 6510), not best way yet, though - but works...
-          IRQ_n_o <= IRQ_n;
-        end if;
-        -- detect nmi even if not rdy
-        if IR(4 downto 0)/="10000" or Jump/="01" then -- delay interrupts during branches (checked with Lorenz test and real 6510) not best way yet, though - but works...
-          NMI_n_o <= NMI_n;
-        end if;
       end if;
       -- act immediately on SO pin change
       -- The signal is sampled on the trailing edge of phi1 and must be externally synchronized (from datasheet)
@@ -539,11 +565,11 @@ begin
         if (really_rdy = '1') then
           NMI_entered <= '0';
           BusA_r <= BusA;
-          BusB <= DI;
+          BusB <= din;
 
           -- not really nice, but no better way found yet !
           if Set_Addr_To_r = Set_Addr_To_PBR or Set_Addr_To_r = Set_Addr_To_ZPG then
-            BusB_r <= std_logic_vector(unsigned(DI(7 downto 0)) + 1); -- required for SHA
+            BusB_r <= std_logic_vector(unsigned(din(7 downto 0)) + 1); -- required for SHA
           end if;
 
           case BAAdd is
@@ -596,19 +622,19 @@ begin
           end if;
 
           if LDDI = '1' then
-            DL <= DI;
+            DL <= din;
           end if;
           if LDALU = '1' then
             DL <= ALU_Q;
           end if;
           if LDAD = '1' then
-            AD <= DI;
+            AD <= din;
           end if;
           if LDBAL = '1' then
-            BAL(7 downto 0) <= DI;
+            BAL(7 downto 0) <= din;
           end if;
           if LDBAH = '1' then
-            BAH <= DI;
+            BAH <= din;
           end if;
         end if;
       end if;
@@ -619,15 +645,15 @@ begin
 
   with Set_BusA_To select
     BusA <=
-      DI                                    when Set_BusA_To_DI,
+      din                                   when Set_BusA_To_DI,
       ABC(7 downto 0)                       when Set_BusA_To_ABC,
       X(7 downto 0)                         when Set_BusA_To_X,
       Y(7 downto 0)                         when Set_BusA_To_Y,
       std_logic_vector(S(7 downto 0))       when Set_BusA_To_S,
       P                                     when Set_BusA_To_P,
-      ABC(7 downto 0) and DI                when Set_BusA_To_DA,
-      (ABC(7 downto 0) or x"ee") and DI     when Set_BusA_To_DAO,--ee for OAL instruction. constant may be different on other platforms.TODO:Move to generics
-      (ABC(7 downto 0) or x"ee") and DI and X(7 downto 0)    when Set_BusA_To_DAX,--XAA, ee for OAL instruction. constant may be different on other platforms.TODO:Move to generics
+      ABC(7 downto 0) and din               when Set_BusA_To_DA,
+      (ABC(7 downto 0) or x"ee") and din    when Set_BusA_To_DAO,--ee for OAL instruction. constant may be different on other platforms.TODO:Move to generics
+      (ABC(7 downto 0) or x"ee") and din and X(7 downto 0)    when Set_BusA_To_DAX,--XAA, ee for OAL instruction. constant may be different on other platforms.TODO:Move to generics
       ABC(7 downto 0) and X(7 downto 0)     when Set_BusA_To_AAX,--SAX, SHA
       (others => '-')                       when Set_BusA_To_DONTCARE;--Can probably remove this
 
@@ -641,7 +667,7 @@ begin
   -- This is the P that gets pushed on stack with correct B flag. I'm not sure if NMI also clears B, but I guess it does.
   PwithB<=(P and x"ef") when (IRQCycle='1' or NMICycle='1') else P;
 
-  DO <= DO_r;
+  dout <= DO_r;
 
   with Write_Data_r select
     DO_r <=
@@ -671,29 +697,38 @@ begin
     if Res_n_i = '0' then
       MCycle <= "001";
       RstCycle <= '1';
-      IRQCycle <= '0';
-      NMICycle <= '0';
       NMIAct <= '0';
+      IRQReq <= '0';
+      NMIReq <= '0';
     elsif Clk'event and Clk = '1' then
       if (Enable = '1') then
         if (really_rdy = '1') then
           if MCycle = LCycle or Break = '1' then
             MCycle <= "000";
             RstCycle <= '0';
-            IRQCycle <= '0';
-            NMICycle <= '0';
-            if NMIAct = '1' and IR/=x"00" then -- delay NMI further if we just executed a BRK
-              NMICycle <= '1';
-              NMIAct <= '0'; -- reset NMI edge detector if we start processing the NMI
-            elsif IRQ_n_o = '0' and P(Flag_I) = '0' then
-              IRQCycle <= '1';
-            end if;
           else
             MCycle <= std_logic_vector(unsigned(MCycle) + 1);
           end if;
+
+          if (IR(4 downto 0)/="10000" or Jump/="11") then -- taken branches delay the interrupts
+            if NMIAct = '1' and IR/=x"00" then
+              NMIReq <= '1';
+            else
+              NMIReq <= '0';
+            end if;
+            if IRQ_n_o = '0' and P(Flag_I) = '0' then
+              IRQReq <= '1';
+            else
+              IRQReq <= '0';
+            end if;
+          end if;
         end if;
+
+        IRQ_n_o <= IRQ_n;
+        NMI_n_o <= NMI_n;
+
         --detect NMI even if not rdy    
-        if NMI_n_o = '1' and (NMI_n = '0' and (IR(4 downto 0)/="10000" or Jump/="01")) then -- branches have influence on NMI start (not best way yet, though - but works...)
+        if NMI_n_o = '1' and NMI_n = '0' then
           NMIAct <= '1';
         end if;
         -- we entered NMI during BRK instruction

@@ -17,7 +17,7 @@
 //
 //-------------------------------------------------------------------------------
 
-module c1541_drv
+module c1541_drv #(parameter IEEE=1)
 (
 	//clk ports
 	input         clk,
@@ -47,6 +47,22 @@ module c1541_drv
 	input         par_stb_i,
 	output  [7:0] par_data_o,
 	output        par_stb_o,
+
+    // IEEE-488 port
+    input   [7:0] ieee_data_i,      // could re-use the above par port?
+    output  [7:0] ieee_data_o,
+    input         ieee_atn_i,
+    output        ieee_atn_o,
+    input         ieee_ifc_i,
+    output        ieee_srq_o,
+    input         ieee_dav_i,
+    output        ieee_dav_o,
+    input         ieee_eoi_i,
+    output        ieee_eoi_o,
+    input         ieee_nrfd_i,
+    output        ieee_nrfd_o,
+    input         ieee_ndac_i,
+    output        ieee_ndac_o,
 
 	input         ext_en,
 	output [14:0] rom_addr,
@@ -93,7 +109,7 @@ wire       mtr;
 wire       act;
 wire [1:0] freq;
 
-c1541_logic c1541_logic
+c1541_logic #(.IEEE(IEEE)) c1541_logic
 (
 	.clk(clk),
 	.reset(reset),
@@ -118,6 +134,22 @@ c1541_logic c1541_logic
 	.par_stb_in(par_stb_i),
 	.par_data_out(par_data_o),
 	.par_stb_out(par_stb_o),
+
+    // IEEE-488 port
+	.ieee_data_i(ieee_data_i),
+	.ieee_data_o(ieee_data_o),
+	.ieee_atn_i (ieee_atn_i),
+	.ieee_atn_o (ieee_atn_o),
+	.ieee_ifc_i (ieee_ifc_i),
+	.ieee_srq_o (ieee_srq_o),
+	.ieee_dav_i (ieee_dav_i),
+	.ieee_dav_o (ieee_dav_o),
+	.ieee_eoi_i (ieee_eoi_i),
+	.ieee_eoi_o (ieee_eoi_o),
+	.ieee_nrfd_i(ieee_nrfd_i),
+	.ieee_nrfd_o(ieee_nrfd_o),
+	.ieee_ndac_i(ieee_ndac_i),
+	.ieee_ndac_o(ieee_ndac_o),
 
 	// drive-side interface
 	.ds(drive_num),
