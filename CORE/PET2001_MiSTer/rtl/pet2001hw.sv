@@ -111,11 +111,9 @@ dualport_2clk_ram #(
 	.addr_width(15),
 	.data_width(8),
 	.rom_preload(1),
-	// /home/rhialto/mega65/PET_MEGA65/CORE/PET2001_MiSTer/roms/PET2001-BASIC4.rom
 	.rom_file_hex(1),
-	.rom_file("/home/rhialto/mega65/PET_MEGA65/CORE/PET2001_MiSTer/roms/PET2001-BASIC4.hex")
-    // relative to this source file:
-//	.rom_file("../roms/PET2001-BASIC4.hex")
+	// Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+	.rom_file("../../PET2001_MiSTer/roms/PET2001-BASIC4.hex")
 ) pet2001rom (
 	.q_a(rom_data),
 	.q_b(chardata),

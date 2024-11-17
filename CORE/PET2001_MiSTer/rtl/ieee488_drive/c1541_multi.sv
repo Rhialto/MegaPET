@@ -115,8 +115,8 @@ wire   [N:0][7:0] ieee_data_d;
 wire   [N:0] ieee_atn_d, ieee_srq_d, ieee_dav_d, ieee_eoi_d, ieee_nrfd_d, ieee_ndac_d;
 
 assign     ieee_data_o = &{ieee_data_d | reset_drv};
-assign     ieee_atn_o  = &{ieee_atn_d | reset_drv};
-assign     ieee_srq_o  = &{ieee_srq_d | reset_drv};
+assign     ieee_atn_o  = &{ieee_atn_d | reset_drv};	// is this correct?
+assign     ieee_srq_o  = &{ieee_srq_d | reset_drv};	// is this correct?
 assign     ieee_dav_o  = &{ieee_dav_d | reset_drv};
 assign     ieee_eoi_o  = &{ieee_eoi_d | reset_drv};
 assign     ieee_nrfd_o = &{ieee_nrfd_d | reset_drv};
@@ -181,26 +181,7 @@ xpm_cdc_array_single #(
 wire [7:0] rom_do;
 wire [7:0] qnice_rom2_do;
 generate
-    if (IEEE) begin
-        iecdrv_mem_rom #(
-           .DATAWIDTH(8),
-           .ADDRWIDTH(14),
-//           .INITFILE("../../C64_MiSTerMEGA65/rtl/iec_drive/c2031.hex"),
-           .INITFILE("../../PET2001_MiSTer/rtl/ieee488_drive/c2031.hex"),
-           .FALLING_A(1'b1)
-        ) rom (
-            .clock_a(clk_sys),
-            .address_a(rom_addr_i),
-            .data_a(rom_data_i),
-            .wren_a(rom_wr_i),
-            .q_a(qnice_rom2_do),
-
-            .clock_b(clk),
-            .address_b(mem_a),
-            .q_b(rom_do)
-        );
-    end
-    else if(PARPORT) begin
+    if(PARPORT && ! IEEE) begin
         iecdrv_mem_rom #(
            .DATAWIDTH(8),
            .ADDRWIDTH(15),
@@ -245,8 +226,9 @@ wire [7:0] qnice_rom1_do;
 iecdrv_mem_rom #(
    .DATAWIDTH(8),
    .ADDRWIDTH(14),
-   //.INITFILE("../../C64_MiSTerMEGA65/rtl/iec_drive/c1541_rom.mif.hex"),
-   .INITFILE("../../PET2001_MiSTer/rtl/ieee488_drive/c2031.hex"),
+   // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+   .INITFILE(IEEE ? "../../PET2001_MiSTer/rtl/ieee488_drive/c2031.hex"
+                  : "../../C64_MiSTerMEGA65/rtl/iec_drive/c1541_rom.mif.hex"),
    .FALLING_A(1'b1)
 ) romstd (
     .clock_a(clk_sys),
