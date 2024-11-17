@@ -3,6 +3,8 @@
 // Reworked and adapted to MiSTer by Sorgelig@MiSTer (07.09.2018)
 //
 // Adjusted for 2031 (IEEE-488) option by Olaf 'Rhialto' Seibert, 2024.
+//
+// TODO: input a device number and supply it to uc1_pb_i.
 //-------------------------------------------------------------------------------
 
 //
@@ -157,7 +159,8 @@ generate
 
         assign ieee_data_o  = uc1_pa_o  | ~uc1_pa_oe;
         assign ieee_atnack  = uc1_pb_o[0] | ~uc1_pb_oe[0];
-        assign ieee_atnack1 = ieee_atnack ^ ieee_atn_i;
+        assign ieee_atn_i_n = ~ieee_atn_i;
+        assign ieee_atnack1 = ieee_atnack ^ ieee_atn_i_n;   // the "ATN trap"
         assign ieee_nrfd_o  = (uc1_pb_o[1] | ~uc1_pb_oe[1]) & ~ieee_atnack1;
         assign ieee_ndac_o  = (uc1_pb_o[2] | ~uc1_pb_oe[2]) & ~ieee_atnack1;
         assign ieee_eoi_o   = uc1_pb_o[3] | ~uc1_pb_oe[3];
@@ -167,14 +170,14 @@ generate
         // bit 7 is ATN IN
         //
         assign uc1_pa_i     = ieee_data_i & (uc1_pa_o  | ~uc1_pa_oe);
-        assign uc1_pb_i     = {ieee_atn_i, ieee_dav_i, 2'b11,   // msb first
+        assign uc1_pb_i     = {ieee_atn_i_n, ieee_dav_i, 2'b11,   // msb first
                                ieee_eoi_i, ieee_ndac_i, ieee_nrfd_i, 1'b1} & (uc1_pb_o | ~uc1_pb_oe);
 
         assign     iec_data_out = 1'b1; // unused
         assign     iec_clk_out  = 1'b1; // unused
 
         assign     par_stb_out  = 1'b1; // unused
-        assign     par_data_out = 1'b1; // unused
+        assign     par_data_out = 8'b11111111; // unused
 
     end else begin      // IEC
 
@@ -210,7 +213,7 @@ iecdrv_via6522 uc1
     .port_b_t(uc1_pb_oe),
     .port_b_i(uc1_pb_i),
 
-    .ca1_i(~iec_atn_in),        // for both IEEE and IEC
+    .ca1_i(IEEE ? ieee_atn_i_n : ~iec_atn_in),
 
     .ca2_o(uc1_ca2_o),
     .ca2_t(uc1_ca2_oe),

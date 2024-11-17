@@ -98,7 +98,7 @@ module pet2001io
 reg strobe_io;
 always @(negedge clk) strobe_io <= ce;
 
-assign ieee488_ifc_o = reset;
+assign ieee488_ifc_o = ~reset;      // IEEE bus is active-low.
 
 wire pia1_sel = cs & addr[4];
 wire pia2_sel = cs & addr[5];
