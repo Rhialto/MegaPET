@@ -45,7 +45,7 @@ module c1541_multi #(parameter IEEE=1,PARPORT=0,DUALROM=0,DRIVES=2)
 
     // IEEE-488 port
     input   [7:0] ieee_data_i,      // could re-use the above par port?
-    output  [7:0] ieee_data_o,
+    output  reg [7:0] ieee_data_o,
     input         ieee_atn_i,
     output        ieee_atn_o,
     input         ieee_ifc_i,
@@ -100,8 +100,8 @@ wire [N:0] reset_drv;
 iecdrv_sync #(NDR) rst_sync(clk, reset, reset_drv);
 
 // IEEE-488 bus
-wire   [N:0][7:0] ieee_data;
-wire   [N:0] ieee_atn, ieee_ifc, ieee_srq, ieee_dav, ieee_eoi, ieee_nrfd, ieee_ndac;
+wire   [7:0] ieee_data;
+wire         ieee_atn, ieee_ifc, ieee_srq, ieee_dav, ieee_eoi, ieee_nrfd, ieee_ndac;
 iecdrv_sync data_sync(clk, ieee_data_i, ieee_data);
 iecdrv_sync atn488_sync(clk, ieee_atn_i, ieee_atn);
 iecdrv_sync  ifc_sync(clk, ieee_ifc_i, ieee_ifc);
@@ -111,10 +111,13 @@ iecdrv_sync nrfd_sync(clk, ieee_nrfd_i, ieee_nrfd);
 iecdrv_sync ndac_sync(clk, ieee_ndac_i, ieee_ndac);
 
 // These collect the outputs from the NDR drives and AND them.
-wire   [N:0][7:0] ieee_data_d;
+wire   [7:0] ieee_data_d[NDR];
 wire   [N:0] ieee_atn_d, ieee_srq_d, ieee_dav_d, ieee_eoi_d, ieee_nrfd_d, ieee_ndac_d;
 
-assign     ieee_data_o = &{ieee_data_d | reset_drv};
+always_comb begin
+    ieee_data_o = 8'hFF;
+    for(int i=0; i<NDR; i=i+1) ieee_data_o = ieee_data_o & ieee_data_d[i];
+end
 assign     ieee_atn_o  = &{ieee_atn_d | reset_drv};	// is this correct?
 assign     ieee_srq_o  = &{ieee_srq_d | reset_drv};	// is this correct?
 assign     ieee_dav_o  = &{ieee_dav_d | reset_drv};
@@ -310,19 +313,19 @@ generate
             .par_stb_o(par_stb_d[i]),
 
             // IEEE-488 port
-            .ieee_data_i(ieee_data_i & ieee_data),
+            .ieee_data_i(ieee_data & ieee_data_o),
             .ieee_data_o(ieee_data_d[i]),
-            .ieee_atn_i (ieee_atn_i & ieee_atn),
+            .ieee_atn_i (ieee_atn & ieee_atn_o),
             .ieee_atn_o (ieee_atn_d[i]),
-            .ieee_ifc_i (ieee_ifc_i & ieee_ifc),
-            .ieee_srq_o (ieee_srq_d),
-            .ieee_dav_i (ieee_dav_i & ieee_dav),
+            .ieee_ifc_i (ieee_ifc),
+            .ieee_srq_o (ieee_srq_d[i]),
+            .ieee_dav_i (ieee_dav & ieee_dav_o),
             .ieee_dav_o (ieee_dav_d[i]),
-            .ieee_eoi_i (ieee_eoi_i & ieee_eoi),
+            .ieee_eoi_i (ieee_eoi & ieee_eoi_o),
             .ieee_eoi_o (ieee_eoi_d[i]),
-            .ieee_nrfd_i(ieee_nrfd_i & ieee_nrfd),
+            .ieee_nrfd_i(ieee_nrfd & ieee_nrfd_o),
             .ieee_nrfd_o(ieee_nrfd_d[i]),
-            .ieee_ndac_i(ieee_ndac_i & ieee_ndac),
+            .ieee_ndac_i(ieee_ndac & ieee_ndac_o),
             .ieee_ndac_o(ieee_ndac_d[i]),
 
             .ext_en(IEEE ? 1'b0 : ext_en[i]),

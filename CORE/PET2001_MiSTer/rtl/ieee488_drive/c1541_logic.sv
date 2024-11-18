@@ -4,7 +4,6 @@
 //
 // Adjusted for 2031 (IEEE-488) option by Olaf 'Rhialto' Seibert, 2024.
 //
-// TODO: input a device number and supply it to uc1_pb_i.
 //-------------------------------------------------------------------------------
 
 //
@@ -27,19 +26,33 @@ module c1541_logic #(parameter IEEE=1)
     output       iec_data_out,
 
     // IEEE-488 port
+    (* dont_touch = "true",mark_debug = "true" *)
     input   [7:0] ieee_data_i,      // could re-use the above par port?
+    (* dont_touch = "true",mark_debug = "true" *)
     output  [7:0] ieee_data_o,
+    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_atn_i,
+    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_atn_o,
+    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_ifc_i,
+    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_srq_o,
+    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_dav_i,
+    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_dav_o,
+    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_eoi_i,
+    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_eoi_o,
+    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_nrfd_i,
+    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_nrfd_o,
+    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_ndac_i,
+    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_ndac_o,
 
     input        ext_en,
@@ -53,7 +66,7 @@ module c1541_logic #(parameter IEEE=1)
     output       par_stb_out,
 
     // drive-side interface
-    input  [1:0] ds,               // device select
+    input  [1:0] ds,               // device select (actually low bits of device number)
     input  [7:0] din,              // disk read data
     output [7:0] dout,             // disk write data
     output       mode,             // read/write
@@ -141,12 +154,16 @@ iecdrv_mem #(8,11) ram
 // UC1 (VIA6522) signals
 wire [7:0] uc1_do;
 wire       uc1_irq;
+    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pa_i;
+    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pa_o;
 wire [7:0] uc1_pa_oe;
 wire       uc1_ca2_o;
 wire       uc1_ca2_oe;
-wire [7:0] uc1_pb_1;
+    (* dont_touch = "true",mark_debug = "true" *)
+wire [7:0] uc1_pb_i;
+    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pb_o;
 wire [7:0] uc1_pb_oe;
 wire       uc1_cb1_o;
@@ -154,24 +171,59 @@ wire       uc1_cb1_oe;
 wire       uc1_cb2_o;
 wire       uc1_cb2_oe;
 
+// Intermediate values
+wire      ieee_t_r_o, ieee_atn_i_n, ieee_atnack, ieee_atnack1, hd_sel;
+
 generate
     if (IEEE) begin
 
-        assign ieee_data_o  = uc1_pa_o  | ~uc1_pa_oe;
-        assign ieee_atnack  = uc1_pb_o[0] | ~uc1_pb_oe[0];
+        // "With input latching disabled, IRA will  always  reflect  the
+        // levels on the PA pins.  The  IRB  register  operates  similar  to
+        // the IRA register. However, for pins programmed  as  outputs  there
+        // is a difference. When reading IRA, the level on the  pin
+        // determines  whether a 0 or a 1 is sensed. When reading IRB, however,
+        // the  bit  stored  in  the  output  register, ORB, is the bit
+        // sensed." (this is implemented inside the VIA, do we need to think
+        // about it here?)
+
+        assign ieee_srq_o   = 1'b1;     // unused in practice, keep inactive.
+        assign ieee_atn_o   = 1'b1;     // unused in practice, keep inactive.
+
+        assign ieee_t_r_o   = uc1_pb_o[4] | ~uc1_pb_oe[4];   // transmit / receive; to bus driver; 1=output
         assign ieee_atn_i_n = ~ieee_atn_i;
+
+        assign ieee_data_o  = ieee_t_r_o ? uc1_pa_o | ~uc1_pa_oe
+                                         : 8'hFF;
+        assign ieee_atnack  = uc1_pb_o[0] | ~uc1_pb_oe[0];
         assign ieee_atnack1 = ieee_atnack ^ ieee_atn_i_n;   // the "ATN trap"
-        assign ieee_nrfd_o  = (uc1_pb_o[1] | ~uc1_pb_oe[1]) & ~ieee_atnack1;
-        assign ieee_ndac_o  = (uc1_pb_o[2] | ~uc1_pb_oe[2]) & ~ieee_atnack1;
-        assign ieee_eoi_o   = uc1_pb_o[3] | ~uc1_pb_oe[3];
-        assign ieee_t_r_o   = uc1_pb_o[4] | ~uc1_pb_oe[4];   // transmit / receive; to bus driver
+        assign ieee_nrfd_o  = ~ieee_atnack1 &
+                              (ieee_t_r_o ? (uc1_pb_o[1] | ~uc1_pb_oe[1])
+                                          : 1'b1);
+        assign ieee_ndac_o  = ~ieee_atnack1 &
+                              (ieee_t_r_o ? (uc1_pb_o[2] | ~uc1_pb_oe[2])
+                                          : 1'b1) & ~ieee_atnack1;
+        assign ieee_eoi_o   = ieee_t_r_o ? uc1_pb_o[3] | ~uc1_pb_oe[3]
+                                         : 1'b1;
         assign hd_sel       = uc1_pb_o[5] | ~uc1_pb_oe[5];
-        assign ieee_dav_o   = uc1_pb_o[6] | ~uc1_pb_oe[6];
-        // bit 7 is ATN IN
-        //
-        assign uc1_pa_i     = ieee_data_i & (uc1_pa_o  | ~uc1_pa_oe);
-        assign uc1_pb_i     = {ieee_atn_i_n, ieee_dav_i, 2'b11,   // msb first
-                               ieee_eoi_i, ieee_ndac_i, ieee_nrfd_i, 1'b1} & (uc1_pb_o | ~uc1_pb_oe);
+        assign ieee_dav_o   = ieee_t_r_o ? uc1_pb_o[6] | ~uc1_pb_oe[6]
+                                         : 1'b1;
+        // Bit 7 is ATN IN.
+
+        // If CA2 is output and 0, diodes from pb[0] and pb[1] to CA2 may
+        // pull  those down. Remove diode(s) to change the device number.
+        assign read_device_number = ~(uc1_ca2_o | ~uc1_ca2_oe);
+
+        assign uc1_pa_i     = ieee_t_r_o ? 8'hFF
+                                         : ieee_data_i; // & (uc1_pa_o  | ~uc1_pa_oe);
+        assign uc1_pb_i     = {ieee_atn_i_n,                             // [7]
+                               ieee_t_r_o ? 1'b1 : ieee_dav_i,           // [6]
+                               1'b1,                                     // [5] out: hd sel
+                               1'b1,                                     // [4] out: t /r
+                               ieee_t_r_o ? 1'b1 : ieee_eoi_i,           // [3]
+                               ieee_t_r_o ? 1'b1 : ieee_ndac_i,          // [2]
+                               read_device_number ? ds[0] : ieee_nrfd_i, // [1]
+                               read_device_number ? ds[1] : 1'b1}        // [0]
+                              ; // & (uc1_pb_o | ~uc1_pb_oe);
 
         assign     iec_data_out = 1'b1; // unused
         assign     iec_clk_out  = 1'b1; // unused
