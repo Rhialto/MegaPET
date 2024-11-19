@@ -189,24 +189,34 @@ generate
         assign ieee_srq_o   = 1'b1;     // unused in practice, keep inactive.
         assign ieee_atn_o   = 1'b1;     // unused in practice, keep inactive.
 
-        assign ieee_t_r_o   = uc1_pb_o[4] | ~uc1_pb_oe[4];   // transmit / receive; to bus driver; 1=output
+        // transmit / receive; to SN75161 bus driver; 1=output. DC is wired L.
+        // Omitted: SRQ, REN, IFC. TE=Talk Enable ieee_t_r_o
+        //   TE    ATN    |   ATN   EOI   DAV   NDAC   NRFD
+        // ---------------|---------------------------------
+        //    L     H     |    T     R     R      T      T   (receive mode)
+        //    L     L     |    T     T     R      T      T
+        // ---------------|---------------------------------
+        //    H     X     |    T     T     T      R      R   (send mode)
+
+        assign ieee_t_r_o   = uc1_pb_o[4] | ~uc1_pb_oe[4];
+        //assign ieee_atn_i_n = ~(ieee_t_r_o ? ieee_atn_i : 1'b1);
         assign ieee_atn_i_n = ~ieee_atn_i;
 
         assign ieee_data_o  = ieee_t_r_o ? uc1_pa_o | ~uc1_pa_oe
                                          : 8'hFF;
         assign ieee_atnack  = uc1_pb_o[0] | ~uc1_pb_oe[0];
         assign ieee_atnack1 = ieee_atnack ^ ieee_atn_i_n;   // the "ATN trap"
-        assign ieee_nrfd_o  = ~ieee_atnack1 &
-                              (ieee_t_r_o ? (uc1_pb_o[1] | ~uc1_pb_oe[1])
-                                          : 1'b1);
-        assign ieee_ndac_o  = ~ieee_atnack1 &
-                              (ieee_t_r_o ? (uc1_pb_o[2] | ~uc1_pb_oe[2])
-                                          : 1'b1) & ~ieee_atnack1;
-        assign ieee_eoi_o   = ieee_t_r_o ? uc1_pb_o[3] | ~uc1_pb_oe[3]
-                                         : 1'b1;
-        assign hd_sel       = uc1_pb_o[5] | ~uc1_pb_oe[5];
-        assign ieee_dav_o   = ieee_t_r_o ? uc1_pb_o[6] | ~uc1_pb_oe[6]
-                                         : 1'b1;
+        assign ieee_nrfd_o  = ~ieee_atnack1 &                                   // ATN trap
+                              (~ieee_t_r_o ? (uc1_pb_o[1] | ~uc1_pb_oe[1])      // when input
+                                           : 1'b1);                             // when output
+        assign ieee_ndac_o  = ~ieee_atnack1 &                                   // ATN trap
+                              (~ieee_t_r_o ? (uc1_pb_o[2] | ~uc1_pb_oe[2])      // when input
+                                           : 1'b1);                             // when output
+        assign ieee_eoi_o   = ieee_t_r_o | ~ieee_atn_i ? uc1_pb_o[3] | ~uc1_pb_oe[3] // when output or ATN
+                                                       : 1'b1;                  // when input
+        assign hd_sel       = uc1_pb_o[5] | ~uc1_pb_oe[5];                      // seems unused
+        assign ieee_dav_o   = ieee_t_r_o ? uc1_pb_o[6] | ~uc1_pb_oe[6]          // when output
+                                         : 1'b1;                                // when input
         // Bit 7 is ATN IN.
 
         // If CA2 is output and 0, diodes from pb[0] and pb[1] to CA2 may
@@ -219,10 +229,14 @@ generate
                                ieee_t_r_o ? 1'b1 : ieee_dav_i,           // [6]
                                1'b1,                                     // [5] out: hd sel
                                1'b1,                                     // [4] out: t /r
-                               ieee_t_r_o ? 1'b1 : ieee_eoi_i,           // [3]
-                               ieee_t_r_o ? 1'b1 : ieee_ndac_i,          // [2]
-                               read_device_number ? ds[0] : ieee_nrfd_i, // [1]
-                               read_device_number ? ds[1] : 1'b1}        // [0]
+                               ieee_t_r_o | ~ieee_atn_i ? 1'b1           // [3]
+                                                        : ieee_eoi_i,
+                               ~ieee_t_r_o ? 1'b1 : ieee_ndac_i,         // [2]
+                               read_device_number ? ds[0] :              // [1]
+                               ~ieee_t_r_o        ? ieee_nrfd_i
+                                                  : 1'b1,
+                               read_device_number ? ds[1]                // [0]
+                                                  : 1'b1}
                               ; // & (uc1_pb_o | ~uc1_pb_oe);
 
         assign     iec_data_out = 1'b1; // unused
