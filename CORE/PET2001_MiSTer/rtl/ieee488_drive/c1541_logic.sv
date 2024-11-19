@@ -34,9 +34,7 @@ module c1541_logic #(parameter IEEE=1)
     input         ieee_atn_i,
     (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_atn_o,
-    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_ifc_i,
-    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_srq_o,
     (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_dav_i,
@@ -231,10 +229,11 @@ generate
                                1'b1,                                     // [4] out: t /r
                                ieee_t_r_o | ~ieee_atn_i ? 1'b1           // [3]
                                                         : ieee_eoi_i,
-                               ~ieee_t_r_o ? 1'b1 : ieee_ndac_i,         // [2]
+                               ~ieee_t_r_o ? 1'b1                        // [2] when input, ndac goes out
+                                           : ieee_ndac_i,
                                read_device_number ? ds[0] :              // [1]
-                               ~ieee_t_r_o        ? ieee_nrfd_i
-                                                  : 1'b1,
+                               ~ieee_t_r_o        ? 1'b1                 //     when input, nrfd goes out
+                                                  : ieee_nrfd_i,
                                read_device_number ? ds[1]                // [0]
                                                   : 1'b1}
                               ; // & (uc1_pb_o | ~uc1_pb_oe);
