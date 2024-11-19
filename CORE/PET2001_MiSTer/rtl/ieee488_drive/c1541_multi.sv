@@ -123,7 +123,7 @@ assign     ieee_srq_o  = &{ieee_srq_d | reset_drv};	// is this correct?
 assign     ieee_dav_o  = &{ieee_dav_d | reset_drv};
 assign     ieee_eoi_o  = &{ieee_eoi_d | reset_drv};
 assign     ieee_nrfd_o = &{ieee_nrfd_d | reset_drv};
-assign     ieee_ndac_o = &{ieee_nrfd_d | reset_drv};
+assign     ieee_ndac_o = &{ieee_ndac_d | reset_drv};
 
 wire stdrom = (DUALROM || PARPORT) ? rom_std_i : 1'b1;
 
