@@ -38,19 +38,15 @@ module c1541_logic #(parameter IEEE=1)
     output        ieee_srq_o,
     (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_dav_i,
-    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_dav_o,
     (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_eoi_i,
-    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_eoi_o,
     (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_nrfd_i,
-    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_nrfd_o,
     (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_ndac_i,
-    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_ndac_o,
 
     input        ext_en,
@@ -156,6 +152,7 @@ wire       uc1_irq;
 wire [7:0] uc1_pa_i;
     (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pa_o;
+    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pa_oe;
 wire       uc1_ca2_o;
 wire       uc1_ca2_oe;
@@ -197,7 +194,6 @@ generate
         //    H     X     |    T     T     T      R      R   (send mode)
 
         assign ieee_t_r_o   = uc1_pb_o[4] | ~uc1_pb_oe[4];
-        //assign ieee_atn_i_n = ~(ieee_t_r_o ? ieee_atn_i : 1'b1);
         assign ieee_atn_i_n = ~ieee_atn_i;
 
         assign ieee_data_o  = ieee_t_r_o ? uc1_pa_o | ~uc1_pa_oe

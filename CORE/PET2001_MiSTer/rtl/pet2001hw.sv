@@ -64,9 +64,9 @@ module pet2001hw
 	output           audio, // CB2 audio
 
         // IEEE-488
-        output     [7:0] ieee488_data_i,
+        input      [7:0] ieee488_data_i,
         output     [7:0] ieee488_data_o,
-        output           ieee488_atn_i,
+        input            ieee488_atn_i,
         output           ieee488_atn_o,
         output           ieee488_ifc_o,
         input            ieee488_srq_i,

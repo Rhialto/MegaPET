@@ -74,7 +74,7 @@ module pet2001io
 	input        diag_l, 	// diag jumper input
 
         // IEEE-488
-        output [7:0] ieee488_data_i,
+        input  [7:0] ieee488_data_i,
         output [7:0] ieee488_data_o,
         input        ieee488_atn_i,
         output       ieee488_atn_o,

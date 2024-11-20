@@ -76,7 +76,7 @@ begin
     data <= pet_data_i and d01_data_i;
     atn  <= pet_atn_i  and d01_atn_i;
     ifc  <= pet_ifc_i;
-    srq  <= d01_srq_i;
+    srq  <=                d01_srq_i;
     dav  <= pet_dav_i  and d01_dav_i;
     eoi  <= pet_eoi_i  and d01_eoi_i;
     nrfd <= pet_nrfd_i and d01_nrfd_i;
