@@ -89,17 +89,17 @@ always @(posedge clk_sys) for(int i=0; i<NDR; i=i+1) if(img_mounted[i] && img_si
 assign led          = /*c1581_led       |*/ c1541_led;
 assign iec_data_o   = /*c1581_iec_data  &*/ c1541_iec_data;
 assign iec_clk_o    = /*c1581_iec_clk   &*/ c1541_iec_clk;
-assign par_stb_o    = c1581_stb_o     & c1541_stb_o;
-assign par_data_o   = c1581_par_o     & c1541_par_o;
+assign par_stb_o    = /*c1581_stb_o     &*/ c1541_stb_o;
+assign par_data_o   = /*c1581_par_o     &*/ c1541_par_o;
 // The IEEE-488 bus isn't connected to the c1581 since it doesn't have such
 // a connector.
 
 always_comb for(int i=0; i<NDR; i=i+1) begin
-	sd_buff_din[i] = (dtype[1][i] ? c1581_sd_buff_dout[i] : c1541_sd_buff_dout[i] );
-	sd_lba[i]      = (dtype[1][i] ? c1581_sd_lba[i] << 1  : c1541_sd_lba[i]       );
-	sd_rd[i]       = (dtype[1][i] ? c1581_sd_rd[i]        : c1541_sd_rd[i]        );
-	sd_wr[i]       = (dtype[1][i] ? c1581_sd_wr[i]        : c1541_sd_wr[i]        );
-	sd_blk_cnt[i]  = (dtype[1][i] ? 6'd1                  : c1541_sd_blk_cnt[i]   );
+	sd_buff_din[i] = (dtype[1][i] ? 0 /*c1581_sd_buff_dout[i]*/ : c1541_sd_buff_dout[i] );
+	sd_lba[i]      = (dtype[1][i] ? 0 /*c1581_sd_lba[i] << 1 */ : c1541_sd_lba[i]       );
+	sd_rd[i]       = (dtype[1][i] ? 0 /*c1581_sd_rd[i]       */ : c1541_sd_rd[i]        );
+	sd_wr[i]       = (dtype[1][i] ? 0 /*c1581_sd_wr[i]       */ : c1541_sd_wr[i]        );
+	sd_blk_cnt[i]  = (dtype[1][i] ? 0 /*6'd1                 */ : c1541_sd_blk_cnt[i]   );
 end
 
 wire        c1541_iec_data, c1541_iec_clk, c1541_stb_o;
@@ -172,12 +172,14 @@ c1541_multi #(.IEEE(IEEE), .PARPORT(PARPORT), .DUALROM(DUALROM), .DRIVES(DRIVES)
 );
 
 
+/*
 wire        c1581_iec_data, c1581_iec_clk, c1581_stb_o;
 wire  [7:0] c1581_par_o;
 wire  [N:0] c1581_led;
 wire  [7:0] c1581_sd_buff_dout[NDR];
 wire [31:0] c1581_sd_lba[NDR];
 wire  [N:0] c1581_sd_rd, c1581_sd_wr;
+*/
 /* //When commenting-in this here, don't forget to comment-in above c1581_iec_data, c1581_iec_clk, c1581_led 
 c1581_multi #(.PARPORT(PARPORT), .DUALROM(DUALROM), .DRIVES(DRIVES)) c1581
 (

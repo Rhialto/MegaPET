@@ -11,6 +11,7 @@
 // core and "clk_sys" is used to write to the RAMs/ROMs and for the SD card
 // handling. Changed to registering the clk_sys at the negative clock edge 
 // as QNICE works like this.
+//
 // Adjusted for 2031 (IEEE-488) option by Olaf 'Rhialto' Seibert, 2024.
 //-------------------------------------------------------------------------------
 
@@ -44,7 +45,6 @@ module c1541_multi #(parameter IEEE=1,PARPORT=0,DUALROM=0,DRIVES=2)
     output        par_stb_o,
 
     // IEEE-488 port
-    (* dont_touch = "true",mark_debug = "true" *)
     input   [7:0] ieee_data_i,      // could re-use the above par port?
     output  reg [7:0] ieee_data_o,
     input         ieee_atn_i,
@@ -101,7 +101,6 @@ wire [N:0] reset_drv;
 iecdrv_sync #(NDR) rst_sync(clk, reset, reset_drv);
 
 // IEEE-488 bus
-    (* dont_touch = "true",mark_debug = "true" *)
 wire   [7:0] ieee_data;
 wire         ieee_atn, ieee_ifc, ieee_srq, ieee_dav, ieee_eoi, ieee_nrfd, ieee_ndac;
 iecdrv_sync #(8) data_sync(clk, ieee_data_i, ieee_data);
