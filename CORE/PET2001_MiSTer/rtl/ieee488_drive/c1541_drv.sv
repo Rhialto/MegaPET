@@ -49,9 +49,7 @@ module c1541_drv #(parameter IEEE=1)
 	output        par_stb_o,
 
     // IEEE-488 port
-    (* dont_touch = "true",mark_debug = "true" *)
     input   [7:0] ieee_data_i,      // could re-use the above par port?
-    (* dont_touch = "true",mark_debug = "true" *)
     output  [7:0] ieee_data_o,
     input         ieee_atn_i,
     output        ieee_atn_o,

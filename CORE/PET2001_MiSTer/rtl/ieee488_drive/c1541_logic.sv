@@ -26,26 +26,18 @@ module c1541_logic #(parameter IEEE=1)
     output       iec_data_out,
 
     // IEEE-488 port
-    (* dont_touch = "true",mark_debug = "true" *)
     input   [7:0] ieee_data_i,      // could re-use the above par port?
-    (* dont_touch = "true",mark_debug = "true" *)
     output  [7:0] ieee_data_o,
-    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_atn_i,
-    (* dont_touch = "true",mark_debug = "true" *)
     output        ieee_atn_o,
     input         ieee_ifc_i,
     output        ieee_srq_o,
-    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_dav_i,
     output        ieee_dav_o,
-    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_eoi_i,
     output        ieee_eoi_o,
-    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_nrfd_i,
     output        ieee_nrfd_o,
-    (* dont_touch = "true",mark_debug = "true" *)
     input         ieee_ndac_i,
     output        ieee_ndac_o,
 
@@ -148,17 +140,12 @@ iecdrv_mem #(8,11) ram
 // UC1 (VIA6522) signals
 wire [7:0] uc1_do;
 wire       uc1_irq;
-    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pa_i;
-    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pa_o;
-    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pa_oe;
 wire       uc1_ca2_o;
 wire       uc1_ca2_oe;
-    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pb_i;
-    (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0] uc1_pb_o;
 wire [7:0] uc1_pb_oe;
 wire       uc1_cb1_o;
@@ -168,6 +155,7 @@ wire       uc1_cb2_oe;
 
 // Intermediate values
 wire      ieee_t_r_o, ieee_atn_i_n, ieee_atnack, ieee_atnack1, hd_sel;
+wire	  read_device_number;
 
 generate
     if (IEEE) begin
@@ -227,10 +215,10 @@ generate
                                                         : ieee_eoi_i,
                                ~ieee_t_r_o ? 1'b1                        // [2] when input, ndac goes out
                                            : ieee_ndac_i,
-                               read_device_number ? ds[0] :              // [1]
+                               read_device_number ? ds[1] :              // [1]
                                ~ieee_t_r_o        ? 1'b1                 //     when input, nrfd goes out
                                                   : ieee_nrfd_i,
-                               read_device_number ? ds[1]                // [0]
+                               read_device_number ? ds[0]                // [0]
                                                   : 1'b1}
                               ; // & (uc1_pb_o | ~uc1_pb_oe);
 
