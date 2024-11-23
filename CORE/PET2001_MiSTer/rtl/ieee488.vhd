@@ -46,20 +46,6 @@ end entity ieee488_bus_1;
 architecture simplistic of ieee488_bus_1 is
 
     attribute mark_debug : string;
-    attribute mark_debug of pet_data_i : signal is "true";
-    attribute mark_debug of pet_data_o : signal is "true";
-    attribute mark_debug of pet_atn_i  : signal is "true";
-    attribute mark_debug of pet_dav_i  : signal is "true";
-    attribute mark_debug of pet_dav_o  : signal is "true";
-    attribute mark_debug of pet_eoi_i  : signal is "true";
-    attribute mark_debug of pet_eoi_o  : signal is "true";
-    attribute mark_debug of pet_nrfd_i : signal is "true";
-    attribute mark_debug of pet_nrfd_o : signal is "true";
-    attribute mark_debug of pet_ndac_i : signal is "true";
-    attribute mark_debug of pet_ndac_o : signal is "true";
-
-    attribute mark_debug of d01_data_i : signal is "true";
-    attribute mark_debug of d01_data_o : signal is "true";
 
     signal    data   : std_logic_vector(7 downto 0);
     signal    atn    : std_logic;               -- only set by controller
@@ -70,7 +56,6 @@ architecture simplistic of ieee488_bus_1 is
     signal    nrfd   : std_logic;
     signal    ndac   : std_logic;
 
-    attribute mark_debug of data       : signal is "true";
 begin
     -- AND all the respective signals from all devices.
     data <= pet_data_i and d01_data_i;
