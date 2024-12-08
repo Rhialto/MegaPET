@@ -153,7 +153,7 @@ c1541_multi #(.IEEE(IEEE), .PARPORT(PARPORT), .DUALROM(DUALROM), .DRIVES(DRIVES)
 	.rom_addr_i(rom_addr_i[14:0]),
 	.rom_data_i(rom_data_i),
 	.rom_data_o(rom_data_o),
-	.rom_wr_i(~rom_addr_i[15] & rom_wr_i),
+	.rom_wr_i(rom_wr_i), // was ~rom_addr_i[15] & rom_wr_i
 	.rom_std_i(rom_std_i),
 
 	.img_mounted(img_mounted),
