@@ -85,7 +85,7 @@ module pet2001video8mhz
  * +-----------+------+---------------------------------------+----+
  *
  * Scan line counting starts at "X": line 0 column 0.
- * So the in this counting, the line *ends* with the horizontal flyback.
+ * So in this way of counting, the line *ends* with the left border.
  *
  * The VIDEO ON signal (used to generate 60 Hz IRQs and to avoid changing
  * the screen while the video circuitry reads it) turns off at Y and on at Z,
@@ -116,7 +116,7 @@ always @(posedge clk) begin
         synchronize <= 1;
     end else if (reset == 0 && synchronize == 1 && ce_1m == 1) begin
         synchronize <= 0;
-        hc <= 0;
+        hc <= -7;    // probably need -7 or sth. to be 0 mod 8 the next time when ce_1m == 1.
         vc <= 0;
     end else begin
         if (ce_8mp) begin
@@ -133,8 +133,8 @@ always @(posedge clk) begin
 
         if (ce_8mn) begin
             if (hc == 0) begin
-                                            // 200 bottom of text, start of bottom border
-                     if (vc == 220) begin   // bottom of screen, start of vertical blank
+                                                // 200 bottom of text, start of bottom border
+                if          (vc == 220) begin   // bottom of screen, start of vertical blank
                     VBlank <= 1;
                 end else if (vc == 226) begin   // start vsync
                     VSync <= 1;
@@ -143,19 +143,19 @@ always @(posedge clk) begin
                 end else if (vc == 240) begin   // top of screen, top border
                     VBlank <= 0;
                 end                             // 260 top of text, end of top border
-            end else if (hc == 319 + 8) begin   // start right border + all pixels shifted out
+            end else if (hc == 40*8 -1 + 8 + 8) begin   // start right border + chardata fetch delay + all pixels shifted out
                 if (vc == 199) begin
                     video_on <= 0;
                 end else if (vc == 259) begin
                     video_on <= 1;
                 end
-            end else if (hc == 360) begin // start horizontal flyback
+            end else if (hc == 46*8 -1) begin // start horizontal flyback
                 HBlank <= 1;
-            end else if (hc == 384) begin // start horizontal sync
+            end else if (hc == 50*8 -1) begin // start horizontal sync
                 HSync <= 1;
-            end else if (hc == 432) begin // end horizontal sync
+            end else if (hc == 54*8 -1) begin // end horizontal sync
                 HSync <= 0;
-            end else if (hc == 456) begin // start left border
+            end else if (hc == 58*8 -1) begin // start left border
                 HBlank <= 0;
             end  // else if (hc == 511) begin // end line
                  // end
