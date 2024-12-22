@@ -173,7 +173,7 @@ dualport_2clk_ram #(
 wire [7:0]      ram_data;
 wire [7:0]      vram_data;
 wire [7:0]      video_data;
-wire [10:0] video_addr;
+wire [10:0]     video_addr;	/* 2 KB */
 
 wire    ram_we  = we && ~addr[15];
 
@@ -201,7 +201,7 @@ dualport_2clk_ram #(.addr_width(10)) pet2001vram
         .q_a(vram_data),
 
         .clock_b(clk),
-        .address_b(video_addr),
+        .address_b(video_addr[9:0]),
         .q_b(video_data)
 );
 
@@ -246,7 +246,7 @@ pet2001io io
         .ce(ce_1m),
         .data_out(io_read_data),
         .data_in(data_in),
-        .addr(addr[10:0]),
+        .addr(addr[7:0]),		// E8xx only!
         .cs(io_sel),
         .video_sync(video_on),
         .video_blank(video_blank),
