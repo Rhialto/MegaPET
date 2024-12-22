@@ -101,13 +101,12 @@ module pet2001video8mhz
  */
 
 (* dont_touch="true",mark_debug="true" *)
-reg  [8:0] hc;
+reg  [8:0] hc;          /* horizontal counter */
 (* dont_touch="true",mark_debug="true" *)
-reg  [8:0] vc;
+reg  [8:0] vc;          /* vertical counter */
 (* dont_touch="true",mark_debug="true" *)
 reg synchronize;
 
-//assign video_on   = (vc < 200);
 assign video_addr = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc[8:3];          // 40 * line + charpos
 assign charaddr   = {video_gfx, video_data[6:0], vc[2:0]};
 
@@ -132,18 +131,7 @@ always @(posedge clk) begin
         end
 
         if (ce_8mn) begin
-            if (hc == 0) begin
-                                                // 200 bottom of text, start of bottom border
-                if          (vc == 220) begin   // bottom of screen, start of vertical blank
-                    VBlank <= 1;
-                end else if (vc == 226) begin   // start vsync
-                    VSync <= 1;
-                end else if (vc == 234) begin   // end vsync
-                    VSync <= 0;
-                end else if (vc == 240) begin   // top of screen, top border
-                    VBlank <= 0;
-                end                             // 260 top of text, end of top border
-            end else if (hc == 40*8 -1 + 8 + 8) begin   // start right border + chardata fetch delay + all pixels shifted out
+            if (hc == 40*8 -1 + 8 + 8) begin   // start right border + chardata fetch delay + all pixels shifted out
                 if (vc == 199) begin
                     video_on <= 0;
                 end else if (vc == 259) begin
@@ -157,8 +145,18 @@ always @(posedge clk) begin
                 HSync <= 0;
             end else if (hc == 58*8 -1) begin // start left border
                 HBlank <= 0;
-            end  // else if (hc == 511) begin // end line
-                 // end
+            end else if (hc == 64*8 -1) begin     // 511 end line
+                                                  // 200 bottom of text, start of bottom border
+                if          (vc == 220-1) begin   // bottom of screen, start of vertical blank
+                    VBlank <= 1;
+                end else if (vc == 226-1) begin   // start vsync
+                    VSync <= 1;
+                end else if (vc == 234-1) begin   // end vsync
+                    VSync <= 0;
+                end else if (vc == 240-1) begin   // top of screen, top border
+                    VBlank <= 0;
+                end                               // 260 top of text, end of top border
+            end
         end
     end
 end
@@ -170,7 +168,8 @@ assign    pix = (vdata[7] ^ inv) & ~video_blank;
 always @(posedge clk) begin
     // Work on the other clock edge, so that we work with the updated Matrix
     // Address, and the updated Matrix value, and the updated character rom
-    // pixels.
+    // pixels. On real hardware this would take 2 CPU clocks: 1 to fetch the
+    // matrix value, 1 for lookup in the character ROM.
     if (ce_8mn) begin
         if (!hc[2:0]) begin
             {inv, vdata} <= ((hc < 320) && (vc < 200)) ? {video_data[7], chardata}
