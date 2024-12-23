@@ -2,40 +2,24 @@
 
 module pet2001video8mhz
 (
-(* dont_touch="true",mark_debug="true" *)
         output         pix,
-(* dont_touch="true",mark_debug="true" *)
         output reg     HSync,
-(* dont_touch="true",mark_debug="true" *)
         output reg     VSync,
-(* dont_touch="true",mark_debug="true" *)
         output reg     HBlank,
-(* dont_touch="true",mark_debug="true" *)
         output reg     VBlank,
 
-(* dont_touch="true",mark_debug="true" *)
         output [10:0]  video_addr,      // Video RAM intf
-(* dont_touch="true",mark_debug="true" *)
         input  [7:0]   video_data,
 
-//(* dont_touch="true",mark_debug="true" *)
         output [10:0]  charaddr,        // char rom intf
-(* dont_touch="true",mark_debug="true" *)
         input  [7:0]   chardata,
-(* dont_touch="true",mark_debug="true" *)
         output reg     video_on,        // control sigs
-(* dont_touch="true",mark_debug="true" *)
         input          video_blank,
         input          video_gfx,
-(* dont_touch="true",mark_debug="true" *)
         input          reset,
-(* dont_touch="true",mark_debug="true" *)
         input          clk,
-(* dont_touch="true",mark_debug="true" *)
         input          ce_8mp,
-(* dont_touch="true",mark_debug="true" *)
         input          ce_8mn,
-(* dont_touch="true",mark_debug="true" *)
         input          ce_1m
 );
 
@@ -100,11 +84,8 @@ module pet2001video8mhz
  *
  */
 
-(* dont_touch="true",mark_debug="true" *)
 reg  [8:0] hc;          /* horizontal counter */
-(* dont_touch="true",mark_debug="true" *)
 reg  [8:0] vc;          /* vertical counter */
-(* dont_touch="true",mark_debug="true" *)
 reg synchronize;
 
 assign video_addr = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc[8:3];          // 40 * line + charpos
@@ -137,7 +118,7 @@ always @(posedge clk) begin
                 end else if (vc == 259) begin
                     video_on <= 1;
                 end
-            end else if (hc == 46*8 -1) begin // start horizontal flyback
+            end else if (hc == 46*8 -1) begin // start horizontal blank
                 HBlank <= 1;
             end else if (hc == 50*8 -1) begin // start horizontal sync
                 HSync <= 1;
@@ -145,17 +126,18 @@ always @(posedge clk) begin
                 HSync <= 0;
             end else if (hc == 58*8 -1) begin // start left border
                 HBlank <= 0;
-            end else if (hc == 64*8 -1) begin     // 511 end line
                                                   // 200 bottom of text, start of bottom border
                 if          (vc == 220-1) begin   // bottom of screen, start of vertical blank
                     VBlank <= 1;
-                end else if (vc == 226-1) begin   // start vsync
+                end else
+                if          (vc == 226-1) begin   // start vsync
                     VSync <= 1;
                 end else if (vc == 234-1) begin   // end vsync
                     VSync <= 0;
                 end else if (vc == 240-1) begin   // top of screen, top border
                     VBlank <= 0;
                 end                               // 260 top of text, end of top border
+            //end else if (hc == 64*8 -1) begin     // 511 end line
             end
         end
     end
