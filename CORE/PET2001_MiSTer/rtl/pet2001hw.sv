@@ -92,10 +92,8 @@ module pet2001hw
         input            clk_stop,
         input            diag_l,
         input            clk,
-        input            ce_7mp,
-        input            ce_7mn,
-        input            ce_8mp,
-        input            ce_8mn,
+        input            ce_8mp,        // 8 HMz positive edge
+        input            ce_8mn,        // 8 HMz negative edge
         input            ce_1m,
         input            reset
 );
@@ -215,29 +213,6 @@ wire    video_on;    // signal indicating VGA is scanning visible
 wire    video_blank; // blank screen during scrolling
 wire    video_gfx;   // display graphic characters vs. lower-case
 
-/*
-pet2001video vid
-(
-        .pix(pix),
-        .HSync(HSync),
-        .VSync(VSync),
-        .HBlank(HBlank),
-        .VBlank(VBlank),
-
-        .video_addr(video_addr),
-        .video_data(video_data),
-
-        .charaddr(charaddr),
-        .chardata(chardata),
-        .video_on(video_on),
-        .video_blank(video_blank & eoi_blanks), // video_blank when eoi_blanks else 0
-        .video_gfx(video_gfx),
-        .reset(reset),
-        .clk(clk),
-        .ce_7mp(ce_7mp),
-        .ce_7mn(ce_7mn)
-);
-*/
 pet2001video8mhz vid
 (
         .pix(pix),
@@ -248,11 +223,12 @@ pet2001video8mhz vid
 
         .video_addr(video_addr),
         .video_data(video_data),
+        //.video_data(vram_data),
 
         .charaddr(charaddr),
         .chardata(chardata),
         .video_on(video_on),
-        .video_blank(video_blank & eoi_blanks), // video_blank when eoi_blanks else 0
+        .video_blank(video_blank & pref_eoi_blanks), // video_blank when eoi_blanks else 0
         .video_gfx(video_gfx),
         .reset(reset),
         .clk(clk),
