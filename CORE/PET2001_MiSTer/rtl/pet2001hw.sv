@@ -3,6 +3,7 @@
 //
 // Initial Engineer (2001 Model):          Thomas Skibo
 // Brought to 3032 and 4032 (non CRTC):    Ruben Aparicio
+// Added disk drive, cycle exact video, CRTC, etc: Olaf "Rhialto" Seibert
 // 
 // Create Date:      Sep 23, 2011
 //
@@ -55,6 +56,7 @@ module pet2001hw
         output           HBlank,
         output           VBlank,
         input            pref_eoi_blanks,       // use as generic for 2001-specifics
+        input            pref_have_crtc,
 
         output [3:0]     keyrow, // Keyboard
         input  [7:0]     keyin,
@@ -301,6 +303,8 @@ pet2001io io
         .video_gfx(video_gfx),
         .video_on(video_on),
 
+        .pref_have_crtc(pref_have_crtc),
+
         .cass_motor_n(cass_motor_n),
         .cass_write(cass_write),
         .cass_sense_n(cass_sense_n),
@@ -334,21 +338,35 @@ pet2001io io
 /////////////////////////////////////
 always @(*)
 begin
+    /*
     if (io_sel) begin
         data_out = io_read_data;
     end else begin
         casex(addr[15:12])
-                5'b1111: data_out = rom_data;     // F000-FFFF
-                5'b1110: data_out = rom_data;     // E000-EFFF except E8xx
-                5'b110x: data_out = rom_data;     // C000-DFFF
-                5'b1011: data_out = rom_data;     // B000-BFFF BASIC
-                5'b1010: data_out = rom_data;     // A000-AFFF OPT ROM 2
-                5'b1001: data_out = rom_data;     // 9000-9FFF OPT ROM 1
-                5'b1000: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
-                5'b0xxx: data_out = ram_data;     // 0000-7FFF 32KB RAM
+                4'b1111: data_out = rom_data;     // F000-FFFF
+                4'b1110: data_out = rom_data;     // E000-EFFF except E8xx
+                4'b110x: data_out = rom_data;     // C000-DFFF
+                4'b1011: data_out = rom_data;     // B000-BFFF BASIC
+                4'b1010: data_out = rom_data;     // A000-AFFF OPT ROM 2
+                4'b1001: data_out = rom_data;     // 9000-9FFF OPT ROM 1
+                4'b1000: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
+                4'b0xxx: data_out = ram_data;     // 0000-7FFF 32KB RAM
                 default: data_out = addr[15:8];
         endcase;
     end;
+    */
+    casex({addr[15:12], io_sel, vram_sel})
+            6'b1111_x_x: data_out = rom_data;     // F000-FFFF KERNAL
+            6'bxxxx_1_x: data_out = io_read_data; // E800-E8FF I/O
+            6'b1110_0_x: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
+            6'b110x_x_x: data_out = rom_data;     // C000-DFFF BASIC
+            6'b1011_x_x: data_out = rom_data;     // B000-BFFF BASIC 4
+            6'b1010_x_x: data_out = rom_data;     // A000-AFFF OPT ROM 2
+            6'b1001_x_x: data_out = rom_data;     // 9000-9FFF OPT ROM 1
+            6'b1000_x_1: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
+            6'b0xxx_x_x: data_out = ram_data;     // 0000-7FFF 32KB RAM
+            default: data_out = addr[15:8];
+    endcase;
 end;
 
 endmodule // pet2001hw

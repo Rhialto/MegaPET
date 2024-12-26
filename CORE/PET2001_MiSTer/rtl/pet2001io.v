@@ -11,11 +11,12 @@
 //	I/O devices for Pet emulator.  Includes two PIAs and a VIA and a
 //	module that converts a PS2 keyboard into a PET keyboard.
 //
-//	I/O is mapped into region 0xE800-0xEFFF.
+//	I/O is mapped into region 0xE800-0xE8FF.
 //
 //		0xE810-0xE813		PIA1
 //		0xE820-0xE823		PIA2
 //		0xE840-0xE84F		VIA
+//		0xE880-0xE84F		CRTC
 //
 //      Signals for the IEEE-488 port come out.
 //
@@ -65,6 +66,8 @@ module pet2001io
 	output       video_gfx,
 	input        video_on,
 
+        input        pref_have_crtc,     // do we want the CRTC?
+
 	output       cass_motor_n, 	// Cassette #1 interface
 	output       cass_write,
 	input        cass_sense_n,
@@ -100,9 +103,10 @@ always @(negedge clk) strobe_io <= ce;
 
 assign ieee488_ifc_o = ~reset;      // IEEE bus is active-low.
 
-wire pia1_sel = cs & addr[4];
-wire pia2_sel = cs & addr[5];
-wire via_sel  = cs & addr[6];
+wire pia1_sel = cs & addr[4];       // E810
+wire pia2_sel = cs & addr[5];       // E820
+wire via_sel  = cs & addr[6];       // E840
+wire crtc_sel = (cs & addr[7]) && pref_have_crtc;       // E880
 
 /////////////////////////// 6520 PIA1 ////////////////////////////////////
 //
@@ -223,6 +227,34 @@ assign ieee488_nrfd_o = via_portb_out[1];
 assign ieee488_atn_o = via_portb_out[2];
 assign cass_write = via_portb_out[3];
 
+/////////////////////////// 6845 CRTC ///////////////////////////////////
+//
+wire [7:0] crtc_data_out;
+
+mc6845 crtc
+(
+        .CLOCK(clk),
+        .CLKEN(ce),
+        .nRESET(~reset),
+
+        // Bus interface
+        .ENABLE(strobe_io & crtc_sel),
+        .R_nW(~we),
+        .RS(addr[0]),
+        .DI(data_in),
+        .DO(crtc_data_out),
+
+        // Display interface
+        .VSYNC(),
+        .HSYNC(),
+        .DE(),
+        .CURSOR(),
+        .LPSTB(),
+
+        // Memory interface
+        .MA(),
+        .RA()
+);
 
 /////////////// Read data mux /////////////////////////
 // register I/O stuff, therefore RDY must be delayed a cycle!
@@ -231,7 +263,8 @@ always @(posedge clk) begin
 	data_out <= 8'hFF
                     & (pia1_sel ? pia1_data_out : 8'hFF)
                     & (pia2_sel ? pia2_data_out : 8'hFF)
-                    & (via_sel  ? via_data_out  : 8'hFF);
+                    & (via_sel  ? via_data_out  : 8'hFF)
+                    & (crtc_sel ? crtc_data_out : 8'hFF);
 end
  
 assign irq = pia1_irq || pia2_irq || via_irq;
