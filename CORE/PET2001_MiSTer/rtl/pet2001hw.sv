@@ -180,8 +180,8 @@ dualport_2clk_ram #(
 wire [7:0]      ram_data;
 (* dont_touch="true",mark_debug="true" *)
 wire [7:0]      vram_data;
-(* dont_touch="true",mark_debug="true" *)
-wire [7:0]      video_data;
+//(* dont_touch="true",mark_debug="true" *)
+//wire [7:0]      video_data;
 (* dont_touch="true",mark_debug="true" *)
 wire [10:0]     video_addr;     /* 2 KB */
 
@@ -212,7 +212,7 @@ reg     vram_cpu_video;         // 1=cpu, 0=video
 wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
                    (pref_eoi_blanks && addr[15:12] == 4'b1000);
 (* dont_touch="true",mark_debug="true" *)
-wire    vram_we = we && vram_sel; // && vram_cpu_video;
+wire    vram_we = we && vram_sel && vram_cpu_video;
 
 // Select who owns the bus.
 // Video owns it from ce_8mp to ce_8mn.
@@ -231,9 +231,9 @@ dualport_2clk_ram #(.addr_width(10)) pet2001vram
 (
         .clock_a(clk),
 (* dont_touch="true",mark_debug="true" *)
-        .address_a(addr[9:0]),
-        //.address_a(vram_sel && vram_cpu_video ? addr[9:0]
-        //                                      : video_addr[9:0]),
+        //.address_a(addr[9:0]),
+        .address_a(vram_sel && vram_cpu_video ? addr[9:0]
+                                              : video_addr[9:0]),
         //.address_a(vram_sel ? addr[9:0]      // snow?
         //                    : video_addr[9:0]),
         .data_a(data_in),
@@ -241,9 +241,9 @@ dualport_2clk_ram #(.addr_width(10)) pet2001vram
         .q_a(vram_data)
 
         // Not accessible to QNICE for now.
-       ,.clock_b(clk),
-        .address_b(video_addr[9:0]),
-        .q_b(video_data)
+       //,.clock_b(clk),
+        //.address_b(video_addr[9:0]),
+        //.q_b(video_data)
 );
 
 //////////////////////////////////////
@@ -263,8 +263,8 @@ pet2001video8mhz vid
         .VBlank(VBlank),
 
         .video_addr(video_addr),
-        .video_data(video_data),
-        //.video_data(vram_data),
+        //.video_data(video_data),
+        .video_data(vram_data),
 
         .charaddr(charaddr),
         .chardata(chardata),
