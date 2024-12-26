@@ -42,6 +42,7 @@
 
 module pet2001hw
 (
+(* dont_touch="true",mark_debug="true" *)
         input [15:0]     addr, // CPU Interface
         input [7:0]      data_in,
         output reg [7:0] data_out,
@@ -53,7 +54,7 @@ module pet2001hw
         output           VSync,
         output           HBlank,
         output           VBlank,
-        input            eoi_blanks,
+        input            pref_eoi_blanks,       // use as generic for 2001-specifics
 
         output [3:0]     keyrow, // Keyboard
         input  [7:0]     keyin,
@@ -92,24 +93,22 @@ module pet2001hw
         input            clk_stop,
         input            diag_l,
         input            clk,
+(* dont_touch="true",mark_debug="true" *)
         input            ce_8mp,        // 8 HMz positive edge
+(* dont_touch="true",mark_debug="true" *)
         input            ce_8mn,        // 8 HMz negative edge
+(* dont_touch="true",mark_debug="true" *)
         input            ce_1m,
         input            reset
 );
 
 /////////////////////////////////////////////////////////////
-// Pet ROMS incuding character ROM.  Character data is read
-// out second port.  This brings total ROM to 16K which is
-// easy to arrange.
+// Pet ROMS excluding character ROM.
 /////////////////////////////////////////////////////////////
 wire [7:0]      rom_data;
 
-wire [10:0]     charaddr;
-wire [7:0]      chardata;
-
-wire rom_wr = dma_we & ~dma_char_ce; // & dma_addr[15];
-wire chars_wr = dma_we & dma_char_ce; // & dma_addr[15];
+wire rom_wr = dma_we & ~dma_char_ce;
+wire chars_wr = dma_we & dma_char_ce;
 
 wire [7:0]      dma_rom_dout;
 wire [7:0]      dma_char_dout;
@@ -143,7 +142,14 @@ dualport_2clk_ram #(
         .clock_b(dma_clk & ~dma_char_ce)
 );
 
+/////////////////////////////////////////////////////////////
 // Character ROM
+/////////////////////////////////////////////////////////////
+
+(* dont_touch="true",mark_debug="true" *)
+wire [10:0]     charaddr;
+(* dont_touch="true",mark_debug="true" *)
+wire [7:0]      chardata;
 
 dualport_2clk_ram #(
         .addr_width(11),        // 2 KB, but we can use a double size (SuperPET) ROM later
@@ -168,12 +174,16 @@ dualport_2clk_ram #(
 );
 
 //////////////////////////////////////////////////////////////
-// Pet RAM and video RAM.  Video RAM is dual ported.
+// Pet RAM.
 //////////////////////////////////////////////////////////////
+(* dont_touch="true",mark_debug="true" *)
 wire [7:0]      ram_data;
+(* dont_touch="true",mark_debug="true" *)
 wire [7:0]      vram_data;
+(* dont_touch="true",mark_debug="true" *)
 wire [7:0]      video_data;
-wire [10:0]     video_addr;	/* 2 KB */
+(* dont_touch="true",mark_debug="true" *)
+wire [10:0]     video_addr;     /* 2 KB */
 
 wire    ram_we  = we && ~addr[15];
 
@@ -189,18 +199,49 @@ dualport_2clk_ram #(.addr_width(15)) pet2001ram
         // Not accessible to QNICE for now.
 );
 
-wire    vram_we = we && (addr[15:12] == 4'h8);
+//////////////////////////////////////
+// Video RAM.
+// The video hardware shares access to VRAM half the time.
+//////////////////////////////////////
+// On the 2001, video RAM is mirrored all the way up to $8FFF.
+// Later models only mirror up to $87FF.
 
-// was dpram
+(* dont_touch="true",mark_debug="true" *)
+reg     vram_cpu_video;         // 1=cpu, 0=video
+(* dont_touch="true",mark_debug="true" *)
+wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
+                   (pref_eoi_blanks && addr[15:12] == 4'b1000);
+(* dont_touch="true",mark_debug="true" *)
+wire    vram_we = we && vram_sel; // && vram_cpu_video;
+
+// Select who owns the bus.
+// Video owns it from ce_8mp to ce_8mn.
+// We only need it once (later twice) for video fetch during an 1 MHz
+// cycle so this switches too often...
+always @(posedge clk)
+begin
+    if (ce_1m || ce_8mn) begin
+        vram_cpu_video <= 1;
+    end else if (ce_8mp) begin
+        vram_cpu_video <= 0;
+    end;
+end;
+
 dualport_2clk_ram #(.addr_width(10)) pet2001vram
 (
         .clock_a(clk),
+(* dont_touch="true",mark_debug="true" *)
         .address_a(addr[9:0]),
+        //.address_a(vram_sel && vram_cpu_video ? addr[9:0]
+        //                                      : video_addr[9:0]),
+        //.address_a(vram_sel ? addr[9:0]      // snow?
+        //                    : video_addr[9:0]),
         .data_a(data_in),
         .wren_a(vram_we),
-        .q_a(vram_data),
+        .q_a(vram_data)
 
-        .clock_b(clk),
+        // Not accessible to QNICE for now.
+       ,.clock_b(clk),
         .address_b(video_addr[9:0]),
         .q_b(video_data)
 );
@@ -245,14 +286,28 @@ wire            io_sel = addr[15:8] == 8'hE8;
 
 pet2001io io
 (
-        .*,
-        .ce(ce_1m),
+        //.*,     // TODO: remove!
         .data_out(io_read_data),
         .data_in(data_in),
-        .addr(addr[7:0]),		// E8xx only!
+        .addr(addr[7:0]),               // E8xx only!
         .cs(io_sel),
-        .video_sync(video_on),
+        .we(we),
+        .irq(irq),
+
+        .keyrow(keyrow),
+        .keyin(keyin),
+
         .video_blank(video_blank),
+        .video_gfx(video_gfx),
+        .video_on(video_on),
+
+        .cass_motor_n(cass_motor_n),
+        .cass_write(cass_write),
+        .cass_sense_n(cass_sense_n),
+        .cass_read(cass_read),
+        .audio(audio),
+
+        .diag_l(diag_l),
 
         // IEEE-488
         .ieee488_data_i(ieee488_data_i),
@@ -267,13 +322,18 @@ pet2001io io
         .ieee488_nrfd_i(ieee488_nrfd_i),
         .ieee488_nrfd_o(ieee488_nrfd_o),
         .ieee488_ndac_i(ieee488_ndac_i),
-        .ieee488_ndac_o(ieee488_ndac_o)
+        .ieee488_ndac_o(ieee488_ndac_o),
+
+        .ce(ce_1m),
+        .clk(clk),
+        .reset(reset)
 );
 
 /////////////////////////////////////
 // Read data mux (to CPU)
 /////////////////////////////////////
 always @(*)
+begin
     if (io_sel) begin
         data_out = io_read_data;
     end else begin
@@ -289,5 +349,6 @@ always @(*)
                 default: data_out = addr[15:8];
         endcase;
     end;
+end;
 
 endmodule // pet2001hw

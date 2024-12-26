@@ -8,18 +8,18 @@ module pet2001video8mhz
         output reg     HBlank,
         output reg     VBlank,
 
-        output [10:0]  video_addr,      // Video RAM intf
-        input  [7:0]   video_data,
+        output [10:0]  video_addr,      // Video RAM intf: Matrix Address
+        input  [7:0]   video_data,      // result from fetching MA
 
-        output [10:0]  charaddr,        // char rom intf
-        input  [7:0]   chardata,
+        output [10:0]  charaddr,        // char rom intf: access character ROM
+        input  [7:0]   chardata,        // from character rom
         output reg     video_on,        // control sigs
         input          video_blank,
         input          video_gfx,
         input          reset,
         input          clk,
-        input          ce_8mp,
-        input          ce_8mn,
+        input          ce_8mp,          // 8 MHz positive edge
+        input          ce_8mn,          // 8 MHz negative edge. See below.
         input          ce_1m
 );
 
@@ -82,6 +82,14 @@ module pet2001video8mhz
  * For ease of counting we round 6.7 -> 7 and 5.3 -> 5.
  * or for more centered output   6.7 -> 6     5.3 -> 6.
  *
+ */
+/*
+ * ce_8mn must be at least 3 clk cycles after ce_8mp.
+ * At the falling edge of ce_8mp (so 1 clk after it rises), video_addr will change.
+ * (charaddr manages to change at the same time)
+ * 1 clk later, video_data will be available.
+ * 1 clk later, chardata will be available.
+ * Total: 3 clks from rising edge of ce_8mp.
  */
 
 reg  [8:0] hc;          /* horizontal counter */
