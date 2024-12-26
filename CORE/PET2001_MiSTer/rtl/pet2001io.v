@@ -63,7 +63,7 @@ module pet2001io
 
 	output       video_blank, 	// Video controls
 	output       video_gfx,
-	input        video_sync,
+	input        video_on,
 
 	output       cass_motor_n, 	// Cassette #1 interface
 	output       cass_write,
@@ -133,7 +133,7 @@ pia6520 pia1
 	.ca2_out(pia1_ca2_out),
 	.ca2_in(1'b0),
 
-	.cb1_in(video_sync),
+	.cb1_in(video_on),
 	.cb2_out(cass_motor_n),
 	.cb2_in(1'b0),
 
@@ -188,7 +188,7 @@ pia6520 pia2
 wire [7:0] via_data_out;
 wire       via_irq;
 wire [7:0] via_portb_out;
-wire [7:0] via_portb_in = {ieee488_dav_i, ieee488_nrfd_i, video_sync, 4'b0_000, ieee488_ndac_i}; // msb first
+wire [7:0] via_portb_in = {ieee488_dav_i, ieee488_nrfd_i, video_on, 4'b0_000, ieee488_ndac_i}; // msb first
 
 via6522 via
 (
