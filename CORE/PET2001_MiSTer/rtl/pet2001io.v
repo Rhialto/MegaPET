@@ -1,8 +1,8 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////
 //
-// Engineer:	Thomas Skibo 
-// 
+// Engineer:	Thomas Skibo
+//
 // Create Date:	Sep 24, 2011
 //
 // Module Name: pet2001io
@@ -24,7 +24,7 @@
 //////////////////////////////////////////////////////////////////////////////
 //
 // Copyright (C) 2011, Thomas Skibo.  All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 // * Redistributions of source code must retain the above copyright
@@ -34,7 +34,7 @@
 //   documentation and/or other materials provided with the distribution.
 // * The names of contributors may not be used to endorse or promote products
 //   derived from this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -51,30 +51,37 @@
 
 module pet2001io
 (
-	output reg [7:0] data_out, 	// CPU interface
-	input  [7:0] data_in,
-	input  [7:0] addr,
-	input        cs,
-	input        we,
+        output reg [7:0] data_out,      // CPU interface
+        input  [7:0] data_in,
+        input  [7:0] addr,
+        input        cs,
+        input        we,
 
-	output       irq,
+        output       irq,
 
-	output [3:0] keyrow, 		// Keyboard
-	input  [7:0] keyin,
+        output [3:0] keyrow,            // Keyboard
+        input  [7:0] keyin,
 
-	output       video_blank, 	// Video controls
-	output       video_gfx,
-	input        video_on,
+        output       video_blank,       // Video controls
+        output       video_gfx,
+        input        video_on,          // retrace_irq_n
+
+        output         crtc_vsync,
+        output         crtc_hsync,
+        output         crtc_de,
+        output         crtc_cursor,
+        output [13:0]  crtc_ma,
+        output  [4:0]  crtc_ra,
 
         input        pref_have_crtc,     // do we want the CRTC?
 
-	output       cass_motor_n, 	// Cassette #1 interface
-	output       cass_write,
-	input        cass_sense_n,
-	input        cass_read,
-	output       audio, 		// CB2 audio
+        output       cass_motor_n,      // Cassette #1 interface
+        output       cass_write,
+        input        cass_sense_n,
+        input        cass_read,
+        output       audio,             // CB2 audio
 
-	input        diag_l, 	// diag jumper input
+        input        diag_l,    // diag jumper input
 
         // IEEE-488
         input  [7:0] ieee488_data_i,
@@ -92,9 +99,9 @@ module pet2001io
         input        ieee488_ndac_i,
         output       ieee488_ndac_o,
 
-	input        ce,
-	input        clk,
-	input        reset
+        input        ce,
+        input        clk,
+        input        reset
 );
 
 //delay ce for io for stability.
@@ -135,11 +142,11 @@ pia6520 pia1
 
 	.ca1_in(pia1_ca1_in),
 	.ca2_out(pia1_ca2_out),
-	.ca2_in(1'b0),
+	.ca2_in(1'b1),
 
-	.cb1_in(video_on),
+	.cb1_in(video_on),      // retrace_irq_n
 	.cb2_out(cass_motor_n),
-	.cb2_in(1'b0),
+	.cb2_in(1'b1),
 
 	.clk(clk),
 	.reset(reset)
@@ -235,32 +242,32 @@ mc6845 crtc
 (
         .CLOCK(clk),
         .CLKEN(ce),
-        .nRESET(~reset),
+        .nRESET(~reset || ~pref_have_crtc),
 
         // Bus interface
         .ENABLE(strobe_io & crtc_sel),
-        .R_nW(~we),
+        .R_nW(~(we & crtc_sel)),
         .RS(addr[0]),
         .DI(data_in),
         .DO(crtc_data_out),
 
         // Display interface
-        .VSYNC(),
-        .HSYNC(),
-        .DE(),
-        .CURSOR(),
-        .LPSTB(),
+        .VSYNC(crtc_vsync),
+        .HSYNC(crtc_hsync),
+        .DE(crtc_de),
+        .CURSOR(crtc_cursor),
+        .LPSTB(),   // no light pen connected.
 
         // Memory interface
-        .MA(),
-        .RA()
+        .MA(crtc_ma),
+        .RA(crtc_ra)
 );
 
 /////////////// Read data mux /////////////////////////
 // register I/O stuff, therefore RDY must be delayed a cycle!
 //
 always @(posedge clk) begin
-	data_out <= 8'hFF
+        data_out <= 8'hFF
                     & (pia1_sel ? pia1_data_out : 8'hFF)
                     & (pia2_sel ? pia2_data_out : 8'hFF)
                     & (via_sel  ? via_data_out  : 8'hFF)

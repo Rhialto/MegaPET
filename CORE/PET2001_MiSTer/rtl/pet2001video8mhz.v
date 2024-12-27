@@ -14,6 +14,15 @@ module pet2001video8mhz
         output [10:0]  charaddr,        // char rom intf: access character ROM
         input  [7:0]   chardata,        // from character rom
         output reg     video_on,        // control sigs
+
+        // new CRTC-compatible outputs, interface with video/crtc multiplexer
+        output reg     vid_vsync,
+        output reg     vid_hsync,
+        output reg     vid_de,
+        output         vid_cursor,
+        output [13:0]  vid_ma,
+        output  [4:0]  vid_ra,
+
         input          video_blank,
         input          video_gfx,
         input          reset,
@@ -99,6 +108,10 @@ reg synchronize;
 assign video_addr = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc[8:3];          // 40 * line + charpos
 assign charaddr   = {video_gfx, video_data[6:0], vc[2:0]};
 
+assign vid_ma = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc[8:3];          // 40 * line + charpos
+assign vid_ra = {2'b00, vc[2:0]};
+assign vid_cursor = 1'b0;
+
 always @(posedge clk) begin
     if (reset == 1) begin
         synchronize <= 1;
@@ -128,15 +141,18 @@ always @(posedge clk) begin
                 end
             end else if (hc == 46*8 -1) begin // start horizontal blank
                 HBlank <= 1;
+                vid_hsync <= 1;
             end else if (hc == 50*8 -1) begin // start horizontal sync
                 HSync <= 1;
             end else if (hc == 54*8 -1) begin // end horizontal sync
                 HSync <= 0;
             end else if (hc == 58*8 -1) begin // start left border
                 HBlank <= 0;
+                vid_hsync <= 0;
                                                   // 200 bottom of text, start of bottom border
                 if          (vc == 220-1) begin   // bottom of screen, start of vertical blank
                     VBlank <= 1;
+                    vid_vsync <= 1;
                 end else
                 if          (vc == 226-1) begin   // start vsync
                     VSync <= 1;
@@ -144,6 +160,7 @@ always @(posedge clk) begin
                     VSync <= 0;
                 end else if (vc == 240-1) begin   // top of screen, top border
                     VBlank <= 0;
+                    vid_vsync <= 0;
                 end                               // 260 top of text, end of top border
             //end else if (hc == 64*8 -1) begin     // 511 end line
             end
@@ -164,10 +181,13 @@ always @(posedge clk) begin
         if (!hc[2:0]) begin
             {inv, vdata} <= ((hc < 320) && (vc < 200)) ? {video_data[7], chardata}
                                                        : 9'd0;
+            vid_de <= ((hc < 320) && (vc < 200));
         end else begin
             vdata <= {vdata[6:0], 1'b0};
         end
     end
 end
+
+assign    vid_cursor = 1'b0;
 
 endmodule // pet2001video8mhz
