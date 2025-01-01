@@ -2,19 +2,6 @@
 
 module pet2001video8mhz
 (
-        output         pix,
-        output reg     HSync,
-        output reg     VSync,
-        output reg     HBlank,
-        output reg     VBlank,
-
-        output [10:0]  video_addr,      // Video RAM intf: Matrix Address
-        input  [7:0]   video_data,      // result from fetching MA
-
-        output [10:0]  charaddr,        // char rom intf: access character ROM
-        input  [7:0]   chardata,        // from character rom
-        output reg     video_on,        // control sigs
-
         // new CRTC-compatible outputs, interface with video/crtc multiplexer
         output reg     vid_hblank,
         output reg     vid_vblank,
@@ -24,6 +11,8 @@ module pet2001video8mhz
         output         vid_cursor,
         output [13:0]  vid_ma,
         output  [4:0]  vid_ra,
+
+        output reg     video_on,        // control sigs
 
         input          video_blank,
         input          video_gfx,
@@ -107,9 +96,6 @@ reg  [8:0] hc;          /* horizontal counter */
 reg  [8:0] vc;          /* vertical counter */
 reg synchronize;
 
-//assign video_addr = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc[8:3];          // 40 * line + charpos
-//assign charaddr   = {video_gfx, video_data[6:0], vc[2:0]};
-
 assign vid_ma = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc[8:3];          // 40 * line + charpos
 assign vid_ra = {2'b00, vc[2:0]};
 assign vid_cursor = 1'b0;
@@ -142,30 +128,22 @@ always @(posedge clk) begin
                     video_on <= 1;
                 end
             end else if (hc == 46*8 -1) begin // start horizontal blank
-                HBlank <= 1;
                 vid_hblank <= 1;
             end else if (hc == 50*8 -1) begin // start horizontal sync
-                HSync <= 1;
                 vid_hsync <= 1;
             end else if (hc == 54*8 -1) begin // end horizontal sync
-                HSync <= 0;
                 vid_hsync <= 0;
             end else if (hc == 58*8 -1) begin // start left border
-                HBlank <= 0;
                 vid_hblank <= 0;
                                                   // 200 bottom of text, start of bottom border
                 if          (vc == 220-1) begin   // bottom of screen, start of vertical blank
-                    VBlank <= 1;
                     vid_vblank <= 1;
                 end else
                 if          (vc == 226-1) begin   // start vsync
-                    VSync <= 1;
                     vid_vsync <= 1;
                 end else if (vc == 234-1) begin   // end vsync
-                    VSync <= 0;
                     vid_vsync <= 0;
                 end else if (vc == 240-1) begin   // top of screen, top border
-                    VBlank <= 0;
                     vid_vblank <= 0;
                 end                               // 260 top of text, end of top border
             //end else if (hc == 64*8 -1) begin     // 511 end line
@@ -174,10 +152,6 @@ always @(posedge clk) begin
     end
 end
 
-//reg [7:0] vdata;
-//reg       inv;
-//assign    pix = (vdata[7] ^ inv) & ~video_blank;
-
 always @(posedge clk) begin
     // Work on the other clock edge, so that we work with the updated Matrix
     // Address, and the updated Matrix value, and the updated character rom
@@ -185,11 +159,7 @@ always @(posedge clk) begin
     // matrix value, 1 for lookup in the character ROM.
     if (ce_8mn) begin
         if (!hc[2:0]) begin
-            //{inv, vdata} <= ((hc < 320) && (vc < 200)) ? {video_data[7], chardata}
-                                                       //: 9'd0;
             vid_de <= ((hc < 320) && (vc < 200));
-        end else begin
-            //vdata <= {vdata[6:0], 1'b0};
         end
     end
 end

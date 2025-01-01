@@ -16,6 +16,7 @@
 //
 // Copyright (C) 2011, Thomas Skibo.  All rights reserved.
 // Copyright (C) 2019, Ruben Aparicio.  All rights reserved.
+// Copyright (C) 2025, Olaf 'Rhialto' Seibert.  All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
@@ -43,14 +44,12 @@
 
 module pet2001hw
 (
-(* dont_touch="true",mark_debug="true" *)
         input [15:0]     addr, // CPU Interface
         input [7:0]      data_in,
         output reg [7:0] data_out,
         input            we,
         output           irq,
 
-(* dont_touch="true",mark_debug="true" *)
         output           pix,
         output           HSync,
         output           VSync,
@@ -96,11 +95,8 @@ module pet2001hw
         input            clk_stop,
         input            diag_l,
         input            clk,
-(* dont_touch="true",mark_debug="true" *)
         input            ce_8mp,        // 8 HMz positive edge
-(* dont_touch="true",mark_debug="true" *)
         input            ce_8mn,        // 8 HMz negative edge
-(* dont_touch="true",mark_debug="true" *)
         input            ce_1m,
         input            reset
 );
@@ -235,7 +231,6 @@ end;
 dualport_2clk_ram #(.addr_width(10)) pet2001vram
 (
         .clock_a(clk),
-        //.address_a(addr[9:0]),
         .address_a(vram_sel && vram_cpu_video ? addr[9:0]
                                               : video_addr[9:0]),
         //.address_a(vram_sel ? addr[9:0]      // snow?
@@ -245,9 +240,6 @@ dualport_2clk_ram #(.addr_width(10)) pet2001vram
         .q_a(vram_data)
 
         // Not accessible to QNICE for now.
-       //,.clock_b(clk),
-        //.address_b(video_addr[9:0]),
-        //.q_b(video_data)
 );
 
 //////////////////////////////////////
@@ -267,6 +259,7 @@ wire        crtc_vsync;   /* vertical sync */
 wire        crtc_de;      /* display enable */
 wire [13:0] crtc_ma;      /* matrix address (screen memory) */
 wire  [4:0] crtc_ra;      /* row address */
+wire        crtc_irq_vsync; /* vertical sync used for retrace_irq_n */
 
 // Similar signals from the discrete video circuits.
 wire        discrete_hblank;  /* horizontal blanking */
@@ -279,20 +272,7 @@ wire  [4:0] discrete_ra;      /* row address */
 
 pet2001video8mhz vid
 (
-        .pix(), // .pix(pix),
-        .HSync(), // .HSync(HSync),
-        .VSync(), // .VSync(VSync),
-        .HBlank(), // .HBlank(HBlank),
-        .VBlank(), // .VBlank(VBlank),
-
-        .video_addr(), //.video_addr(video_addr),
-        .video_data(vram_data),
-
-        .charaddr(), //.charaddr(charaddr),
-        .chardata(chardata),
         .video_on(video_on),
-        .video_blank(video_blank & pref_eoi_blanks), // video_blank when eoi_blanks else 0
-        .video_gfx(video_gfx),
 
         .vid_hblank(discrete_hblank),
         .vid_vblank(discrete_vblank),
@@ -336,7 +316,7 @@ assign chosen_ma     = pref_have_crtc ? crtc_ma
 assign chosen_ra     = pref_have_crtc ? crtc_ra
                                       : discrete_ra;
  
-wire retrace_irq_n = pref_have_crtc ? ~crtc_vsync : video_on;
+wire retrace_irq_n = pref_have_crtc ? ~crtc_irq_vsync : video_on;
 
 //wire [10:0] video_addr;   // defined above already
 //wire [10:0] charaddr;     // defined above already
@@ -377,6 +357,7 @@ end
 // I/O hardware
 ////////////////////////////////////////////////////////
 wire [7:0]      io_read_data;
+// This allows for "small I/O area" only. No I/O extensions in E900-EFFF.
 wire            io_sel = addr[15:8] == 8'hE8;
 
 pet2001io io
@@ -393,7 +374,7 @@ pet2001io io
 
         .video_blank(video_blank),
         .video_gfx(video_gfx),
-        .video_on(retrace_irq_n),
+        .retrace_irq_n(retrace_irq_n),
 
         .crtc_hblank(crtc_hblank),
         .crtc_vblank(crtc_vblank),
@@ -404,6 +385,7 @@ pet2001io io
         .crtc_ma(crtc_ma),
         .crtc_ra(crtc_ra),
 
+        .crtc_irq_vsync(crtc_irq_vsync),
         .pref_have_crtc(pref_have_crtc),
 
         .cass_motor_n(cass_motor_n),
@@ -440,23 +422,6 @@ pet2001io io
 /////////////////////////////////////
 always @(*)
 begin
-    /*
-    if (io_sel) begin
-        data_out = io_read_data;
-    end else begin
-        casex(addr[15:12])
-                4'b1111: data_out = rom_data;     // F000-FFFF
-                4'b1110: data_out = rom_data;     // E000-EFFF except E8xx
-                4'b110x: data_out = rom_data;     // C000-DFFF
-                4'b1011: data_out = rom_data;     // B000-BFFF BASIC
-                4'b1010: data_out = rom_data;     // A000-AFFF OPT ROM 2
-                4'b1001: data_out = rom_data;     // 9000-9FFF OPT ROM 1
-                4'b1000: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
-                4'b0xxx: data_out = ram_data;     // 0000-7FFF 32KB RAM
-                default: data_out = addr[15:8];
-        endcase;
-    end;
-    */
     casex({addr[15:12], io_sel, vram_sel})
             6'b1111_x_x: data_out = rom_data;     // F000-FFFF KERNAL
             6'bxxxx_1_x: data_out = io_read_data; // E800-E8FF I/O

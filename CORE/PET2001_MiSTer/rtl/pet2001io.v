@@ -16,7 +16,7 @@
 //		0xE810-0xE813		PIA1
 //		0xE820-0xE823		PIA2
 //		0xE840-0xE84F		VIA
-//		0xE880-0xE84F		CRTC
+//		0xE880-0xE881		CRTC
 //
 //      Signals for the IEEE-488 port come out.
 //
@@ -64,7 +64,7 @@ module pet2001io
 
         output       video_blank,       // Video controls
         output       video_gfx,
-        input        video_on,          // retrace_irq_n
+        input        retrace_irq_n,
 
         output         crtc_hblank,
         output         crtc_vblank,
@@ -74,8 +74,9 @@ module pet2001io
         output         crtc_cursor,
         output [13:0]  crtc_ma,
         output  [4:0]  crtc_ra,
+        output reg     crtc_irq_vsync,	// vsync signal for creating the retrace IRQ.
 
-        input        pref_have_crtc,     // do we want the CRTC?
+        input        pref_have_crtc,    // do we want the CRTC?
 
         output       cass_motor_n,      // Cassette #1 interface
         output       cass_write,
@@ -83,7 +84,7 @@ module pet2001io
         input        cass_read,
         output       audio,             // CB2 audio
 
-        input        diag_l,    // diag jumper input
+        input        diag_l,            // diag jumper input (active low)
 
         // IEEE-488
         input  [7:0] ieee488_data_i,
@@ -147,7 +148,7 @@ pia6520 pia1
 	.ca2_out(pia1_ca2_out),
 	.ca2_in(1'b1),
 
-	.cb1_in(video_on),      // retrace_irq_n
+	.cb1_in(retrace_irq_n),
 	.cb2_out(cass_motor_n),
 	.cb2_in(1'b1),
 
@@ -202,7 +203,7 @@ pia6520 pia2
 wire [7:0] via_data_out;
 wire       via_irq;
 wire [7:0] via_portb_out;
-wire [7:0] via_portb_in = {ieee488_dav_i, ieee488_nrfd_i, video_on, 4'b0_000, ieee488_ndac_i}; // msb first
+wire [7:0] via_portb_in = {ieee488_dav_i, ieee488_nrfd_i, retrace_irq_n, 4'b0_000, ieee488_ndac_i}; // msb first
 
 via6522 via
 (
@@ -268,6 +269,15 @@ mc6845 crtc
         .RA(crtc_ra)
 );
 
+// Delay the CRTC vsync by 1 CPU clock for generating the retrace IRQ.
+// This corresponds to the general 1 clock delay caused by looking up
+// pixels in the character ROM.
+always @(posedge clk) begin
+    if (ce) begin
+	crtc_irq_vsync <= crtc_vsync_out;
+    end
+end
+
 /*
  * The CRTC doesn't generate blanking signals (only Display Enable), and we
  * want to have some blanking signals that leave a border around the actual
@@ -294,6 +304,9 @@ video_blanker add_blanking
 
 /////////////// Read data mux /////////////////////////
 // register I/O stuff, therefore RDY must be delayed a cycle!
+// (The above comment seems to be from a time with a different
+// CPU implementation. The current one doesn't have a RDY signal.
+// Yet strobe_io is delayed anyway.)
 //
 always @(posedge clk) begin
         data_out <= 8'hFF
