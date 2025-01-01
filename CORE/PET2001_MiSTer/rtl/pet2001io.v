@@ -66,8 +66,10 @@ module pet2001io
         output       video_gfx,
         input        video_on,          // retrace_irq_n
 
-        output         crtc_vsync,
+        output         crtc_hblank,
+        output         crtc_vblank,
         output         crtc_hsync,
+        output         crtc_vsync,
         output         crtc_de,
         output         crtc_cursor,
         output [13:0]  crtc_ma,
@@ -100,6 +102,7 @@ module pet2001io
         output       ieee488_ndac_o,
 
         input        ce,
+        input        ce_8m,
         input        clk,
         input        reset
 );
@@ -237,6 +240,8 @@ assign cass_write = via_portb_out[3];
 /////////////////////////// 6845 CRTC ///////////////////////////////////
 //
 wire [7:0] crtc_data_out;
+wire crtc_hsync_out;
+wire crtc_vsync_out;
 
 mc6845 crtc
 (
@@ -252,8 +257,8 @@ mc6845 crtc
         .DO(crtc_data_out),
 
         // Display interface
-        .VSYNC(crtc_vsync),
-        .HSYNC(crtc_hsync),
+        .VSYNC(crtc_vsync_out),
+        .HSYNC(crtc_hsync_out),
         .DE(crtc_de),
         .CURSOR(crtc_cursor),
         .LPSTB(),   // no light pen connected.
@@ -261,6 +266,30 @@ mc6845 crtc
         // Memory interface
         .MA(crtc_ma),
         .RA(crtc_ra)
+);
+
+/*
+ * The CRTC doesn't generate blanking signals (only Display Enable), and we
+ * want to have some blanking signals that leave a border around the actual
+ * display but not as much as the sync signals do. 
+ */
+
+video_blanker add_blanking
+(
+    .clk(clk),
+    .ce(ce_8m && pref_have_crtc),
+    .reset(reset),
+
+    // inputs
+    .hsync_i(crtc_hsync_out),
+    .vsync_i(crtc_vsync_out),
+    .de_i(crtc_de),
+
+    // outputs
+    .hsync_o(crtc_hsync),
+    .vsync_o(crtc_vsync),
+    .hblank_o(crtc_hblank),
+    .vblank_o(crtc_vblank)
 );
 
 /////////////// Read data mux /////////////////////////

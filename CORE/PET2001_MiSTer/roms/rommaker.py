@@ -83,7 +83,7 @@ def main(args):
 
         if p in presets.keys():
             output = p
-            inputs = presets[p]
+            inputs = presets[p] + inputs
         else:
             print("Available presets:\n")
             for k in presets.keys():

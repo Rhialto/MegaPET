@@ -50,6 +50,7 @@ module pet2001hw
         input            we,
         output           irq,
 
+(* dont_touch="true",mark_debug="true" *)
         output           pix,
         output           HSync,
         output           VSync,
@@ -148,9 +149,7 @@ dualport_2clk_ram #(
 // Character ROM
 /////////////////////////////////////////////////////////////
 
-(* dont_touch="true",mark_debug="true" *)
 wire [10:0]     charaddr;
-(* dont_touch="true",mark_debug="true" *)
 wire [7:0]      chardata;
 
 dualport_2clk_ram #(
@@ -178,13 +177,8 @@ dualport_2clk_ram #(
 //////////////////////////////////////////////////////////////
 // Pet RAM.
 //////////////////////////////////////////////////////////////
-(* dont_touch="true",mark_debug="true" *)
 wire [7:0]      ram_data;
-(* dont_touch="true",mark_debug="true" *)
 wire [7:0]      vram_data;
-//(* dont_touch="true",mark_debug="true" *)
-//wire [7:0]      video_data;
-(* dont_touch="true",mark_debug="true" *)
 wire [10:0]     video_addr;     /* 2 KB */
 
 wire    ram_we  = we && ~addr[15];
@@ -208,12 +202,9 @@ dualport_2clk_ram #(.addr_width(15)) pet2001ram
 // On the 2001, video RAM is mirrored all the way up to $8FFF.
 // Later models only mirror up to $87FF.
 
-(* dont_touch="true",mark_debug="true" *)
 reg     vram_cpu_video;         // 1=cpu, 0=video
-(* dont_touch="true",mark_debug="true" *)
 wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
                    (pref_eoi_blanks && addr[15:12] == 4'b1000);
-(* dont_touch="true",mark_debug="true" *)
 wire    vram_we = we && vram_sel && vram_cpu_video;
 reg     load_sr; // Load the video shift register. Name from schematic 8032087.
 
@@ -240,10 +231,10 @@ begin
         load_sr <= 0;
     end;
 end;
+
 dualport_2clk_ram #(.addr_width(10)) pet2001vram
 (
         .clock_a(clk),
-(* dont_touch="true",mark_debug="true" *)
         //.address_a(addr[9:0]),
         .address_a(vram_sel && vram_cpu_video ? addr[9:0]
                                               : video_addr[9:0]),
@@ -263,21 +254,25 @@ dualport_2clk_ram #(.addr_width(10)) pet2001vram
 // Video hardware.
 //////////////////////////////////////
 
-wire    video_on;    // signal indicating VGA is scanning visible
+wire    video_on;    // Signal indicating video is scanning visible
                      // rows.  Used to generate tick interrupts.
-wire    video_blank; // blank screen during scrolling
-wire    video_gfx;   // display graphic characters vs. lower-case
+wire    video_blank; // Blank screen during scrolling.
+wire    video_gfx;   // Display graphic characters vs. lower-case.
 
-// Signals from the CRTC
-wire        crtc_vsync;   /* vertical sync */
+// Signals from the CRTC.
+wire        crtc_hblank;  /* horizontal blanking */
+wire        crtc_vblank;  /* vertical blanking */
 wire        crtc_hsync;   /* horizontal sync */
+wire        crtc_vsync;   /* vertical sync */
 wire        crtc_de;      /* display enable */
 wire [13:0] crtc_ma;      /* matrix address (screen memory) */
 wire  [4:0] crtc_ra;      /* row address */
 
-// Similar signals from the discrete video circuits
-wire        discrete_vsync;   /* vertical sync */
+// Similar signals from the discrete video circuits.
+wire        discrete_hblank;  /* horizontal blanking */
+wire        discrete_vblank;  /* vertical blanking */
 wire        discrete_hsync;   /* horizontal sync */
+wire        discrete_vsync;   /* vertical sync */
 wire        discrete_de;      /* display enable */
 wire [13:0] discrete_ma;      /* matrix address (screen memory) */
 wire  [4:0] discrete_ra;      /* row address */
@@ -299,8 +294,10 @@ pet2001video8mhz vid
         .video_blank(video_blank & pref_eoi_blanks), // video_blank when eoi_blanks else 0
         .video_gfx(video_gfx),
 
-        .vid_vsync(discrete_vsync),
+        .vid_hblank(discrete_hblank),
+        .vid_vblank(discrete_vblank),
         .vid_hsync(discrete_hsync),
+        .vid_vsync(discrete_vsync),
         .vid_de(discrete_de),
         .vid_cursor(),
         .vid_ma(discrete_ma),
@@ -316,31 +313,39 @@ pet2001video8mhz vid
 // Choose either old/discrete video or CRTC.
 // We ignore the cursor since it isn't connected.
 
-wire        chosen_vsync;   /* vertical sync */
+wire        chosen_hblank;  /* horizontal blanking */
+wire        chosen_vblank;  /* vertical blanking */
 wire        chosen_hsync;   /* horizontal sync */
+wire        chosen_vsync;   /* vertical sync */
 wire        chosen_de;      /* display enable */
 wire [13:0] chosen_ma;      /* matrix address (screen memory) */
 wire  [4:0] chosen_ra;      /* row address */
 
-assign chosen_vsync = pref_have_crtc ? crtc_vsync
-                                     : discrete_vsync;
-assign chosen_hsync = pref_have_crtc ? crtc_hsync
-                                     : discrete_hsync;
-assign chosen_de    = pref_have_crtc ? crtc_de
-                                     : discrete_de;
-assign chosen_ma    = pref_have_crtc ? crtc_ma
-                                     : discrete_ma;
-assign chosen_ra    = pref_have_crtc ? crtc_ra
-                                     : discrete_ra;
+assign chosen_hblank = pref_have_crtc ? crtc_hblank
+                                      : discrete_hblank;
+assign chosen_vblank = pref_have_crtc ? crtc_vblank
+                                      : discrete_vblank;
+assign chosen_hsync  = pref_have_crtc ? crtc_hsync
+                                      : discrete_hsync;
+assign chosen_vsync  = pref_have_crtc ? crtc_vsync
+                                      : discrete_vsync;
+assign chosen_de     = pref_have_crtc ? crtc_de
+                                      : discrete_de;
+assign chosen_ma     = pref_have_crtc ? crtc_ma
+                                      : discrete_ma;
+assign chosen_ra     = pref_have_crtc ? crtc_ra
+                                      : discrete_ra;
  
+wire retrace_irq_n = pref_have_crtc ? ~crtc_vsync : video_on;
+
 //wire [10:0] video_addr;   // defined above already
 //wire [10:0] charaddr;     // defined above already
 //wire [7:0] chardata;      // defined above already
 //
+assign HBlank = chosen_hblank;
+assign VBlank = chosen_vblank;
 assign HSync  = chosen_hsync;
 assign VSync  = chosen_vsync;
-assign HBlank = chosen_hsync;
-assign VBlank = chosen_vsync;
 
 assign video_addr = chosen_ma[10:0];
 // TODO: add chosen_ma[13] as chr_option, and chosen_ma[12] as invert.
@@ -351,7 +356,7 @@ reg       inv;
 assign    pix = (vdata[7] ^ inv) & ~(video_blank & pref_eoi_blanks);
 
 wire no_row;    // name from schematic 8032087
-assign no_row = ~(chosen_ra[3] || chosen_ra[4]);
+assign no_row = chosen_ra[3] || chosen_ra[4];
 
 always @(posedge clk) begin
     // Work on the other clock edge, so that we work with the updated Matrix
@@ -388,10 +393,12 @@ pet2001io io
 
         .video_blank(video_blank),
         .video_gfx(video_gfx),
-        .video_on(pref_have_crtc ? ~crtc_vsync : video_on), // retrace_irq_n
+        .video_on(retrace_irq_n),
 
-        .crtc_vsync(crtc_vsync),
+        .crtc_hblank(crtc_hblank),
+        .crtc_vblank(crtc_vblank),
         .crtc_hsync(crtc_hsync),
+        .crtc_vsync(crtc_vsync),
         .crtc_de(crtc_de),
         .crtc_cursor(),
         .crtc_ma(crtc_ma),
@@ -423,6 +430,7 @@ pet2001io io
         .ieee488_ndac_o(ieee488_ndac_o),
 
         .ce(ce_1m),
+        .ce_8m(ce_8mp),
         .clk(clk),
         .reset(reset)
 );
