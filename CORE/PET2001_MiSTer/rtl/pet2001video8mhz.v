@@ -121,7 +121,7 @@ always @(posedge clk) begin
         end
 
         if (ce_8mn) begin
-            if (hc == 40*8 -1 + 8 + 8) begin   // start right border + chardata fetch delay + all pixels shifted out
+            if (hc == 40*8 -1 + 8+8+8) begin   // start right border + chardata fetch delay + all pixels shifted out
                 if (vc == 199) begin
                     video_on <= 0;
                 end else if (vc == 259) begin
