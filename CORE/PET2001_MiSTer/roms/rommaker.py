@@ -52,7 +52,7 @@ presets = {
         "8032b":        [ "basic-4.901465-23-20-21.bin",    "edit-4-80-b-50Hz.901474-04_.bin", "kernal-4.901465-22.bin", ],
 };
 
-def find_start_address(name):
+def find_start_address(name, guess):
     lname = name.lower()
 
     for addr in sorted(start_addresses.keys()):
@@ -61,18 +61,23 @@ def find_start_address(name):
                 print(f"Choosing {addr:#04x} for file '{name}' because of '{txt}'.")
                 return addr
 
-    guess = 0x9000
-    print("I don't know about file '{file}' so I just guess {guess:#04x}.")
+    if guess is None or guess > 0xFFFF:
+        guess = 0x8000
+
+    print(f"I don't know about file '{name}' so I just guess {guess:#04x}.")
 
     return guess
 
-def add_file_data(name, data):
-    start = find_start_address(name)
+def add_file_data(name, data, guess):
+    start = find_start_address(name, guess)
 
     a = start
     for byte in data:
         ROM[a] = int(byte)
         a += 1
+
+    # The new value for `guess` will be just after this file.
+    return a
 
 def main(args):
     output = args.output
@@ -91,6 +96,9 @@ def main(args):
             return
 
 
+    # Initially we don't know where to put a file.
+    guess = None
+
     # Initialize ROM with "open space"
     for a in range(0x9000, 0x10000):
         ROM[a] = int(a / 256);
@@ -99,7 +107,7 @@ def main(args):
     for fn in inputs:
         with open(fn, "rb") as file:
             data = file.read()
-            add_file_data(fn, data)
+            guess = add_file_data(fn, data, guess)
 
     # Write binary file for loading
     with open(output + ".rom", "wb") as file:
