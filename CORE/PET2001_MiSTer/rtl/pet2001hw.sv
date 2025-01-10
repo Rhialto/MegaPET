@@ -174,8 +174,6 @@ dualport_2clk_ram #(
 // Pet RAM.
 //////////////////////////////////////////////////////////////
 wire [7:0]      ram_data;
-wire [7:0]      vram_data;
-wire [10:0]     video_addr;     /* 2 KB */
 
 wire    ram_we  = we && ~addr[15];
 
@@ -197,6 +195,9 @@ dualport_2clk_ram #(.addr_width(15)) pet2001ram
 //////////////////////////////////////
 // On the 2001, video RAM is mirrored all the way up to $8FFF.
 // Later models only mirror up to $87FF.
+
+wire [7:0]      vram_data;
+wire [10:0]     video_addr;     /* 2 KB */
 
 reg     vram_cpu_video;         // 1=cpu, 0=video
 wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
@@ -228,13 +229,19 @@ begin
     end;
 end;
 
+// The address bus for VRAM is multiplexed.
+// On the 2001, the CPU always has priority, so the address is from the cpu if
+// vram_sel is true.
+// For later models, also vram_cpu_video must be true.
+// pref_eoi_blanks is the indicator that the first or the second behaviour is
+// wanted.
+
 dualport_2clk_ram #(.addr_width(10)) pet2001vram
 (
         .clock_a(clk),
-        .address_a(vram_sel && vram_cpu_video ? addr[9:0]
-                                              : video_addr[9:0]),
-        //.address_a(vram_sel ? addr[9:0]      // snow?
-        //                    : video_addr[9:0]),
+        .address_a(vram_sel && (vram_cpu_video ||
+	                        pref_eoi_blanks) ? addr[9:0]
+                                                 : video_addr[9:0]),
         .data_a(data_in),
         .wren_a(vram_we),
         .q_a(vram_data)
@@ -318,18 +325,14 @@ assign chosen_ra     = pref_have_crtc ? crtc_ra
  
 wire retrace_irq_n = pref_have_crtc ? ~crtc_irq_vsync : video_on;
 
-//wire [10:0] video_addr;   // defined above already
-//wire [10:0] charaddr;     // defined above already
-//wire [7:0] chardata;      // defined above already
-//
 assign HBlank = chosen_hblank;
 assign VBlank = chosen_vblank;
 assign HSync  = chosen_hsync;
 assign VSync  = chosen_vsync;
 
-assign video_addr = chosen_ma[10:0];
+assign video_addr = chosen_ma[10:0]; // => vram_data
 // TODO: add chosen_ma[13] as chr_option, and chosen_ma[12] as invert.
-assign charaddr   = {video_gfx, vram_data[6:0], chosen_ra[2:0]};
+assign charaddr   = {video_gfx, vram_data[6:0], chosen_ra[2:0]}; // => chardata
 
 reg [7:0] vdata;
 reg       inv;
