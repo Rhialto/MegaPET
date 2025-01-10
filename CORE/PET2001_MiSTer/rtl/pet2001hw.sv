@@ -292,9 +292,7 @@ pet2001video8mhz vid
 
         .reset(reset || pref_have_crtc),
         .clk(clk),
-        .ce_1m(ce_1m),
-        .ce_8mp(ce_8mp),
-        .ce_8mn(ce_8mn)
+        .ce_1m(ce_1m)
 );
 
 // Choose either old/discrete video or CRTC.
@@ -341,6 +339,14 @@ assign    pix = (vdata[7] ^ inv) & ~(video_blank & pref_eoi_blanks);
 wire no_row;    // name from schematic 8032087
 assign no_row = chosen_ra[3] || chosen_ra[4];
 
+/*
+ * ce_8mn must be at least 3 clk cycles after ce_8mp.
+ * At the falling edge of ce_8mp (so 1 clk after it rises), video_addr will change.
+ * (charaddr manages to change at the same time)
+ * 1 clk later, video_data will be available.
+ * 1 clk later, chardata will be available.
+ * Total: 3 clks from rising edge of ce_8mp.
+ */
 always @(posedge clk) begin
     // Work on the other clock edge, so that we work with the updated Matrix
     // Address, and the updated Matrix value, and the updated character rom
