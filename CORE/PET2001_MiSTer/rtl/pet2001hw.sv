@@ -44,17 +44,20 @@
 
 module pet2001hw
 (
+(* dont_touch = "true",mark_debug = "true" *)
         input [15:0]     addr, // CPU Interface
         input [7:0]      data_in,
+(* dont_touch = "true",mark_debug = "true" *)
         output reg [7:0] data_out,
         input            we,
         output           irq,
 
-        output           pix,
-        output           HSync,
-        output           VSync,
-        output           HBlank,
-        output           VBlank,
+        output           ce_pixel_o,
+        output           pix_o,
+        output           HSync_o,
+        output           VSync_o,
+        output           HBlank_o,
+        output           VBlank_o,
         input            pref_eoi_blanks,       // use as generic for 2001-specifics
         input            pref_have_crtc,
 
@@ -91,12 +94,13 @@ module pet2001hw
         input            dma_we,
         input            dma_char_ce,   // select character rom instead of basic/edit/kernal
 
-        input            clk_speed,
-        input            clk_stop,
+        input            clk_speed,     // unused
+        input            clk_stop,      // unused
         input            diag_l,
         input            clk,
-        input            ce_8mp,        // 8 HMz positive edge
-        input            ce_8mn,        // 8 HMz negative edge
+(* dont_touch = "true",mark_debug = "true" *)
+        input [4:0]      cnt31_i,
+(* dont_touch = "true",mark_debug = "true" *)
         input            ce_1m,
         input            reset
 );
@@ -145,7 +149,9 @@ dualport_2clk_ram #(
 // Character ROM
 /////////////////////////////////////////////////////////////
 
+(* dont_touch = "true",mark_debug = "true" *)
 wire [10:0]     charaddr;
+(* dont_touch = "true",mark_debug = "true" *)
 wire [7:0]      chardata;
 
 dualport_2clk_ram #(
@@ -190,55 +196,73 @@ dualport_2clk_ram #(.addr_width(15)) pet2001ram
 );
 
 //////////////////////////////////////
+// Video timing.
+// One CPU clock (1 character) is divided into 32 subclocks.
+// Derive the pixel clock from this, and loading the shift register.
+//////////////////////////////////////
+(* dont_touch = "true",mark_debug = "true" *)
+reg     vram_cpu_video;         // 1=cpu, 0=video
+(* dont_touch = "true",mark_debug = "true" *)
+reg     load_sr; // Load the video shift register. Name from schematic 8032087.
+(* dont_touch = "true",mark_debug = "true" *)
+reg     ce_pixel;
+
+/*
+ * Select who owns the bus. Video needs to fetch from the screen matrix,
+ * then look up in the character ROM.
+ * Also time the pixels and load the shift register at the same time as
+ * a pixel.
+ *
+ * For the CPU, ce_1m is set when cnt31_i == 0. It expects to read data the
+ * next time ce_1m == 1, so in between we can play with the bus.
+ * Data written by the CPU are on its bus the whole time between the times
+ * when ce_1m == 1. Playing with the vram's bus will make it write the same
+ * thing twice.
+ */
+always @(posedge clk)
+begin
+    ce_pixel <= (cnt31_i[1:0] == 1);  // every 4 clocks
+
+    if (cnt31_i == 3) begin
+        vram_cpu_video <= 0;    // video; could be <= !chosen_de?
+    end else if (cnt31_i == 5) begin
+        vram_cpu_video <= 1;    // cpu again.
+        load_sr <= 1;   // ce_pixel must be true at the same time; <= !chosen_de ?
+    end else if (cnt31_i == 6) begin
+        load_sr <= 0;
+    end;
+end;
+
+assign ce_pixel_o = ce_pixel;
+
+//////////////////////////////////////
 // Video RAM.
-// The video hardware shares access to VRAM half the time.
+// The video hardware shares access to VRAM some of the time.
 //////////////////////////////////////
 // On the 2001, video RAM is mirrored all the way up to $8FFF.
 // Later models only mirror up to $87FF.
 
+(* dont_touch = "true",mark_debug = "true" *)
 wire [7:0]      vram_data;
+(* dont_touch = "true",mark_debug = "true" *)
 wire [10:0]     video_addr;     /* 2 KB */
 
-reg     vram_cpu_video;         // 1=cpu, 0=video
+(* dont_touch = "true",mark_debug = "true" *)
 wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
                    (pref_eoi_blanks && addr[15:12] == 4'b1000);
+(* dont_touch = "true",mark_debug = "true" *)
 wire    vram_we = we && vram_sel && vram_cpu_video;
-reg     load_sr; // Load the video shift register. Name from schematic 8032087.
-
-// Select who owns the bus.
-// Video owns it from ce_8mp to ce_8mn.
-// We only need it once (later twice) for video fetch during an 1 MHz
-// cycle so this switches too often...
-always @(posedge clk)
-begin
-    if (ce_1m || ce_8mn) begin
-        vram_cpu_video <= 1;
-    end else if (ce_8mp) begin
-        vram_cpu_video <= 0;
-    end;
-end;
-
-// Decide when to load the video shift register.
-// Do this in the first 8 MHz clock after the cpu 1 MHz clock.
-always @(posedge clk)
-begin
-    if (ce_1m) begin
-        load_sr <= 1;
-    end else if (ce_8mn) begin
-        load_sr <= 0;
-    end;
-end;
 
 // The address bus for VRAM is multiplexed.
 // On the 2001, the CPU always has priority, so the address is from the cpu if
 // vram_sel is true.
 // For later models, also vram_cpu_video must be true.
-// pref_eoi_blanks is the indicator that the first or the second behaviour is
-// wanted.
+// pref_eoi_blanks is the indicator that the first behaviour is wanted.
 
 dualport_2clk_ram #(.addr_width(10)) pet2001vram
 (
         .clock_a(clk),
+(* dont_touch = "true",mark_debug = "true" *)
         .address_a(vram_sel && (vram_cpu_video ||
 	                        pref_eoi_blanks) ? addr[9:0]
                                                  : video_addr[9:0]),
@@ -323,36 +347,36 @@ assign chosen_ra     = pref_have_crtc ? crtc_ra
  
 wire retrace_irq_n = pref_have_crtc ? ~crtc_irq_vsync : video_on;
 
-assign HBlank = chosen_hblank;
-assign VBlank = chosen_vblank;
-assign HSync  = chosen_hsync;
-assign VSync  = chosen_vsync;
+assign HBlank_o = chosen_hblank;
+assign VBlank_o = chosen_vblank;
+assign HSync_o  = chosen_hsync;
+assign VSync_o  = chosen_vsync;
 
 assign video_addr = chosen_ma[10:0]; // => vram_data
 // TODO: add chosen_ma[13] as chr_option, and chosen_ma[12] as invert.
 assign charaddr   = {video_gfx, vram_data[6:0], chosen_ra[2:0]}; // => chardata
 
+(* dont_touch = "true",mark_debug = "true" *)
 reg [7:0] vdata;
 reg       inv;
-assign    pix = (vdata[7] ^ inv) & ~(video_blank & pref_eoi_blanks);
+assign    pix_o = (vdata[7] ^ inv) & ~(video_blank & pref_eoi_blanks);
 
 wire no_row;    // name from schematic 8032087
 assign no_row = chosen_ra[3] || chosen_ra[4];
 
 /*
- * ce_8mn must be at least 3 clk cycles after ce_8mp.
- * At the falling edge of ce_8mp (so 1 clk after it rises), video_addr will change.
- * (charaddr manages to change at the same time)
- * 1 clk later, video_data will be available.
+ * ce_pixel must be at least 2 clk cycles after vram_cpu_video.
+ * 1 clk later, vram_data will be available.
  * 1 clk later, chardata will be available.
- * Total: 3 clks from rising edge of ce_8mp.
+ * Total: 2 clks from rising edge of vram_cpu_video, if video_addr was already
+ * set up.
  */
 always @(posedge clk) begin
     // Work on the other clock edge, so that we work with the updated Matrix
     // Address, and the updated Matrix value, and the updated character rom
     // pixels. On real hardware this would take 2 CPU clocks: 1 to fetch the
     // matrix value, 1 for lookup in the character ROM.
-    if (ce_8mn) begin
+    if (ce_pixel) begin
         if (load_sr) begin
             {inv, vdata} <= (chosen_de && ~no_row) ? {vram_data[7], chardata}
                                                    : 9'd0;
@@ -421,7 +445,7 @@ pet2001io io
         .ieee488_ndac_o(ieee488_ndac_o),
 
         .ce(ce_1m),
-        .ce_8m(ce_8mp),
+        .ce_8m(ce_pixel),    // keep this at 8 MHz, possibly
         .clk(clk),
         .reset(reset)
 );
