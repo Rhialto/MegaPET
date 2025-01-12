@@ -4,7 +4,7 @@
 // Initial Engineer (2001 Model):          Thomas Skibo
 // Brought to 3032 and 4032 (non CRTC):    Ruben Aparicio
 // Added disk drive, cycle exact video, CRTC, etc: Olaf "Rhialto" Seibert
-// 
+//
 // Create Date:      Sep 23, 2011
 //
 // Module Name:      pet2001hw
@@ -17,7 +17,7 @@
 // Copyright (C) 2011, Thomas Skibo.  All rights reserved.
 // Copyright (C) 2019, Ruben Aparicio.  All rights reserved.
 // Copyright (C) 2025, Olaf 'Rhialto' Seibert.  All rights reserved.
-// 
+//
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are met:
 // * Redistributions of source code must retain the above copyright
@@ -27,7 +27,7 @@
 //   documentation and/or other materials provided with the distribution.
 // * The names of contributors may not be used to endorse or promote products
 //   derived from this software without specific prior written permission.
-// 
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
 // AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -60,6 +60,7 @@ module pet2001hw
         output           VBlank_o,
         input            pref_eoi_blanks,       // use as generic for 2001-specifics
         input            pref_have_crtc,
+        input            pref_have_80_cols,
 
         output [3:0]     keyrow, // Keyboard
         input  [7:0]     keyin,
@@ -138,7 +139,7 @@ dualport_2clk_ram #(
         .clock_a(clk),
 
         // B: Access from QNICE on falling edge
-        .address_b(dma_addr[14:0]), 
+        .address_b(dma_addr[14:0]),
         .data_b(dma_din),
         .q_b(dma_rom_dout),
         .wren_b(rom_wr),
@@ -164,7 +165,7 @@ dualport_2clk_ram #(
     .falling_b(1)
 ) pet2001chars (
         // A: Access from video system
-        .address_a(charaddr), 
+        .address_a(charaddr),
         .q_a(chardata),
         .clock_a(clk),
 
@@ -206,6 +207,7 @@ reg     vram_cpu_video;         // 1=cpu, 0=video
 reg     load_sr; // Load the video shift register. Name from schematic 8032087.
 (* dont_touch = "true",mark_debug = "true" *)
 reg     ce_pixel;
+reg     ce_8m;
 
 /*
  * Select who owns the bus. Video needs to fetch from the screen matrix,
@@ -221,7 +223,9 @@ reg     ce_pixel;
  */
 always @(posedge clk)
 begin
-    ce_pixel <= (cnt31_i[1:0] == 1);  // every 4 clocks
+    ce_pixel <= pref_have_80_cols ? (cnt31_i[0] == 1)     // every 2 clocks
+                                  : (cnt31_i[1:0] == 1);  // every 4 clocks
+    ce_8m <= (cnt31_i[1:0] == 1);  // every 4 clocks
 
     if (cnt31_i == 3) begin
         vram_cpu_video <= 0;    // video; could be <= !chosen_de?
@@ -230,6 +234,15 @@ begin
         load_sr <= 1;   // ce_pixel must be true at the same time; <= !chosen_de ?
     end else if (cnt31_i == 6) begin
         load_sr <= 0;
+    end else if (pref_have_80_cols) begin
+        if (cnt31_i == 16+3) begin
+            vram_cpu_video <= 0;    // video; could be <= !chosen_de?
+        end else if (cnt31_i == 16+5) begin
+            vram_cpu_video <= 1;    // cpu again.
+            load_sr <= 1;   // ce_pixel must be true at the same time; <= !chosen_de ?
+        end else if (cnt31_i == 16+6) begin
+            load_sr <= 0;
+        end
     end;
 end;
 
@@ -245,7 +258,7 @@ assign ce_pixel_o = ce_pixel;
 (* dont_touch = "true",mark_debug = "true" *)
 wire [7:0]      vram_data;
 (* dont_touch = "true",mark_debug = "true" *)
-wire [10:0]     video_addr;     /* 2 KB */
+wire [9:0]      video_addr;     /* 1 KB */
 
 (* dont_touch = "true",mark_debug = "true" *)
 wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
@@ -253,19 +266,31 @@ wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
 (* dont_touch = "true",mark_debug = "true" *)
 wire    vram_we = we && vram_sel && vram_cpu_video;
 
-// The address bus for VRAM is multiplexed.
+// The address bus for VRAM (2 KB) is multiplexed.
 // On the 2001, the CPU always has priority, so the address is from the cpu if
 // vram_sel is true.
 // For later models, also vram_cpu_video must be true.
 // pref_eoi_blanks is the indicator that the first behaviour is wanted.
 
-dualport_2clk_ram #(.addr_width(10)) pet2001vram
+(* dont_touch = "true",mark_debug = "true" *)
+wire [10:0] vram_addr_cpu;
+(* dont_touch = "true",mark_debug = "true" *)
+wire [10:0] vram_addr_vid;
+(* dont_touch = "true",mark_debug = "true" *)
+wire [10:0] vram_addr;
+
+assign vram_addr_cpu = pref_have_80_cols ? addr[10:0]
+                                         : { 1'b0, addr[9:0] };
+assign vram_addr_vid = pref_have_80_cols ? { video_addr[9:0], cnt31_i[4] }
+                                         : { 1'b0, video_addr[9:0] };
+assign vram_addr = vram_sel && (vram_cpu_video ||
+                                pref_eoi_blanks) ? vram_addr_cpu
+                                                 : vram_addr_vid;
+
+dualport_2clk_ram #(.addr_width(11)) pet2001vram
 (
         .clock_a(clk),
-(* dont_touch = "true",mark_debug = "true" *)
-        .address_a(vram_sel && (vram_cpu_video ||
-	                        pref_eoi_blanks) ? addr[9:0]
-                                                 : video_addr[9:0]),
+        .address_a(vram_addr),
         .data_a(data_in),
         .wren_a(vram_we),
         .q_a(vram_data)
@@ -277,8 +302,6 @@ dualport_2clk_ram #(.addr_width(10)) pet2001vram
 // Video hardware.
 //////////////////////////////////////
 
-wire    video_on;    // Signal indicating video is scanning visible
-                     // rows.  Used to generate tick interrupts.
 wire    video_blank; // Blank screen during scrolling.
 wire    video_gfx;   // Display graphic characters vs. lower-case.
 
@@ -300,6 +323,8 @@ wire        discrete_vsync;   /* vertical sync */
 wire        discrete_de;      /* display enable */
 wire [13:0] discrete_ma;      /* matrix address (screen memory) */
 wire  [4:0] discrete_ra;      /* row address */
+wire        video_on;         /* Signal indicating video is scanning visible
+                               * rows.  Used to generate tick interrupts. */
 
 pet2001video8mhz vid
 (
@@ -344,7 +369,7 @@ assign chosen_ma     = pref_have_crtc ? crtc_ma
                                       : discrete_ma;
 assign chosen_ra     = pref_have_crtc ? crtc_ra
                                       : discrete_ra;
- 
+
 wire retrace_irq_n = pref_have_crtc ? ~crtc_irq_vsync : video_on;
 
 assign HBlank_o = chosen_hblank;
@@ -352,7 +377,7 @@ assign VBlank_o = chosen_vblank;
 assign HSync_o  = chosen_hsync;
 assign VSync_o  = chosen_vsync;
 
-assign video_addr = chosen_ma[10:0]; // => vram_data
+assign video_addr = chosen_ma[9:0]; // => vram_data
 // TODO: add chosen_ma[13] as chr_option, and chosen_ma[12] as invert.
 assign charaddr   = {video_gfx, vram_data[6:0], chosen_ra[2:0]}; // => chardata
 
@@ -445,7 +470,7 @@ pet2001io io
         .ieee488_ndac_o(ieee488_ndac_o),
 
         .ce(ce_1m),
-        .ce_8m(ce_pixel),    // keep this at 8 MHz, possibly
+        .ce_8m(ce_8m),    // keep this at 8 MHz, possibly
         .clk(clk),
         .reset(reset)
 );
