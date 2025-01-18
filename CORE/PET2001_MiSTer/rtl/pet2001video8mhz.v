@@ -1,4 +1,17 @@
-`timescale 1ns / 1ps
+/////////////////////////////////////////////////////
+//
+// Created by Olaf "Rhialto" Seibert, January 2025.
+//
+// Module name: pet2001video8mhz
+//
+// Description:
+//
+//      This is the discrete video output circuitry of a PET 2001 or 30xx.
+//      It is synchronized to the CPU: it takes 1 cpu cycle to output
+//      1 character.
+//
+// License: GPL version 3
+//
 
 module pet2001video8mhz
 (
@@ -8,7 +21,6 @@ module pet2001video8mhz
         output reg     vid_hsync,
         output reg     vid_vsync,
         output         vid_de,
-        output         vid_cursor,
         output [13:0]  vid_ma,
         output  [4:0]  vid_ra,
 
@@ -87,7 +99,6 @@ reg synchronize;
 assign vid_ma = {vc[8:3], 5'b00000}+{vc[8:3], 3'b000}+hc;          // 40 * line + charpos
 assign vid_ra = {2'b00, vc[2:0]};
 assign vid_de = (hc < 40) && (vc < 200);
-assign vid_cursor = 1'b0;
 
 always @(posedge clk) begin
     if (reset == 1) begin
