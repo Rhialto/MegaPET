@@ -146,16 +146,16 @@ dualport_2clk_ram #(
 // Character ROM
 /////////////////////////////////////////////////////////////
 
-wire [10:0]     charaddr;
+wire [11:0]     charaddr;
 wire [7:0]      chardata;
 
 dualport_2clk_ram #(
-        .addr_width(11),        // 2 KB, but we can use a double size (SuperPET) ROM later
+        .addr_width(12),        // 4 KB: double size (SuperPET) ROM
         .data_width(8),
         .rom_preload(1),
         .rom_file_hex(1),
         // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
-        .rom_file("../../PET2001_MiSTer/roms/PET3032-chars.hex"),
+        .rom_file("../../PET2001_MiSTer/roms/characters.901640-01.hex"), // was PET3032-chars.hex
     .falling_b(1)
 ) pet2001chars (
         // A: Access from video system
@@ -295,15 +295,15 @@ wire        crtc_irq_vsync; /* vertical sync used for retrace_irq_n */
 wire        video_blank; // Blank screen during scrolling.
 wire        video_gfx;   // Display graphic characters vs. lower-case.
 
-wire chr_option = crtc_ma[13];	// use high half of character ROM TODO: use it
-wire invert = crtc_ma[12];	// invert the screen TODO: use it
+wire chr_option = crtc_ma[13];	// use high half of character ROM
+wire invert = !crtc_ma[12];	// invert the screen
 
 assign video_addr = crtc_ma[9:0]; // => vram_data
-assign charaddr   = {video_gfx, vram_data[6:0], crtc_ra[2:0]}; // => chardata
+assign charaddr   = {chr_option, video_gfx, vram_data[6:0], crtc_ra[2:0]}; // => chardata
 
 reg [7:0] vdata;	// pixel shift register
 reg       inv;		// bit 7 from video ram: invert pixels
-assign    pix_o = (vdata[7] ^ inv) & ~(video_blank & pref_eoi_blanks);
+assign    pix_o = invert ^ ((vdata[7] ^ inv) & ~(video_blank & pref_eoi_blanks));
 
 wire no_row;    // name from schematic 8032087
 assign no_row = crtc_ra[3] || crtc_ra[4];

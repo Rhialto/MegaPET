@@ -57,7 +57,7 @@ wire        discrete_vblank;  /* vertical blanking */
 wire        discrete_hsync;   /* horizontal sync */
 wire        discrete_vsync;   /* vertical sync */
 wire        discrete_de;      /* display enable */
-wire [13:0] discrete_ma;      /* matrix address (screen memory) */
+wire  [9:0] discrete_ma;      /* matrix address (screen memory) */
 wire  [4:0] discrete_ra;      /* row address */
 wire        video_on;         /* Signal indicating video is scanning visible
                                * rows.  Used to generate tick interrupts. */
@@ -164,7 +164,7 @@ assign vid_vsync_o  = pref_have_crtc ? crtc_vsync
 assign vid_de_o     = pref_have_crtc ? crtc_de
                                      : discrete_de;
 assign vid_ma_o     = pref_have_crtc ? crtc_ma
-                                     : discrete_ma;
+                                     : { 4'b0100, discrete_ma };
 assign vid_ra_o     = pref_have_crtc ? crtc_ra
                                      : discrete_ra;
 assign vid_cursor_o = pref_have_crtc ? crtc_cursor

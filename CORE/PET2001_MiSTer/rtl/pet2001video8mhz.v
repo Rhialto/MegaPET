@@ -21,7 +21,7 @@ module pet2001video8mhz
         output reg     vid_hsync,
         output reg     vid_vsync,
         output         vid_de,
-        output [13:0]  vid_ma,
+        output  [9:0]  vid_ma,
         output  [4:0]  vid_ra,
 
         output reg     video_on,        // control sigs
