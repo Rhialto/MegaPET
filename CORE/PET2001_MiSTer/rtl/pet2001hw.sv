@@ -56,9 +56,13 @@ module pet2001hw
         output           VSync_o,
         output           HBlank_o,
         output           VBlank_o,
+
         input            pref_eoi_blanks,       // use as generic for 2001-specifics
         input            pref_have_crtc,
         input            pref_have_80_cols,
+        input            pref_have_08k,
+        input            pref_have_16k,
+        input            pref_have_32k,
 
         output [3:0]     keyrow, // Keyboard
         input  [7:0]     keyin,
@@ -176,7 +180,10 @@ dualport_2clk_ram #(
 //////////////////////////////////////////////////////////////
 wire [7:0]      ram_data;
 
-wire    ram_we  = we && ~addr[15];
+wire    ram_sel = pref_have_32k ? !addr[15] :      // 32 KB
+                  pref_have_16k ? !addr[15:14] :   // 16 KB
+                                  !addr[15:13];    //  8 KB
+wire    ram_we  = we && ram_sel;
 
 //32KB RAM
 dualport_2clk_ram #(.addr_width(15)) pet2001ram
@@ -399,17 +406,17 @@ pet2001io io
 /////////////////////////////////////
 always @(*)
 begin
-    casex({addr[15:12], io_sel, vram_sel})
-            6'b1111_x_x: data_out = rom_data;     // F000-FFFF KERNAL
-            6'bxxxx_1_x: data_out = io_read_data; // E800-E8FF I/O
-            6'b1110_0_x: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
-            6'b110x_x_x: data_out = rom_data;     // C000-DFFF BASIC
-            6'b1011_x_x: data_out = rom_data;     // B000-BFFF BASIC 4
-            6'b1010_x_x: data_out = rom_data;     // A000-AFFF OPT ROM 2
-            6'b1001_x_x: data_out = rom_data;     // 9000-9FFF OPT ROM 1
-            6'b1000_x_1: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
-            6'b0xxx_x_x: data_out = ram_data;     // 0000-7FFF 32KB RAM
-            default: data_out = addr[15:8];
+    casex({addr[15:12], io_sel, vram_sel, ram_sel})
+        7'b1111_x_x_x: data_out = rom_data;     // F000-FFFF KERNAL
+        7'b1xxx_1_x_x: data_out = io_read_data; // E800-E8FF I/O
+        7'b1110_0_x_x: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
+        7'b110x_x_x_x: data_out = rom_data;     // C000-DFFF BASIC
+        7'b1011_x_x_x: data_out = rom_data;     // B000-BFFF BASIC 4
+        7'b1010_x_x_x: data_out = rom_data;     // A000-AFFF OPT ROM 2
+        7'b1001_x_x_x: data_out = rom_data;     // 9000-9FFF OPT ROM 1
+        7'b1000_x_1_x: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
+        7'b0xxx_x_x_1: data_out = ram_data;     // 0000-7FFF 32KB RAM
+        default: data_out = addr[15:8];
     endcase;
 end;
 
