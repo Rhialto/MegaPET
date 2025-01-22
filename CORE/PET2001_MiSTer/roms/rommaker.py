@@ -1,6 +1,7 @@
 #! /usr/pkg/bin/python3.10
 
 import argparse
+import os.path
 import sys
 from typing import List
 
@@ -101,13 +102,17 @@ def main(args):
 
     # Initialize ROM with "open space"
     for a in range(0x9000, 0x10000):
-        ROM[a] = int(a / 256);
+        ROM[a] = int(a / 256)
 
     # Read files given in the command line.
     for fn in inputs:
-        with open(fn, "rb") as file:
-            data = file.read()
-            guess = add_file_data(fn, data, guess)
+        if not os.path.exists(fn) and fn.startswith("0x"):
+            guess = int(fn, 0)
+            print(f"New default guess: 0x{guess:04x}")
+        else:
+            with open(fn, "rb") as file:
+                data = file.read()
+                guess = add_file_data(fn, data, guess)
 
     # Write binary file for loading
     with open(output + ".rom", "wb") as file:

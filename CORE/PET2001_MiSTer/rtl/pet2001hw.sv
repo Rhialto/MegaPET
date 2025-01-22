@@ -68,6 +68,8 @@ module pet2001hw
         input            pref_have_08k,
         input            pref_have_16k,
         input            pref_have_32k,
+        input            pref_have_8096,
+        input            pref_have_8296,
 
         output [3:0]     keyrow, // Keyboard
         input  [7:0]     keyin,
@@ -202,6 +204,60 @@ dualport_2clk_ram #(.addr_width(15)) pet2001ram
         // Not accessible to QNICE for now.
 );
 
+//////////////////////////////////////////////////////////////
+// 64 KB PET Extension RAM, 8096 style.
+//////////////////////////////////////////////////////////////
+reg [7:0]	cr_fff0;                /* Control Register at FFF0 */
+
+always @(posedge clk) begin
+    if (reset) begin
+        cr_fff0[7] <= 0;
+    end else if (ce_1m) begin
+        if (we && pref_have_8096 && addr == 16'hFFF0) begin
+            cr_fff0 <= data_in;
+        end
+    end
+end
+
+wire    cr_enable  = cr_fff0[7] && pref_have_8096;
+wire    cr_iopeek  = cr_fff0[6];          /* I/O peek-through, E800-EFFF */
+wire    cr_scrpeek = cr_fff0[5];          /* screen peek-through, 8000-8FFF */
+wire    cr_block3  = cr_fff0[3];          /* when 1, block 3 is enabled in C000-FFFF, else block 2 */
+wire    cr_block1  = cr_fff0[2];          /* when 1, block 1 is enabled in 8000-BFFF, else block 0 */
+wire    cr_wp_cf   = cr_fff0[1];          /* when 1, expansion memory C000-FFFF is write-protected */
+wire    cr_wp_8b   = cr_fff0[0];          /* when 1, expansion memory 8000-BFFF is write-protected */
+
+wire    extram_sel = addr[15] &&
+                     cr_enable &&
+		     !(cr_scrpeek && addr[15:12] == 4'h8) &&
+		     !(cr_iopeek  && addr[15:11] == 5'b1110_1); /* high 5 bits of E800 */
+
+wire    extram_we  = we &&
+                     extram_sel &&
+                     !(cr_wp_8b && addr[14] == 1'b0) &&
+                     !(cr_wp_cf && addr[14] == 1'b1);
+
+wire [15:0]     extram_addr;
+wire [7:0]      extram_data;
+
+/*
+ * map $8... = %1000... to %00 or 01...: block 0 or 1, cr[2]
+ * map $B... = %1100... to %10 or 11...: block 2 or 3, cr[3]
+ */
+assign extram_addr = { addr[14], (addr[14] ? cr_block3 : cr_block1), addr[13:0] };
+
+// 64KB EXT RAM
+dualport_2clk_ram #(.addr_width(16)) pet2001extram
+(
+        .clock_a(clk),
+        .q_a(extram_data),
+        .data_a(data_in),
+        .address_a(extram_addr),
+        .wren_a(extram_we)
+
+        // Not accessible to QNICE for now.
+);
+
 //////////////////////////////////////
 // Video timing.
 // One CPU clock (1 character) is divided into 32 subclocks.
@@ -269,9 +325,10 @@ assign ce_pixel_o = ce_pixel;
 wire [7:0]      vram_data;
 wire [9:0]      video_addr;     /* 1 KB */
 
-wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
-                   (pref_eoi_blanks  && addr[15:12] == 4'b1000) ||
-                   (pref_have_colour && addr[15:12] == 4'b1000);
+wire    vram_sel = ! extram_sel &&
+                     ((addr[15:11] == 5'b1000_0) ||
+                      (pref_eoi_blanks  && addr[15:12] == 4'b1000) ||
+                      (pref_have_colour && addr[15:12] == 4'b1000));
 wire    vram_we = we && vram_sel && vram_cpu_video;
 
 // The address bus for VRAM (2 KB) is multiplexed.
@@ -432,7 +489,7 @@ end;
 ////////////////////////////////////////////////////////
 wire [7:0]      io_read_data;
 // This allows for "small I/O area" only. No I/O extensions in E900-EFFF.
-wire            io_sel = addr[15:8] == 8'hE8;
+wire            io_sel = (addr[15:8] == 8'hE8) && !extram_sel;
 
 pet2001io io
 (
@@ -496,16 +553,17 @@ pet2001io io
 /////////////////////////////////////
 always @(*)
 begin
-    casex({addr[15:12], io_sel, vram_sel, ram_sel})
-        7'b1111_x_x_x: data_out = rom_data;     // F000-FFFF KERNAL
-        7'b1xxx_1_x_x: data_out = io_read_data; // E800-E8FF I/O
-        7'b1110_0_x_x: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
-        7'b110x_x_x_x: data_out = rom_data;     // C000-DFFF BASIC
-        7'b1011_x_x_x: data_out = rom_data;     // B000-BFFF BASIC 4
-        7'b1010_x_x_x: data_out = rom_data;     // A000-AFFF OPT ROM 2
-        7'b1001_x_x_x: data_out = rom_data;     // 9000-9FFF OPT ROM 1
-        7'b1000_x_1_x: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
-        7'b0xxx_x_x_1: data_out = ram_data;     // 0000-7FFF 32KB RAM
+    casex({addr[15:12], io_sel, vram_sel, ram_sel, extram_sel })
+        8'b1111_x_x_x_0: data_out = rom_data;     // F000-FFFF KERNAL
+        8'b1xxx_1_x_x_0: data_out = io_read_data; // E800-E8FF I/O
+        8'b1110_0_x_x_0: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
+        8'b110x_x_x_x_0: data_out = rom_data;     // C000-DFFF BASIC
+        8'b1011_x_x_x_0: data_out = rom_data;     // B000-BFFF BASIC 4
+        8'b1010_x_x_x_0: data_out = rom_data;     // A000-AFFF OPT ROM 2
+        8'b1001_x_x_x_0: data_out = rom_data;     // 9000-9FFF OPT ROM 1
+        8'b1000_x_1_x_0: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
+        8'b1xxx_x_x_x_1: data_out = extram_data;  // 8000-FFFF 64K EXT RAM (bank switched)
+        8'b0xxx_x_x_1_0: data_out = ram_data;     // 0000-7FFF 32K RAM
         default: data_out = addr[15:8];
     endcase;
 end;
