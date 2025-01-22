@@ -52,14 +52,19 @@ module pet2001hw
 
         output           ce_pixel_o,
         output           pix_o,
+        output reg [7:0] video_red_o,
+        output reg [7:0] video_green_o,
+        output reg [7:0] video_blue_o,
         output           HSync_o,
         output           VSync_o,
         output           HBlank_o,
         output           VBlank_o,
 
         input            pref_eoi_blanks,       // use as generic for 2001-specifics
+        input            pref_have_2001_white,
         input            pref_have_crtc,
         input            pref_have_80_cols,
+        input            pref_have_colour,
         input            pref_have_08k,
         input            pref_have_16k,
         input            pref_have_32k,
@@ -203,6 +208,7 @@ dualport_2clk_ram #(.addr_width(15)) pet2001ram
 // Derive the pixel clock from this, and loading the shift register.
 //////////////////////////////////////
 reg     vram_cpu_video;         // 1=cpu, 0=video
+reg     vram_colour_bit;        // access colour ram instead of chars
 reg     load_sr; // Load the video shift register. Name from schematic 8032087.
 reg     ce_pixel;
 reg     ce_8m;
@@ -226,17 +232,23 @@ begin
     ce_8m <= (cnt31_i[1:0] == 1);  // every 4 clocks
 
     if (cnt31_i == 3) begin
-        vram_cpu_video <= 0;    // video; could be <= !chosen_de?
+        vram_cpu_video <= 0;    // video; fetch character data; could be <= !chosen_de?
+    end else if (cnt31_i == 4) begin
+        vram_colour_bit <= 1;   // fetch colour data
     end else if (cnt31_i == 5) begin
         vram_cpu_video <= 1;    // cpu again.
+        vram_colour_bit <= 0;
         load_sr <= 1;   // ce_pixel must be true at the same time; <= !chosen_de ?
     end else if (cnt31_i == 6) begin
         load_sr <= 0;
     end else if (pref_have_80_cols) begin
         if (cnt31_i == 16+3) begin
             vram_cpu_video <= 0;    // video; could be <= !chosen_de?
+        end else if (cnt31_i == 16+4) begin
+            vram_colour_bit <= 1;   // fetch colour data
         end else if (cnt31_i == 16+5) begin
             vram_cpu_video <= 1;    // cpu again.
+            vram_colour_bit <= 0;
             load_sr <= 1;   // ce_pixel must be true at the same time; <= !chosen_de ?
         end else if (cnt31_i == 16+6) begin
             load_sr <= 0;
@@ -252,12 +264,14 @@ assign ce_pixel_o = ce_pixel;
 //////////////////////////////////////
 // On the 2001, video RAM is mirrored all the way up to $8FFF.
 // Later models only mirror up to $87FF.
+// For colour ram, assume the same kind of mirroring $8800-$8FFF.
 
 wire [7:0]      vram_data;
 wire [9:0]      video_addr;     /* 1 KB */
 
 wire    vram_sel = (addr[15:11] == 5'b1000_0) ||
-                   (pref_eoi_blanks && addr[15:12] == 4'b1000);
+                   (pref_eoi_blanks  && addr[15:12] == 4'b1000) ||
+                   (pref_have_colour && addr[15:12] == 4'b1000);
 wire    vram_we = we && vram_sel && vram_cpu_video;
 
 // The address bus for VRAM (2 KB) is multiplexed.
@@ -266,19 +280,34 @@ wire    vram_we = we && vram_sel && vram_cpu_video;
 // For later models, also vram_cpu_video must be true.
 // pref_eoi_blanks is the indicator that the first behaviour is wanted.
 
-wire [10:0] vram_addr_cpu;
-wire [10:0] vram_addr_vid;
-wire [10:0] vram_addr;
+wire [11:0] vram_addr_cpu;
+wire [11:0] vram_addr_vid;
+wire [11:0] vram_addr;
 
-assign vram_addr_cpu = pref_have_80_cols ? addr[10:0]
-                                         : { 1'b0, addr[9:0] };
-assign vram_addr_vid = pref_have_80_cols ? { video_addr[9:0], cnt31_i[4] }
-                                         : { 1'b0, video_addr[9:0] };
+/*
+ * Screen memory as seen from the CPU:
+ *
+ * +---+----+--------------+---------------------------+
+ *  40 | bw | 80-83        | 1'b0,     1'b0, addr[ 9:0]         
+ *  80 | bw | 80-87        | 1'b0,     addr[10:      0]         
+ *  40 |  c | 80-83, 88-8B | addr[11], 1'b0, addr[ 9:0] 
+ *  80 |  c | 80-87, 88-8F | addr[11:                0]  
+ * +---+----+--------------+---------------------------+
+ *
+ * { addr[11] & pref_have_colour, addr[10] & pref_have_80_cols, addr[9:0] }
+ *
+ * The CRTC generates 10-bit video addresses which need to be shifted
+ * 1 position left when using 80 columns. The low bit alternates between
+ * 0 and 1 to fetch 2 chars per cpu cycle.
+ */
+assign vram_addr_cpu = { addr[11] & pref_have_colour, addr[10] & pref_have_80_cols, addr[9:0] };
+assign vram_addr_vid = pref_have_80_cols ? { vram_colour_bit, video_addr[9:0], cnt31_i[4] }
+                                         : { vram_colour_bit, 1'b0, video_addr[9:0] };
 assign vram_addr = vram_sel && (vram_cpu_video ||
                                 pref_eoi_blanks) ? vram_addr_cpu
                                                  : vram_addr_vid;
 
-dualport_2clk_ram #(.addr_width(11)) pet2001vram
+dualport_2clk_ram #(.addr_width(12)) pet2001vram        // 4 KB, for 80 cols + colour
 (
         .clock_a(clk),
         .address_a(vram_addr),
@@ -302,15 +331,15 @@ wire        crtc_irq_vsync; /* vertical sync used for retrace_irq_n */
 wire        video_blank; // Blank screen during scrolling.
 wire        video_gfx;   // Display graphic characters vs. lower-case.
 
-wire chr_option = crtc_ma[13];	// use high half of character ROM
-wire invert = !crtc_ma[12];	// invert the screen
+wire chr_option = crtc_ma[13];  // use high half of character ROM
+wire invert = !crtc_ma[12];     // invert the screen
 
-assign video_addr = crtc_ma[9:0]; // => vram_data
-assign charaddr   = {chr_option, video_gfx, vram_data[6:0], crtc_ra[2:0]}; // => chardata
+assign video_addr = crtc_ma[9:0]; // =(pet2001vram)=> vram_data
+assign charaddr   = {chr_option, video_gfx, vram_data[6:0], crtc_ra[2:0]}; // =(pet2001chars)=> chardata
 
-reg [7:0] vdata;	// pixel shift register
-reg       inv;		// bit 7 from video ram: invert pixels
-assign    pix_o = invert ^ ((vdata[7] ^ inv) & ~(video_blank & pref_eoi_blanks));
+reg [7:0] vdata;        // pixel shift register
+reg [7:0] cdata;        // colour latch register
+reg       inv1, inv2;   // bit 7 from video ram: invert pixels
 
 wire no_row;    // name from schematic 8032087
 assign no_row = crtc_ra[3] || crtc_ra[4];
@@ -319,23 +348,84 @@ assign no_row = crtc_ra[3] || crtc_ra[4];
  * ce_pixel must be at least 2 clk cycles after vram_cpu_video.
  * 1 clk later, vram_data will be available.
  * 1 clk later, chardata will be available.
- * Total: 2 clks from rising edge of vram_cpu_video, if video_addr was already
+ * Total: 2 clks from edge of vram_cpu_video, if video_addr was already
  * set up.
+ * The colour data does not have to go through the character ROM, so its
+ * pipeline is 1 clock shorter, and it can be fetched 1 clock later.
+ * This very conveniently makes colour and pixels available at the same time.
+ * (In original hardware, both are fetched in parallel, so the colour needs an
+ * extra clock of delay)
+ * For 80 column mode, we do the same thing again in the second half of the
+ * cycle, just in time to start displaying the first pixel of the second
+ * character. This also avoids latching the character as is needed in the
+ * original hardware.
+ * In all cases, the cpu can write a character in a cycle before the video
+ * reads it, like original.
  */
+// Delay just the inverse bit of the vram data for use 1 clock later.
 always @(posedge clk) begin
-    // Work on the other clock edge, so that we work with the updated Matrix
-    // Address, and the updated Matrix value, and the updated character rom
-    // pixels. On real hardware this would take 2 CPU clocks: 1 to fetch the
-    // matrix value, 1 for lookup in the character ROM.
+    inv1 <= vram_data[7];
+end
+
+// Load or shift the pixels out
+always @(posedge clk) begin
     if (ce_pixel) begin
         if (load_sr) begin
-            {inv, vdata} <= (crtc_de && ~no_row) ? {vram_data[7], chardata}
-                                                 : 9'd0;
+            {inv2, vdata} <= (crtc_de && ~no_row) ? {inv1, chardata}
+                                                  : 9'd0;
+            cdata <= crtc_de ? vram_data
+                             : 8'h00;      /* black bg in the borders */
         end else begin
             vdata <= {vdata[6:0], 1'b0};
         end
     end
 end
+
+// calculate effective pixel, taking blanking and inverting into account
+assign    pix_o = ((vdata[7] ^ inv2) & ~(video_blank & pref_eoi_blanks)) ^ invert;
+
+// determine the colour for ColourPET mode
+wire [3:0] rgbi = pix_o ? cdata[3:0] : cdata[7:4];
+
+wire [23:0] palette[16] = '{
+    24'h000000, //  "Black"       
+    24'h555555, //  "Medium Gray" 
+    24'h0000AA, //  "Blue"        
+    24'h5555FF, //  "Light Blue"  
+    24'h00AA00, //  "Green"       
+    24'h55FF55, //  "Light Green" 
+    24'h00AAAA, //  "Cyan"        
+    24'h55FFFF, //  "Light Cyan"  
+    24'hAA0000, //  "Red"         
+    24'hFF5555, //  "Light Red"   
+    24'hAA00AA, //  "Purple"      
+    24'hFF55FF, //  "Light Purple"
+    24'hAA5500, //  "Brown"        /* "brown fix", aka "dark yellow" 0xAAAA00 */
+    24'hFFFF55, //  "Yellow"      
+    24'hAAAAAA, //  "Light Gray"  
+    24'hFFFFFF  //  "White"       
+};
+
+wire [7:0] red_o = palette[rgbi][23:16];
+wire [7:0] green_o = palette[rgbi][15:8];
+wire [7:0] blue_o = palette[rgbi][7:0];
+
+// final selection of black/white, colour or black/green
+always_comb  begin
+    if (pref_have_2001_white) begin
+        video_red_o   = pix_o ? 8'hAA : 8'h0F;  // test signal
+        video_green_o = pix_o ? 8'hAA : 8'h00;
+        video_blue_o  = pix_o ? 8'hFF : 8'h00;
+    end else if (pref_have_colour) begin
+        video_red_o   = red_o;
+        video_green_o = green_o;
+        video_blue_o  = blue_o;
+    end else begin
+        video_red_o   = 8'h0F;  // test signal
+        video_green_o = pix_o ? 8'hFF : 8'h00;
+        video_blue_o  = 8'h00;
+    end;
+end;
 
 ////////////////////////////////////////////////////////
 // I/O hardware
