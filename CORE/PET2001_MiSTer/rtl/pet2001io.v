@@ -278,13 +278,15 @@ crtc_or_not crtc
 // (The above comment seems to be from a time with a different
 // CPU implementation. The current one doesn't have a RDY signal.
 // Yet strobe_io is delayed anyway.)
+// If no I/O chips are selected return E8 (high byte of the address).
 //
 always @(posedge clk) begin
-        data_out <= 8'hFF
-                    & (pia1_sel ? pia1_data_out : 8'hFF)
-                    & (pia2_sel ? pia2_data_out : 8'hFF)
-                    & (via_sel  ? via_data_out  : 8'hFF)
-                    & (crtc_sel ? crtc_data_out : 8'hFF);
+        data_out <= {pia1_sel,pia2_sel,via_sel,crtc_sel} == 4'b000 ? 8'hE8 :
+                       (8'hFF
+                        & (pia1_sel ? pia1_data_out : 8'hFF)
+                        & (pia2_sel ? pia2_data_out : 8'hFF)
+                        & (via_sel  ? via_data_out  : 8'hFF)
+                        & (crtc_sel ? crtc_data_out : 8'hFF));
 end
 
 assign irq = pia1_irq || pia2_irq || via_irq;
