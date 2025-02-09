@@ -27,17 +27,17 @@ module ieeedrv_track #(parameter SUBDRV=2)
 	input      [NS:0] drv_mtr,
 	input             drv_sel,
 	input             drv_hd,
-	output            drv_act,
+	output reg        drv_act,
 
-	output     [31:0] sd_lba[SUBDRV],
-	output      [5:0] sd_blk_cnt[SUBDRV],
+	output reg [31:0] sd_lba[SUBDRV],
+	output reg  [5:0] sd_blk_cnt[SUBDRV],
 	output reg [NS:0] sd_rd,
 	output reg [NS:0] sd_wr,
 	input      [NS:0] sd_ack,
 
 	input      [NS:0] save_track,
 	input       [6:0] track[SUBDRV],
-	output      [7:0] ltrack,
+	output reg  [7:0] ltrack,
 
 	output reg [NS:0] busy
 );
@@ -138,12 +138,12 @@ always @(posedge clk_sys) begin
 		sd_rd     <= '0;
 		sd_wr     <= '0;
 		resetting <= 1;
-		drv_act   <= 0;
+		drv_act   <= 0; /* Error: procedural assignment to a non-register drv_act is not permitted, left-hand side should be reg/integer/time/genvar */
 	end
 	else if (resetting) begin
 		if (!drv_sel_s || SUBDRV==1) begin
 			resetting    <= 0;
-		   ltrack       <= '1;
+		   ltrack       <= '1;/* Error: procedural assignment to a non-register ltrack is not permitted, left-hand side should be reg/integer/time/genvar */
   		   saving       <= 0;
 			update       <= '1;
 		end
@@ -161,7 +161,7 @@ always @(posedge clk_sys) begin
 					update[drv_sel_s] <= 0;
 					if (update[drv_sel_s]) begin
 						initing <= 1;
-						`read_track(drv_sel_s, INIT_TRACK);
+						`read_track(drv_sel_s, INIT_TRACK); /* Error: procedural assignment to a non-register sd_blk_cnt,sd_lba is not permitted, left-hand side should be reg/integer/time/genvar */
 					end
 					else if (~&ltrack_new) begin
 						`read_track(drv_sel_s, ltrack_new);

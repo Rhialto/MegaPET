@@ -30,19 +30,19 @@ module ieeedrv_trkgen #(parameter SUBDRV=2)
 
 	input       [7:0] track,
 	input      [15:0] id,
-	output     [15:0] id_hdr,
-	output            id_wr,
+	output reg [15:0] id_hdr,
+	output reg        id_wr,
 	input             busy,
 	input             wprot,
 	output reg        we,
 
 	input             rw,
-	output            byte_n,
-	output            brdy_n,
-	output            error,
+	output reg        byte_n,
+	output reg        brdy_n,
+	output reg        error,
 
-	output            sync_rd_n,
-	output      [7:0] byte_rd,
+	output reg        sync_rd_n,
+	output reg  [7:0] byte_rd,
 
 	input             sync_wr,
 	input       [7:0] byte_wr,
@@ -183,12 +183,12 @@ always @(posedge clk_sys) begin
 
 	buff_di <= 8'h00;
 	we <= 0;
-	id_wr <= 0;
+	id_wr <= 0;/* Error: procedural assignment to a non-register id_wr is not permitted, left-hand side should be reg/integer/time/genvar */
 
 	if (bit_clk_en) begin
 		bit_cnt <= bit_cnt + 1'b1;
-		brdy_n  <= 1;
-		byte_n  <= 1;
+		brdy_n  <= 1;/* Error: procedural assignment to a non-register brdy_n is not permitted, left-hand side should be reg/integer/time/genvar */
+		byte_n  <= 1;/* Error: procedural assignment to a non-register byte_n is not permitted, left-hand side should be reg/integer/time/genvar */
 
 		if (sync_rd_n) begin
 			if (bit_cnt == 0) brdy_n <= 0;
@@ -197,9 +197,9 @@ always @(posedge clk_sys) begin
 
 		if (bit_cnt == 9) begin
 			bit_cnt   <= 0;
-			byte_rd   <= 8'h0f;
-			sync_rd_n <= 1;
-			error     <= 0;
+			byte_rd   <= 8'h0f;/* Error: procedural assignment to a non-register byte_rd is not permitted, left-hand side should be reg/integer/time/genvar */
+			sync_rd_n <= 1;/* Error: procedural assignment to a non-register sync_rd_n is not permitted, left-hand side should be reg/integer/time/genvar */
+			error     <= 0;/* Error: procedural assignment to a non-register error is not permitted, left-hand side should be reg/integer/time/genvar */
 			old_track <= track;
 			rw_l      <= rw;
 
@@ -444,7 +444,7 @@ always @(posedge clk_sys) begin
 								3: id_hdr[15:8] <= byte_wr;
 								4: begin
 										byte_cnt	   <= 0;
-										id_hdr[7:0] <= byte_wr;
+										id_hdr[7:0] <= byte_wr;/* Error: procedural assignment to a non-register id_hdr is not permitted, left-hand side should be reg/integer/time/genvar */
 										id_wr       <= 1;
 										rwState     <= RW_IDLE;
 									end

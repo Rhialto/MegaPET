@@ -16,7 +16,7 @@ module M6532 #(parameter RRIOT=0)
 	input  [6:0] addr,      // Address
 	input        RW_n,      // 1 = read, 0 = write
 	input  [7:0] d_in,
-	output [7:0] d_out,
+	output reg [7:0] d_out,
 	input        IOS_n,     // I/O select (RRIOT only)
 	input        RS_n,      // RAM select
 	output       IRQ_n,
@@ -58,7 +58,7 @@ always_ff @(posedge clk) begin
 		end else if (!(RRIOT && IOS_n))
 			if (~addr[2]) begin // Address registers
 				case(addr[1:0])
-					2'b01: d_out <= dir_a; // DDRA
+					2'b01: d_out <= dir_a; // DDRA /* Error: procedural assignment to a non-register d_out is not permitted, left-hand side should be reg/integer/time/genvar */
 					2'b11: d_out <= dir_b; // DDRB
 					2'b00: d_out <= (PA_in & PA_out); // Input A
 					2'b10: d_out <= (PB_in & PB_out); // Input B

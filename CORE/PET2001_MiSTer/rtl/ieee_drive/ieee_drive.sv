@@ -25,10 +25,31 @@
 
 	input              pause,
 
-	output      [ND:0] led,
+	output      [ND:0] led,		// FIXME: each unit has 1 error led and NSD drive leds; in total NDR * (NSD+1)
 
+        /* Vivado seems too stupid to interoperate this with VHDL
 	input  st_ieee_bus bus_i,
-   output st_ieee_bus bus_o,
+        output st_ieee_bus bus_o, */
+        input              bus_i_atn ,
+        input              bus_i_eoi ,
+        input              bus_i_srq ,
+        input              bus_i_ren ,
+        input              bus_i_ifc ,
+        input              bus_i_dav ,
+        input              bus_i_ndac,
+        input              bus_i_nrfd,
+        input  [7:0]       bus_i_data,
+
+        output             bus_o_atn ,
+        output             bus_o_eoi ,
+        output             bus_o_srq ,
+        output             bus_o_ren ,
+        output             bus_o_ifc ,
+        output             bus_o_dav ,
+        output             bus_o_ndac,
+        output             bus_o_nrfd,
+        output [7:0]       bus_o_data,
+
 
 	input       [ND:0] drv_type,
 
@@ -83,6 +104,16 @@ st_ieee_bus drv_bus_i;
 st_ieee_bus drv_bus_o[NDR];
 st_ieee_bus drv_bus[NDR];
 
+st_ieee_bus bus_i = {bus_i_atn ,
+                     bus_i_eoi ,
+                     bus_i_srq ,
+                     bus_i_ren ,
+                     bus_i_ifc ,
+                     bus_i_dav ,
+                     bus_i_ndac,
+                     bus_i_nrfd,
+                     bus_i_data};
+
 ieeedrv_bus_sync bus_sync(clk_sys, bus_i, drv_bus_i);
 
 wire [NS:0] led_act[NDR];
@@ -101,6 +132,18 @@ always @(posedge clk_sys) begin
 end
 
 assign bus_o = drv_bus[NDR-1];
+
+assign {bus_o_atn ,
+        bus_o_eoi ,
+        bus_o_srq ,
+        bus_o_ren ,
+        bus_o_ifc ,
+        bus_o_dav ,
+        bus_o_ndac,
+        bus_o_nrfd,
+        bus_o_data} = bus_o;
+
+
 
 // ====================================================================
 // Clock
@@ -134,14 +177,18 @@ wire  [7:0] dos_data[NDR], dos4040_data, dos8250_data;
 wire  [1:0] dos_select;
 wire [13:0] dos_rom_addr;
 
-ieeedrv_rom #(8,14,12288,"rtl/ieee_drive/roms/c4040_dos.mif") c4040_dos_rom
+// ieeedrv_rom #(8,14,12288,"rtl/ieee_drive/roms/c4040_dos.mif") c4040_dos_rom
+// Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+ieeedrv_rom #(8,14,12288,"../../PET2001_MiSTer/rtl/ieee_drive/roms/c4040_dos.hex") c4040_dos_rom
 (
    .clock_a(clk_sys),
    .address_a({dos_rom_addr[13:12]-2'b1, dos_rom_addr[11:0]}),
    .q_a(dos4040_data)
 );
 
-ieeedrv_rom #(8,14,16384,"rtl/ieee_drive/roms/c8250_dos.mif") c8250_dos_rom
+//ieeedrv_rom #(8,14,16384,"rtl/ieee_drive/roms/c8250_dos.mif") c8250_dos_rom
+// Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+ieeedrv_rom #(8,14,16384,"../../PET2001_MiSTer/rtl/ieee_drive/roms/c8250_dos.hex") c8250_dos_rom
 (
    .clock_a(clk_sys),
    .address_a(dos_rom_addr),
@@ -168,14 +215,18 @@ wire  [7:0] ctl_data[NDR], ctl4040_data, ctl8250_data;
 wire  [1:0] ctl_select;
 wire  [9:0] ctl_rom_addr;
 
-ieeedrv_rom #(8,10,1024,"rtl/ieee_drive/roms/c4040_ctl.mif") c4040_controller_rom
+//ieeedrv_rom #(8,10,1024,"rtl/ieee_drive/roms/c4040_ctl.mif") c4040_controller_rom
+// Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+ieeedrv_rom #(8,10,1024,"../../PET2001_MiSTer/rtl/ieee_drive/roms/c4040_ctl.hex") c4040_controller_rom
 (
    .clock_a(clk_sys),
    .address_a(ctl_rom_addr),
    .q_a(ctl4040_data)
 );
 
-ieeedrv_rom #(8,10,1024,"rtl/ieee_drive/roms/c8250_ctl.mif") c8250_controller_rom
+//ieeedrv_rom #(8,10,1024,"rtl/ieee_drive/roms/c8250_ctl.mif") c8250_controller_rom
+// Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+ieeedrv_rom #(8,10,1024,"../../PET2001_MiSTer/rtl/ieee_drive/roms/c8250_ctl.hex") c8250_controller_rom
 (
    .clock_a(clk_sys),
    .address_a(ctl_rom_addr),
