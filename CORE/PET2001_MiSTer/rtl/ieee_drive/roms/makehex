@@ -1,0 +1,7 @@
+#!/bin/sh
+
+cat 901466-04.bin | hexdump -v -e '"" 1/1 "%02x\n"'  > c4040_ctl.hex
+cat 901468-14.bin 901468-15.bin 901468-16.bin | hexdump -v -e '"" 1/1 "%02x\n"'  > c4040_dos.hex
+
+cat 901885-04.bin | hexdump -v -e '"" 1/1 "%02x\n"'  > c8250_ctl.hex
+cat 901887-01.bin 901888-01.bin | hexdump -v -e '"" 1/1 "%02x\n"'  > c8250_dos.hex
