@@ -104,15 +104,16 @@ st_ieee_bus drv_bus_i;
 st_ieee_bus drv_bus_o[NDR];
 st_ieee_bus drv_bus[NDR];
 
-st_ieee_bus bus_i = {bus_i_atn ,
-                     bus_i_eoi ,
-                     bus_i_srq ,
-                     bus_i_ren ,
-                     bus_i_ifc ,
-                     bus_i_dav ,
-                     bus_i_ndac,
-                     bus_i_nrfd,
-                     bus_i_data};
+st_ieee_bus bus_i;
+assign bus_i.atn  = bus_i_atn ;
+assign bus_i.eoi  = bus_i_eoi ;
+assign bus_i.srq  = bus_i_srq ;
+assign bus_i.ren  = bus_i_ren ;
+assign bus_i.ifc  = bus_i_ifc ;
+assign bus_i.dav  = bus_i_dav ;
+assign bus_i.ndac = bus_i_ndac;
+assign bus_i.nrfd = bus_i_nrfd;
+assign bus_i.data = bus_i_data;
 
 ieeedrv_bus_sync bus_sync(clk_sys, bus_i, drv_bus_i);
 
@@ -131,17 +132,18 @@ always @(posedge clk_sys) begin
 	end
 end
 
+st_ieee_bus bus_o;
 assign bus_o = drv_bus[NDR-1];
 
-assign {bus_o_atn ,
-        bus_o_eoi ,
-        bus_o_srq ,
-        bus_o_ren ,
-        bus_o_ifc ,
-        bus_o_dav ,
-        bus_o_ndac,
-        bus_o_nrfd,
-        bus_o_data} = bus_o;
+assign bus_o_atn  = bus_o.atn ;
+assign bus_o_eoi  = bus_o.eoi ;
+assign bus_o_srq  = bus_o.srq ;
+assign bus_o_ren  = bus_o.ren ;
+assign bus_o_ifc  = bus_o.ifc ;
+assign bus_o_dav  = bus_o.dav ;
+assign bus_o_ndac = bus_o.ndac;
+assign bus_o_nrfd = bus_o.nrfd;
+assign bus_o_data = bus_o.data;
 
 
 
