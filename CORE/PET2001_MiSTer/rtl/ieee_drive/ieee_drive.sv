@@ -18,18 +18,20 @@
 	parameter SUBDRV=2
 )
 (
-   input       [31:0] CLK,
+        input       [31:0] CLK,
 
-	input              clk_sys,
+	input              clk_sys,    // which is CLK Hz
+        input              clk_main,   // used for output buffering bus_o_*
 	input       [ND:0] reset,
 
 	input              pause,
 
-	output      [ND:0] led,		// FIXME: each unit has 1 error led and NSD drive leds; in total NDR * (NSD+1)
+	output      [ND:0] led,        // FIXME: each unit has 1 error led and NSD drive leds; in total NDR * (NSD+1)
 
         /* Vivado seems too stupid to interoperate this with VHDL
-	input  st_ieee_bus bus_i,
+        input  st_ieee_bus bus_i,
         output st_ieee_bus bus_o, */
+        /* bus_i_* and bus_o_* are in the clk_main clock domain */
         input              bus_i_atn ,
         input              bus_i_eoi ,
         input              bus_i_srq ,
@@ -135,15 +137,18 @@ end
 st_ieee_bus bus_o;
 assign bus_o = drv_bus[NDR-1];
 
-assign bus_o_atn  = bus_o.atn ;
-assign bus_o_eoi  = bus_o.eoi ;
-assign bus_o_srq  = bus_o.srq ;
-assign bus_o_ren  = bus_o.ren ;
-assign bus_o_ifc  = bus_o.ifc ;
-assign bus_o_dav  = bus_o.dav ;
-assign bus_o_ndac = bus_o.ndac;
-assign bus_o_nrfd = bus_o.nrfd;
-assign bus_o_data = bus_o.data;
+st_ieee_bus main_bus_o;         /* clk_main clock domain */
+ieeedrv_bus_sync bus_sync_o(clk_main, bus_o, main_bus_o);
+
+assign bus_o_atn  = main_bus_o.atn ;
+assign bus_o_eoi  = main_bus_o.eoi ;
+assign bus_o_srq  = main_bus_o.srq ;
+assign bus_o_ren  = main_bus_o.ren ;
+assign bus_o_ifc  = main_bus_o.ifc ;
+assign bus_o_dav  = main_bus_o.dav ;
+assign bus_o_ndac = main_bus_o.ndac;
+assign bus_o_nrfd = main_bus_o.nrfd;
+assign bus_o_data = main_bus_o.data;
 
 
 
