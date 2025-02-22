@@ -26,7 +26,9 @@
 
 	input              pause,
 
-	output      [ND:0] led,        // FIXME: each unit has 1 error led and NSD drive leds; in total NDR * (NSD+1)
+	//output      [ND:0] led,
+	output       [NS:0] led_act[NDR],
+	output       [ND:0] led_err,
 
         /* Vivado seems too stupid to interoperate this with VHDL
         input  st_ieee_bus bus_i,
@@ -55,9 +57,9 @@
 
 	input       [ND:0] drv_type,
 
-	input       [NB:0] img_mounted,
-	input       [31:0] img_size,
-	input              img_readonly,
+	input       [NB:0] img_mounted,                 // clk_main core clock domain
+	input       [31:0] img_size,                    // clk_main core clock domain
+	input              img_readonly,                // clk_main core clock domain
 
 	output      [31:0] sd_lba[NBD],
 	output       [5:0] sd_blk_cnt[NBD],
@@ -119,20 +121,20 @@ assign bus_i.data = bus_i_data;
 
 ieeedrv_bus_sync bus_sync(clk_sys, bus_i, drv_bus_i);
 
-wire [NS:0] led_act[NDR];
-wire [ND:0] led_err;
-wire        blink_err = err_count[21];
-
-reg [21:0] err_count;
-always @(posedge clk_sys) begin
-	// when led_err is high, blink MiSTer led
-	if (ce) begin
-		if (|led_err)
-			err_count <= err_count + 1'd1;
-		else
-			err_count <= '1;
-	end
-end
+//wire [NS:0] led_act[NDR];
+//wire [ND:0] led_err;
+//wire        blink_err = err_count[21];
+//
+//reg [21:0] err_count;
+//always @(posedge clk_sys) begin
+//	// when led_err is high, blink MiSTer led
+//	if (ce) begin
+//		if (|led_err)
+//			err_count <= err_count + 1'd1;
+//		else
+//			err_count <= '1;
+//	end
+//end
 
 st_ieee_bus bus_o;
 assign bus_o = drv_bus[NDR-1];
@@ -254,7 +256,7 @@ generate
 	genvar d;
 	for (d=0; d<NDR; d=d+1) begin :drive
 		assign drv_bus[d] = d==0 ? drv_bus_o[d] : drv_bus_o[d] & drv_bus[d-1];
-		assign led[d] = |led_act[d] | (led_err[d] & blink_err);
+		//assign led[d] = |led_act[d] | (led_err[d] & blink_err);
 
 		localparam I0 = d*NSD;
 		localparam I1 = d*NSD+NS;

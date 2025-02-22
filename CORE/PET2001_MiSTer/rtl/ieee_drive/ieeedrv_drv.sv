@@ -81,7 +81,8 @@ wire drv_reset = |drv_reset_cnt;
 generate
 	genvar s;
 	for (s=0; s<SUBDRV; s=s+1) begin :led_acts
-		assign led_act[s] = (|led_act_o[s] | sd_busy[s]) & ~drv_reset;
+		//assign led_act[s] = (|led_act_o[s] | sd_busy[s]) & ~drv_reset;
+		assign led_act[s] = (led_act_o[s] | sd_busy[s]) & ~drv_reset;
 	end
 endgenerate
 
