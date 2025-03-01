@@ -175,7 +175,7 @@ dualport_2clk_ram #(
         .clock_a(clk),
 
         // B: Access from QNICE on falling edge
-        .address_b(dma_addr[10:0]),
+        .address_b(dma_addr[11:0]),
         .data_b(dma_din),
         .q_b(dma_char_dout),
         .wren_b(chars_wr),
