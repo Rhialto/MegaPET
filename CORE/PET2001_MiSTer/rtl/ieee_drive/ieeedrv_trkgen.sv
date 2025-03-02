@@ -36,7 +36,7 @@ module ieeedrv_trkgen #(parameter SUBDRV=2)
 	input             wprot,
 	output reg        we,
 
-	input             rw,
+	input             rw,			// 0=write, 1=read?
 	output reg        byte_n,
 	output reg        brdy_n,
 	output reg        error,
@@ -169,6 +169,7 @@ reg  [7:0] buff_di;
 
 reg  [4:0] sector[SUBDRV];
 
+//                     0         1        2          3           4           5         6       7       8       9       A         B
 typedef enum bit[3:0] {RW_RESET, RW_IDLE, R_SYNCHDR, R_SYNCDATA, R_SYNCTEST, R_HEADER, R_DATA, R_TAIL, R_TEST, W_SYNC, W_HEADER, W_DATA} rwState_t;
 
 always @(posedge clk_sys) begin

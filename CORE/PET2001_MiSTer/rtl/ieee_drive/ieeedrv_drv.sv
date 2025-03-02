@@ -195,6 +195,8 @@ generate
 			if (img_mounted[i])
 				id_loaded[i] <= 0;
 
+			// sd_ack[i] does not need to be tested, since sd_busy becomes
+			// false when sd_ack[i] falls.
 			if (!id_loaded[i] && sd_busy[i] && sd_lba[i] == DIR_SECTOR && sd_buff_wr)
 				case (sd_buff_addr)
 					'h18: if (!img_type[i][1]) dsk_id[i][7:0]  <= sd_buff_dout;

@@ -21,9 +21,7 @@ module c1541_gcr
    input             ce,
 
    output reg  [7:0] dout,    // data from ram to 1541 logic
-      (* dont_touch = "false",mark_debug = "false" *)
    input       [7:0] din,     // data from 1541 logic to ram
-      (* dont_touch = "false",mark_debug = "false" *)
    input             mode,    // 1 = read, 0 = write
    input             mtr,     // stepper motor on/off
    input       [1:0] freq,    // motor (gcr_bit) frequency
@@ -32,7 +30,6 @@ module c1541_gcr
 
    input       [5:0] track,
    input             busy,
-      (* dont_touch = "false",mark_debug = "false" *)
    output reg        we,
 
    input             sd_clk,
@@ -75,7 +72,6 @@ wire [4:0] gcr_lut[16] = '{
    5'b10110, 5'b10111, 5'b01111, 5'b10101
 };
 
-      (* dont_touch = "false",mark_debug = "false" *)
 reg [3:0] nibble_out;
 always_comb begin
    case(gcr_nibble_out)
@@ -171,35 +167,27 @@ dualport_2clk_ram #(
 
 reg [12:0] buff_addr;
 wire [7:0] buff_do;
-      (* dont_touch = "false",mark_debug = "false" *)
 reg  [7:0] buff_di;
 
 reg  [4:0] sector;
 reg        sync_in_n;// 0 = generating sync towards VIA, 1 = not generating sync
-      (* dont_touch = "false",mark_debug = "false" *)
 reg        byte_in;
-      (* dont_touch = "false",mark_debug = "false" *)
 reg  [8:0] byte_cnt;
-      (* dont_touch = "false",mark_debug = "false" *)
 reg        nibble;   // 0 = low nibble, 1 = high nibble
 reg        state;    // 0 = sector header, 1 = sector data
 reg  [7:0] data_cks;
-      (* dont_touch = "false",mark_debug = "false" *)
 reg  [7:0] gcr_byte_out;
 reg  [4:0] gcr_nibble_out;
 reg  [7:0] hdr_cks;
-      (* dont_touch = "false",mark_debug = "false" *)
 reg  [1:0] gcr_syncs_out;     // Count how many SYNC (FF) bytes DOS has written.
 
 always @(posedge clk) begin
    reg       mode_r2;
-      (* dont_touch = "false",mark_debug = "false" *)
    reg       autorise_write;
    reg       autorise_count;
    reg [5:0] sync_cnt;
    reg [7:0] gcr_byte;
    reg [2:0] bit_cnt;
-      (* dont_touch = "false",mark_debug = "false" *)
    reg [3:0] gcr_bit_cnt;
 
    hdr_cks <= track ^ sector ^ id1 ^ id2;

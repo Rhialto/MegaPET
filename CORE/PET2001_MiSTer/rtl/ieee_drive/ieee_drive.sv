@@ -100,6 +100,7 @@ always @(posedge clk_sys)
 	for(int i=0; i<NBD; i=i+1)
 		if (img_mounted[i]) begin
 			img_loaded[i]     <= |img_size;
+			// i >> NS only works for NS=0 or NS=1; should be log2(NSD)
 			img_type[i]       <= {drv_type[i >> NS], img_size[31:8] >= 4166};
 			img_readonly_l[i] <= img_readonly;
 		end
