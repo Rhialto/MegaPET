@@ -3,7 +3,7 @@
 //
 // Initial Engineer (2001 Model):          Thomas Skibo
 // Brought to 3032 and 4032 (non CRTC):    Ruben Aparicio
-// Added disk drive, cycle exact video, CRTC, etc: Olaf "Rhialto" Seibert
+// Added disk drive, cycle exact video, CRTC, colour, 8x96, etc: Olaf "Rhialto" Seibert
 //
 // Create Date:      Sep 23, 2011
 //
@@ -70,6 +70,9 @@ module pet2001hw
         input            pref_have_32k,
         input            pref_have_8096,
         input            pref_have_8296,
+        input            pref_ramsel9,
+        input            pref_ramselA,
+        input            pref_ramselUserPort,
 
         output [3:0]     keyrow, // Keyboard
         input  [7:0]     keyin,
@@ -315,6 +318,40 @@ end;
 assign ce_pixel_o = ce_pixel;
 
 //////////////////////////////////////
+//
+// 8296 memory extension.
+// This expands the vram to 32 KB, independent of 80 cols and colour.
+// The number of video matrix address bits (MA) increases 2 to 12 (MA11).
+// Use _2 for 8296 signals and _0 for the other cases.
+
+wire [7:0]	user_port;
+
+wire not_ram_sel_9 = pref_ramselUserPort ? user_port[1] : !pref_ramsel9;
+wire not_ram_sel_A = pref_ramselUserPort ? user_port[0] : !pref_ramselA;
+wire not_ram_on    = pref_ramselUserPort ? user_port[2] : 1'b1;
+
+// See the 8296 Supplement page 4 for this memory mapping.
+// Assumes CR7 = 0; this is checked separately with !extram_sel.
+// That handles the FFF0 screen and I/O peek through.
+wire ram9   = not_ram_on ? !not_ram_sel_9 : 1'b1;
+wire ramA   = not_ram_on ? !not_ram_sel_A : 1'b1;
+wire ramBCD = not_ram_on ?           1'b0 : 1'b1;
+wire ramE   = not_ram_on ?           1'b0 : !not_ram_sel_9 || !not_ram_sel_A;  // only ROM if both are 1, so RAM if either is 0
+wire ramE8  = not_ram_on ?           1'b0 : !not_ram_sel_A && !cr_iopeek;
+wire ramF   = not_ram_on ?           1'b0 : !not_ram_sel_A;
+
+wire vram_sel_2 = (addr[15:12] == 4'h8)  ? 1'b1 :
+                  (addr[15:12] == 4'h9)  ? ram9 :
+                  (addr[15:12] == 4'hA)  ? ramA :
+                  (addr[15:12] == 4'hB)  ? ramBCD :
+                  (addr[15:12] == 4'hC)  ? ramBCD :
+                  (addr[15:12] == 4'hD)  ? ramBCD :
+                  (addr[15: 8] == 8'hE8) ? ramE8 :	/* This I/O Peek Through is much smaller than the other! */
+                  (addr[15:12] == 4'hE)  ? ramE :
+                  (addr[15:12] == 4'hF)  ? ramF :
+                                           1'b0;
+
+//////////////////////////////////////
 // Video RAM.
 // The video hardware shares access to VRAM some of the time.
 //////////////////////////////////////
@@ -323,13 +360,21 @@ assign ce_pixel_o = ce_pixel;
 // For colour ram, assume the same kind of mirroring $8800-$8FFF.
 
 wire [7:0]      vram_data;
-wire [9:0]      video_addr;     /* 1 KB */
+wire [11:0]     video_addr;     /* 4 KB from crtc_ma */
 
-wire    vram_sel = ! extram_sel &&
-                     ((addr[15:11] == 5'b1000_0) ||
-                      (pref_eoi_blanks  && addr[15:12] == 4'b1000) ||
-                      (pref_have_colour && addr[15:12] == 4'b1000));
-wire    vram_we = we && vram_sel && vram_cpu_video;
+wire    vram_sel_0 = ((addr[15:11] == 5'b1000_0) ||                   /* 8000-87FF */
+                      (pref_eoi_blanks  && addr[15:12] == 4'b1000) || /* 8000-8FFF */
+                      (pref_have_colour && addr[15:12] == 4'b1000));  /* 8000-8FFF */
+wire    vram_sel   = ! extram_sel &&
+                     (pref_have_8296 ? vram_sel_2
+		                     : vram_sel_0);
+
+// In the 8296, writing to a ROM writes to the RAM "under" it
+wire    vram_sel_w = ! extram_sel &&
+                     (pref_have_8296 ? addr[15] == 1'b1
+		                     : vram_sel_0);
+
+wire    vram_we = we && vram_sel_w && vram_cpu_video;
 
 // The address bus for VRAM (2 KB) is multiplexed.
 // On the 2001, the CPU always has priority, so the address is from the cpu if
@@ -337,12 +382,14 @@ wire    vram_we = we && vram_sel && vram_cpu_video;
 // For later models, also vram_cpu_video must be true.
 // pref_eoi_blanks is the indicator that the first behaviour is wanted.
 
-wire [11:0] vram_addr_cpu;
-wire [11:0] vram_addr_vid;
-wire [11:0] vram_addr;
+wire [11:0] vram_addr_cpu_0;
+wire [14:0] vram_addr_cpu, vram_addr_cpu_2;
+wire [11:0] vram_addr_vid_0;
+wire [12:0] vram_addr_vid, vram_addr_vid_2;
+wire [14:0] vram_addr;
 
 /*
- * Screen memory as seen from the CPU:
+ * Screen memory as seen from the CPU (before 8296):
  *
  * +---+----+--------------+---------------------------+
  *  40 | bw | 80-83        | 1'b0,     1'b0, addr[ 9:0]         
@@ -356,15 +403,33 @@ wire [11:0] vram_addr;
  * The CRTC generates 10-bit video addresses which need to be shifted
  * 1 position left when using 80 columns. The low bit alternates between
  * 0 and 1 to fetch 2 chars per cpu cycle.
+ * 
+ * In 8296 configuration, it's much simpler: the whole $8xxx is RAM (and more
+ * too). The CRTC has 2 MA bits more, up to MA11, to address memory.
+ * (there is a jumper to use MA12 too but that makes it even more complicated
+ * because it is otherwise used to invert the screen)
  */
-assign vram_addr_cpu = { addr[11] & pref_have_colour, addr[10] & pref_have_80_cols, addr[9:0] };
-assign vram_addr_vid = pref_have_80_cols ? { vram_colour_bit, video_addr[9:0], cnt31_i[4] }
-                                         : { vram_colour_bit, 1'b0, video_addr[9:0] };
-assign vram_addr = vram_sel && (vram_cpu_video ||
-                                pref_eoi_blanks) ? vram_addr_cpu
-                                                 : vram_addr_vid;
+assign vram_addr_cpu_2 = addr[14:0];
+assign vram_addr_cpu_0 = { addr[11] & pref_have_colour, addr[10] & pref_have_80_cols, addr[9:0] };
+assign vram_addr_cpu = pref_have_8296 ? vram_addr_cpu_2
+                                      : { 3'b0, vram_addr_cpu_0 };
 
-dualport_2clk_ram #(.addr_width(12)) pet2001vram        // 4 KB, for 80 cols + colour
+/* For 8296 we would be losing the vram_colour_bit at position 11. It's not so
+ * compatible with increasing the base address of screen memory. So we just OR
+ * it in. That it will do at least something useful as long as you don't
+ * program something conflicting.  */
+assign vram_addr_vid_2 = pref_have_80_cols ? { video_addr[11], video_addr[10] | vram_colour_bit, video_addr[9:0], cnt31_i[4] }
+                                           : { 1'b0, video_addr[11] | vram_colour_bit, video_addr[10:0] }; // 40 cols 8296
+assign vram_addr_vid_0 = pref_have_80_cols ? { vram_colour_bit, video_addr[9:0], cnt31_i[4] }
+                                           : { vram_colour_bit, 1'b0, video_addr[9:0] };
+assign vram_addr_vid = pref_have_8296 ? vram_addr_vid_2
+                                      : { 1'b0, vram_addr_vid_0 };
+
+assign vram_addr = vram_sel_w && (vram_cpu_video ||
+                                  pref_eoi_blanks) ? vram_addr_cpu
+                                                   : { 2'b00, vram_addr_vid };
+
+dualport_2clk_ram #(.addr_width(15)) pet2001vram        // 4 KB, for 80 cols + colour, or 32 KB for 8296.
 (
         .clock_a(clk),
         .address_a(vram_addr),
@@ -388,10 +453,10 @@ wire        crtc_irq_vsync; /* vertical sync used for retrace_irq_n */
 wire        video_blank; // Blank screen during scrolling.
 wire        video_gfx;   // Display graphic characters vs. lower-case.
 
-wire chr_option = crtc_ma[13];  // use high half of character ROM
-wire invert = !crtc_ma[12];     // invert the screen
+wire chr_option = crtc_ma[13];  // MA13, use high half of character ROM
+wire invert = !crtc_ma[12];     // MA12, invert the screen
 
-assign video_addr = crtc_ma[9:0]; // =(pet2001vram)=> vram_data
+assign video_addr = crtc_ma[11:0]; // =(pet2001vram)=> vram_data
 assign charaddr   = {chr_option, video_gfx, vram_data[6:0], crtc_ra[2:0]}; // =(pet2001chars)=> chardata
 
 reg [7:0] vdata;        // pixel shift register
@@ -489,7 +554,9 @@ end;
 ////////////////////////////////////////////////////////
 wire [7:0]      io_read_data;
 // This allows for "small I/O area" only. No I/O extensions in E900-EFFF.
-wire            io_sel = (addr[15:8] == 8'hE8) && !extram_sel;
+wire            io_sel = (addr[15:8] == 8'hE8) && !extram_sel && !ramE8;
+/* !ramE8 shortcuts !vram_sel, and vram_sel includes && !extram_sel which we
+* do here too. */;
 
 pet2001io io
 (
@@ -525,6 +592,8 @@ pet2001io io
         .cass_read(cass_read),
         .audio(audio),
 
+	// User port
+	.user_port_eff(user_port),
         .diag_l(diag_l),
 
         // IEEE-488
@@ -554,16 +623,22 @@ pet2001io io
 always @(*)
 begin
     casex({addr[15:12], io_sel, vram_sel, ram_sel, extram_sel })
-        8'b1111_x_x_x_0: data_out = rom_data;     // F000-FFFF KERNAL
-        8'b1xxx_1_x_x_0: data_out = io_read_data; // E800-E8FF I/O
-        8'b1110_0_x_x_0: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
-        8'b110x_x_x_x_0: data_out = rom_data;     // C000-DFFF BASIC
-        8'b1011_x_x_x_0: data_out = rom_data;     // B000-BFFF BASIC 4
-        8'b1010_x_x_x_0: data_out = rom_data;     // A000-AFFF OPT ROM 2
-        8'b1001_x_x_x_0: data_out = rom_data;     // 9000-9FFF OPT ROM 1
-        8'b1000_x_1_x_0: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times)
-        8'b1xxx_x_x_x_1: data_out = extram_data;  // 8000-FFFF 64K EXT RAM (bank switched)
+        8'b1111_x_0_x_0: data_out = rom_data;     // F000-FFFF KERNAL
+        8'b1xxx_1_0_x_0: data_out = io_read_data; // E800-E8FF I/O
+        8'b1110_0_0_x_0: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
+        8'b110x_x_0_x_0: data_out = rom_data;     // C000-DFFF BASIC
+        8'b1011_x_0_x_0: data_out = rom_data;     // B000-BFFF BASIC 4
+        8'b1010_x_0_x_0: data_out = rom_data;     // A000-AFFF OPT ROM 2
+        8'b1001_x_0_x_0: data_out = rom_data;     // 9000-9FFF OPT ROM 1
+        8'b1xxx_x_1_x_0: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times) or 8296 RAM 8000-FFFF
+        8'b1xxx_x_0_x_1: data_out = extram_data;  // 8000-FFFF 64K EXT RAM (bank switched)
         8'b0xxx_x_x_1_0: data_out = ram_data;     // 0000-7FFF 32K RAM
+	// ^    ^ ^ ^ ^
+	// |    | | | +- extram_sel
+	// |    | | \--- ram_sel
+	// |    | \----- vram_sel
+	// |    \------- io_sel
+	// \------------ addr[15:12]
         default: data_out = addr[15:8];
     endcase;
 end;

@@ -56,6 +56,7 @@ module via6522
 	output reg       irq,
  
 	output reg [7:0] porta_out,
+	output     [7:0] porta_eff,	// effective bus values assuming open collector
 	input      [7:0] porta_in,
 	output reg [7:0] portb_out,
 	input      [7:0] portb_in,
@@ -485,6 +486,8 @@ end
 // Read data mux
 wire [7:0] porta = (porta_out & ddra) | (porta_in_r & ~ddra);
 wire [7:0] portb = (portb_out & ddrb) | (portb_in_r & ~ddrb);
+
+assign porta_eff = (porta_out & ddra) | (porta_in & ~ddra);
 
 always @(*) begin
 	case (addr)

@@ -84,6 +84,8 @@ module pet2001io
         input        cass_read,
         output       audio,             // CB2 audio
 
+        // User port
+        output [7:0] user_port_eff,
         input        diag_l,            // diag jumper input (active low)
 
         // IEEE-488
@@ -215,7 +217,8 @@ via6522 via
 
 	.irq(via_irq),
 	.porta_out(),
-	.porta_in(8'h00),
+	.porta_eff(user_port_eff),
+	.porta_in(8'hFF),
 	.portb_out(via_portb_out),
 	.portb_in(via_portb_in),
 
