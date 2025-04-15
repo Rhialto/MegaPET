@@ -152,8 +152,8 @@ dualport_2clk_ram #(
         .address_b(dma_addr[14:0]),
         .data_b(dma_din),
         .q_b(dma_rom_dout),
-        .wren_b(rom_wr),
-        .clock_b(dma_clk & ~dma_char_ce)
+        .wren_b(rom_wr & ~dma_char_ce),
+        .clock_b(dma_clk)
 );
 
 /////////////////////////////////////////////////////////////
@@ -181,8 +181,8 @@ dualport_2clk_ram #(
         .address_b(dma_addr[11:0]),
         .data_b(dma_din),
         .q_b(dma_char_dout),
-        .wren_b(chars_wr),
-        .clock_b(dma_clk & dma_char_ce)
+        .wren_b(chars_wr & dma_char_ce),
+        .clock_b(dma_clk)
 );
 
 //////////////////////////////////////////////////////////////

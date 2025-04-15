@@ -29,6 +29,59 @@ end
 
 endmodule
 
+module ieeedrv_sync_2d #(parameter W1 = 1, W2 = 1)
+(
+	input                  clk,
+	input      [W1-1:0] in[W2],
+	output reg [W1-1:0] out[W2]
+);
+
+reg [W1-1:0] s1[W2];
+reg [W1-1:0] s2[W2];
+always @(posedge clk) begin
+	s1 <= in;
+	s2 <= s1;
+	if(s1 == s2) out <= s2;
+end
+
+endmodule
+
+module ieeedrv_img_sync #(parameter W = 1)
+(
+	input               clk,
+	input       [W-1:0] in1,
+	input       [W-1:0] in2,
+	input         [1:0] in3[W],
+	output reg  [W-1:0] out1,
+	output reg  [W-1:0] out2,
+	output reg    [1:0] out3[W]
+);
+
+reg [W-1:0] s1a;
+reg [W-1:0] s1b;
+reg [W-1:0] s2a;
+reg [W-1:0] s2b;
+reg   [1:0] s3a[W];
+reg   [1:0] s3b[W];
+
+always @(posedge clk) begin
+	s1a <= in1;
+	s2a <= in2;
+	s3a <= in3;
+
+	s1b <= s1a;
+	s2b <= s2a;
+	s3b <= s3a;
+
+	if (s1a == s1b && s2a == s2b && s3a == s3b) begin
+	    out1 <= s1b;
+	    out2 <= s2b;
+	    out3 <= s3b;
+	end
+end
+
+endmodule
+
 module ieeedrv_bus_sync
 (
 	input              clk,

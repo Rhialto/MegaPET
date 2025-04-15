@@ -55,7 +55,7 @@
         output [7:0]       bus_o_data,
 
 
-	input       [ND:0] drv_type,
+	input       [ND:0] drv_type,			// clk_main core clock domain
 
 	input       [NB:0] img_mounted,                 // clk_main core clock domain
 	input       [31:0] img_size,                    // clk_main core clock domain
@@ -92,18 +92,44 @@ always @(posedge clk_sys) begin
 	end
 end
 
+reg [NB:0] img_loaded_main;
+reg [NB:0] img_readonly_l_main;
+reg  [1:0] img_type_main[NBD];
+
 reg [NB:0] img_loaded;
 reg [NB:0] img_readonly_l;
 reg  [1:0] img_type[NBD];
 
-always @(posedge clk_sys)
+/*
+ * I would have preferred to have a single ieeedrv_sync for the whole lot
+ * of {img_loaded_main, img_readonly_l_main, img_type_main} but I could not
+ * find out how to tell this to Vivado. The obvious thing did not work.
+ */
+ieeedrv_img_sync #(NBD) img_sync(
+    .clk(clk_sys),
+    .in1( img_loaded_main), .in2( img_readonly_l_main), .in3( img_type_main),
+    .out1(img_loaded     ), .out2(img_readonly_l     ), .out3(img_type     )
+);
+
+// Changed from clk_sys to clk_main plus the ieeedrv_img_sync.
+always @(posedge clk_main)
 	for(int i=0; i<NBD; i=i+1)
 		if (img_mounted[i]) begin
-			img_loaded[i]     <= |img_size;
+			img_loaded_main[i]     <= |img_size;
 			// i >> NS only works for NS=0 or NS=1; should be log2(NSD)
-			img_type[i]       <= {drv_type[i >> NS], img_size[31:8] >= 4166};
-			img_readonly_l[i] <= img_readonly;
+			img_type_main[i]       <= {drv_type[i >> NS], img_size[31:8] >= 4166};
+			img_readonly_l_main[i] <= img_readonly;
 		end
+
+/*
+ * drv_type and img_mounted are also used in several places inside the
+ * drive.
+ */
+wire [ND:0] drv_type_s;
+wire [NB:0] img_mounted_s;
+
+ieeedrv_sync #(NDR) drv_type_sync(clk_sys, drv_type, drv_type_s);
+ieeedrv_sync #(NBD) img_mounted_sync(clk_sys, img_mounted_i, img_mounted_s);
 
 st_ieee_bus drv_bus_i;
 st_ieee_bus drv_bus_o[NDR];
@@ -211,7 +237,7 @@ ieee_rommux #(NDR,14) dos_rom_mux (
 	.drv_addr(dos_addr),
 	.drv_select(dos_select),
 	.rom_addr(dos_rom_addr),
-	.rom_q(drv_type[dos_select] ? dos4040_data : dos8250_data),
+	.rom_q(drv_type_s[dos_select] ? dos4040_data : dos8250_data),
 	.drv_data(dos_data)
 );
 
@@ -249,7 +275,7 @@ ieee_rommux #(NDR,10) controller_rom_mux (
 	.drv_addr(ctl_addr),
 	.drv_select(ctl_select),
 	.rom_addr(ctl_rom_addr),
-	.rom_q(drv_type[ctl_select] ? ctl4040_data : ctl8250_data),
+	.rom_q(drv_type_s[ctl_select] ? ctl4040_data : ctl8250_data),
 	.drv_data(ctl_data)
 );
 
@@ -279,14 +305,14 @@ generate
 			.led_act(led_act[d]),
 			.led_err(led_err[d]),
 
-			.drv_type(drv_type[d]),
+			.drv_type(drv_type_s[d]),
 
 			.dos_addr(dos_addr[d]),
 			.dos_data(dos_data[d]),
 			.ctl_addr(ctl_addr[d]),
 			.ctl_data(ctl_data[d]),
 
-			.img_mounted(img_mounted[I1:I0]),
+			.img_mounted(img_mounted_s[I1:I0]),
 			.img_loaded(img_loaded[I1:I0]),
 			.img_readonly(img_readonly_l[I1:I0]),
 			.img_type(img_type[I0:I1]),
