@@ -186,21 +186,20 @@ always @(posedge clk) begin
     if (ce) begin
         if (1==1 /*hres < 416 && vres < 416*/) begin
 
+	    hsync_o <= hsync_i;
+	    vsync_o <= vsync_i;
+
             if (dot_count == blank_right) begin
                 hblank_o <= 1;
-                hsync_o <= 1;
             end
             else if (dot_count == blank_left)  begin
                 hblank_o <= 0;
-                hsync_o <= 0;
 
 		if (line_count == blank_bottom) begin
 		    vblank_o <= 1;
-		    vsync_o <= 1;
 		end
 		else if (line_count == blank_top) begin
 		    vblank_o <= 0;
-		    vsync_o <= 0;
 		end;
             end
         end
