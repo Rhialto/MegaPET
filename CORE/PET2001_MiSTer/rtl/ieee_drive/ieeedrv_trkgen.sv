@@ -37,8 +37,8 @@ module ieeedrv_trkgen #(parameter SUBDRV=2)
 	output reg        we,
 
 	input             rw,			// 0=write, 1=read?
-	output reg        byte_n,
-	output reg        brdy_n,
+	output reg        byte_n,		// to VIA CA1 to latch Port B
+	output reg        brdy_n,		// to SO (set overflow) on 8x50
 	output reg        error,
 
 	output reg        sync_rd_n,
@@ -175,7 +175,6 @@ typedef enum bit[3:0] {RW_RESET, RW_IDLE, R_SYNCHDR, R_SYNCDATA, R_SYNCTEST, R_H
 always @(posedge clk_sys) begin
 	reg [3:0] bit_cnt;
 	reg [8:0] byte_cnt;
-	reg [2:0] hdr_cnt;
 	reg [7:0] chk;
 	reg [7:0] old_track;
 	reg       rw_l;
