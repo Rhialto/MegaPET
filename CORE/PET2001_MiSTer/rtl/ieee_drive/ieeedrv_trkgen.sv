@@ -352,6 +352,7 @@ always @(posedge clk_sys) begin
 
 						if ((rw_l && !rw) || (!rw && sync_wr && !wprot) || trk_reset) begin
 							byte_cnt <= 0;
+							sector[drv_act] <= sector[drv_act] + 1'b1;	// Added by Rhialto
 
 							if (trk_reset)
 								rwState <= RW_RESET;
