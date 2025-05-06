@@ -163,17 +163,13 @@ always @(posedge clk_sys) begin
 						initing <= 1;
 						`read_track(drv_sel_s, INIT_TRACK); /* Error: procedural assignment to a non-register sd_blk_cnt,sd_lba is not permitted, left-hand side should be reg/integer/time/genvar */
 					end
-					else if (|ltrack_new) begin	// was ~&ltrack_new
+					else begin
 						`read_track(drv_sel_s, ltrack_new);
 					end
-					else
-						ltrack <= ltrack_new;
 				end
-				else if (|ltrack_new) begin	// was ~&ltrack_new
+				else begin
 					`read_track(drv_act, ltrack_new);
 				end
-				else
-					ltrack <= ltrack_new;
 			end
 		end
 	end
@@ -192,23 +188,19 @@ always @(posedge clk_sys) begin
 				initing <= 1;
 				`read_track(drv_sel_s, INIT_TRACK);
 			end
-			else if (|ltrack_new) begin	// was ~&ltrack_new
+			else begin
 				`read_track(drv_sel_s, ltrack_new);
 			end
-			else
-				ltrack <= ltrack_new;
 		end
 		else if (update[drv_act]) begin
 			update[drv_act] <= 0;
 			initing <= 1;
 			`read_track(drv_act, INIT_TRACK);
 		end
-		else if (ltrack != ltrack_new && |ltrack_new) begin	// was ~&ltrack_new
+		else if (ltrack != ltrack_new) begin
 			update[0] <= 0;
 			`read_track(drv_act, ltrack_new);
 		end
-		else
-			ltrack <= ltrack_new;
 	end
 end
 
