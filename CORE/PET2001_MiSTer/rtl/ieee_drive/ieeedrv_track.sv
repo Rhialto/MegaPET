@@ -176,7 +176,7 @@ always @(posedge clk_sys) begin
 	else begin
 		old_save_track <= save_track_s;
 
-		if ((old_save_track != save_track_s) && |ltrack) begin	// was ~&ltrack
+		if (old_save_track != save_track_s) begin
 			saving <= 1;
 			`write_track(drv_act, ltrack);
 		end
