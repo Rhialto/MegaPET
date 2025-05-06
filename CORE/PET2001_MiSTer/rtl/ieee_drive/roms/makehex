@@ -1,7 +1,19 @@
 #!/bin/sh
 
-cat 901466-04.bin | hexdump -v -e '"" 1/1 "%02x\n"'  > c4040_ctl.hex
-cat 901468-14.bin 901468-15.bin 901468-16.bin | hexdump -v -e '"" 1/1 "%02x\n"'  > c4040_dos.hex
+pad_and_hex() {
+    padlen=$1; shift
 
-cat 901885-04.bin | hexdump -v -e '"" 1/1 "%02x\n"'  > c8250_ctl.hex
-cat 901887-01.bin 901888-01.bin | hexdump -v -e '"" 1/1 "%02x\n"'  > c8250_dos.hex
+    if [ "$padlen" -gt 0 ]
+    then
+	yes "ff" | head -n $padlen
+    fi
+
+    # hex format: no offset, 1 byte per line
+    cat "$@" | hexdump -v -e '"" 1/1 "%02x\n"'
+}
+
+pad_and_hex 1024 901466-04.bin                             >c4040_ctl.hex
+pad_and_hex 4096 901468-14.bin 901468-15.bin 901468-16.bin >c4040_dos.hex
+
+pad_and_hex 1024 901885-04.bin               >c8250_ctl.hex
+pad_and_hex    0 901887-01.bin 901888-01.bin >c8250_dos.hex

@@ -108,13 +108,13 @@ module ieeedrv_rom #(
 	input	     [ADDRWIDTH-1:0] address_a,
 	input	     [DATAWIDTH-1:0] data_a,
 	input	                     wren_a,
-	output reg [DATAWIDTH-1:0] q_a
+	output reg [DATAWIDTH-1:0] q_a,
 
-	// input	                     clock_b,
-	// input	     [ADDRWIDTH-1:0] address_b,
-	// input	     [DATAWIDTH-1:0] data_b,
-	// input	                     wren_b,
-	// output reg [DATAWIDTH-1:0] q_b
+	input	                     clock_b,
+	input	     [ADDRWIDTH-1:0] address_b,
+	input	     [DATAWIDTH-1:0] data_b,
+	input	                     wren_b,
+	output reg [DATAWIDTH-1:0] q_b
 );
 
 dualport_2clk_ram #(
@@ -132,14 +132,14 @@ dualport_2clk_ram #(
         .data_a(data_a),
         .q_a(q_a),
         .wren_a(wren_a),
-        .clock_a(clock_a)
+        .clock_a(clock_a),
 
         // B: Access from QNICE on falling edge
-        // .address_b(address_b),
-        // .data_b(data_b),
-        // .q_b(q_b),
-        // .wren_b(wren_b),
-        // .clock_b(clock_b)
+        .address_b(address_b),
+        .data_b(data_b),
+        .q_b(q_b),
+        .wren_b(wren_b),
+        .clock_b(clock_b)
 );
 
 // altsyncram altsyncram_component (
