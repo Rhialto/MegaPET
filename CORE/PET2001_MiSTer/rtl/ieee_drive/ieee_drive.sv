@@ -55,7 +55,7 @@
         output [7:0]       bus_o_data,
 
 
-	input       [ND:0] drv_type,                    // clk_main core clock domain
+	input       [ND:0] drv_type,
 
 	input       [NB:0] img_mounted,                 // clk_main core clock domain
 	input       [31:0] img_size,                    // clk_main core clock domain
@@ -127,13 +127,10 @@ always @(posedge clk_main)
 		end
 
 /*
- * drv_type and img_mounted are also used in several places inside the
- * drive.
+ * img_mounted is also used in several places inside the drive.
  */
-wire [ND:0] drv_type_s;
 wire [NB:0] img_mounted_s;
 
-ieeedrv_sync #(NDR) drv_type_sync(clk_sys, drv_type, drv_type_s);
 ieeedrv_sync #(NBD) img_mounted_sync(clk_sys, img_mounted_i, img_mounted_s);
 
 st_ieee_bus drv_bus_i;
@@ -252,7 +249,7 @@ ieee_rommux #(NDR,14) dos_rom_mux (
 	.drv_addr(dos_addr),
 	.drv_select(dos_select),
 	.rom_addr(dos_rom_addr),
-	.rom_q(drv_type_s[dos_select] ? dos4040_data : dos8250_data),
+	.rom_q(drv_type[dos_select] ? dos4040_data : dos8250_data),
 	.drv_data(dos_data)
 );
 
@@ -309,7 +306,7 @@ ieee_rommux #(NDR,11) controller_rom_mux (
 	.drv_addr(ctl_addr),
 	.drv_select(ctl_select),
 	.rom_addr(ctl_rom_addr),
-	.rom_q(drv_type_s[ctl_select] ? ctl4040_data : ctl8250_data),
+	.rom_q(drv_type[ctl_select] ? ctl4040_data : ctl8250_data),
 	.drv_data(ctl_data)
 );
 
@@ -339,7 +336,7 @@ generate
 			.led_act(led_act[d]),
 			.led_err(led_err[d]),
 
-			.drv_type(drv_type_s[d]),
+			.drv_type(drv_type[d]),
 			.dos_16k(c4040_dos_16k | ~drv_type[d]),
 
 			.dos_addr(dos_addr[d]),

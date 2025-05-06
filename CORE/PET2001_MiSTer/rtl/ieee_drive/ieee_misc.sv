@@ -29,23 +29,6 @@ end
 
 endmodule
 
-module ieeedrv_sync_2d #(parameter W1 = 1, W2 = 1)
-(
-	input                  clk,
-	input      [W1-1:0] in[W2],
-	output reg [W1-1:0] out[W2]
-);
-
-reg [W1-1:0] s1[W2];
-reg [W1-1:0] s2[W2];
-always @(posedge clk) begin
-	s1 <= in;
-	s2 <= s1;
-	if(s1 == s2) out <= s2;
-end
-
-endmodule
-
 module ieeedrv_img_sync #(parameter W = 1)
 (
 	input               clk,
