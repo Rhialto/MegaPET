@@ -55,7 +55,7 @@
         output [7:0]       bus_o_data,
 
 
-	input       [ND:0] drv_type,
+	input       [ND:0] drv_type,                    // clk_main core clock domain
 
 	input       [NB:0] img_mounted,                 // clk_main core clock domain
 	input       [31:0] img_size,                    // clk_main core clock domain
@@ -128,10 +128,17 @@ always @(posedge clk_main)
 
 /*
  * img_mounted is also used in several places inside the drive.
+ * Since it is a short pulse, let's make sure it is long enough to survive
+ * the clock domain crossing.
  */
-wire [NB:0] img_mounted_s;
+wire [NB:0] img_mounted_str;    /* stretched signal in clk_main domain */
+wire [NB:0] img_mounted_s;      /* synced signal in clk_sys domain */
 
-ieeedrv_sync #(NBD) img_mounted_sync(clk_sys, img_mounted_i, img_mounted_s);
+ieeedrv_stretch #(NBD) img_mounted_stretch(clk_main, img_mounted, img_mounted_str);
+ieeedrv_sync #(NBD) img_mounted_sync(clk_sys, img_mounted_str, img_mounted_s);
+
+wire [NB:0] drv_type_s;         /* synced signal in clk_sys domain */
+ieeedrv_sync #(NBD) drv_type_sync(clk_sys, drv_type, drv_type_s);
 
 st_ieee_bus drv_bus_i;
 st_ieee_bus drv_bus_o[NDR];
@@ -249,7 +256,7 @@ ieee_rommux #(NDR,14) dos_rom_mux (
 	.drv_addr(dos_addr),
 	.drv_select(dos_select),
 	.rom_addr(dos_rom_addr),
-	.rom_q(drv_type[dos_select] ? dos4040_data : dos8250_data),
+	.rom_q(drv_type_s[dos_select] ? dos4040_data : dos8250_data),
 	.drv_data(dos_data)
 );
 
@@ -306,7 +313,7 @@ ieee_rommux #(NDR,11) controller_rom_mux (
 	.drv_addr(ctl_addr),
 	.drv_select(ctl_select),
 	.rom_addr(ctl_rom_addr),
-	.rom_q(drv_type[ctl_select] ? ctl4040_data : ctl8250_data),
+	.rom_q(drv_type_s[ctl_select] ? ctl4040_data : ctl8250_data),
 	.drv_data(ctl_data)
 );
 
@@ -336,8 +343,8 @@ generate
 			.led_act(led_act[d]),
 			.led_err(led_err[d]),
 
-			.drv_type(drv_type[d]),
-			.dos_16k(c4040_dos_16k | ~drv_type[d]),
+			.drv_type(drv_type_s[d]),
+			.dos_16k(c4040_dos_16k | ~drv_type_s[d]),
 
 			.dos_addr(dos_addr[d]),
 			.dos_data(dos_data[d]),

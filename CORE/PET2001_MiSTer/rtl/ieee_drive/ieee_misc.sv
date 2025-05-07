@@ -81,6 +81,34 @@ end
 
 endmodule
 
+module ieeedrv_stretch #(parameter W = 1)
+(
+        input              clk,
+        input      [W-1:0] in,
+        output reg [W-1:0] out
+);
+
+/* Stretches a pulse of 1 clock time to multiple clock times */
+reg [W-1:0] d1;
+reg [W-1:0] d2;
+reg [W-1:0] d3;
+
+integer ii;
+
+always @(posedge clk) begin
+    d1 <= in;
+    d2 <= d1;
+    d3 <= d2;
+
+    for (ii = 0; ii < W; ii = ii + 1) begin :nrii
+        if      (in[ii] == 1) out[ii] <= 1;
+        else if (d3[ii] == 0) out[ii] <= 0;
+    end
+end
+
+
+endmodule
+
 module ieeedrv_rom #(
 	parameter DATAWIDTH,
 	parameter ADDRWIDTH,
