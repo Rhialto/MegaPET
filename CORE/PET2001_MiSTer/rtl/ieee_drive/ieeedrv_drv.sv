@@ -118,6 +118,7 @@ ieeedrv_logic #(.SUBDRV(SUBDRV)) drv_logic
 	.reset(drv_reset),
 	.ph2_r(ph2_r),
 	.ph2_f(ph2_f),
+	.busy(sd_busy[drv_act]),
 
 	.drv_type({drv_type, ~drv_type}),
 	.dos_16k(dos_16k),
