@@ -135,8 +135,8 @@ dualport_2clk_ram #(
         .rom_preload(1),
         .rom_file_hex(1),
         // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
-        .rom_file(INITFILE)
-        // .falling_b(1)
+        .rom_file(INITFILE),
+        .falling_b(1)
 ) rom (
         // A: Access from CPU
         .address_a(address_a),
