@@ -13,8 +13,10 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-module ieeedrv_track #(parameter SUBDRV=2)
-(
+module ieeedrv_track #(
+	parameter SUBDRV=2,
+	parameter PAUSE_CTL=1
+) (
 	input             clk_sys,
 	input             reset,
 	input             ce,
@@ -100,7 +102,7 @@ always @(posedge clk_sys) begin
 		chg_count <= 0;
 	else if (&chg_count)
 		drv_change <= 1;
-	else if (ce)
+	else if (ce && !(busy && PAUSE_CTL))
 		chg_count <= chg_count + 1'd1;
 end
 

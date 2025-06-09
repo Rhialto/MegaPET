@@ -13,10 +13,12 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
  
-module ieeedrv_drv #(parameter SUBDRV=2)
-(
+module ieeedrv_drv #(
+	parameter SUBDRV=2,
+	parameter PAUSE_CTL=1
+)(
    input       [31:0] CLK,
-
+ 
 	input              clk_sys,
    input              reset,
 	input              ce,
@@ -112,12 +114,15 @@ wire        drv_error;
 wire [NS:0] led_act_o;
 wire        led_err_o;
 
-ieeedrv_logic #(.SUBDRV(SUBDRV)) drv_logic
-(
+ieeedrv_logic #(
+	.SUBDRV(SUBDRV), 
+	.PAUSE_CTL(PAUSE_CTL)
+) drv_logic (
 	.clk_sys(clk_sys),
 	.reset(drv_reset),
 	.ph2_r(ph2_r),
 	.ph2_f(ph2_f),
+	.busy(sd_busy[drv_act]),
 
 	.drv_type({drv_type, ~drv_type}),
 	.dos_16k(dos_16k),
