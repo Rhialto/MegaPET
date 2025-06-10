@@ -21,8 +21,6 @@ module ieeedrv_logic #(parameter SUBDRV=2)
 	input              ph2_r,
 	input              ph2_f,
 
-	input              busy,
-
 	input        [1:0] drv_type,   // 00=8050, 01=8250, 10=4040
 	input              dos_16k,
 
@@ -215,7 +213,7 @@ T65 uc3
 (
 	.MODE(2'b00),
 	.RES_n(~reset),
-	.ENABLE(ph2_r & ~busy),
+	.ENABLE(ph2_r),
 	.CLK(clk_sys),
 	.IRQ_n(uc5_irq),
 	.SO_n(drv_brdy_n | drv_type[1]),
@@ -245,7 +243,7 @@ assign drv_sel = uc5_pbo[0] && (SUBDRV>1);
 M6532 #(.RRIOT(1)) uc5
 (
 	.clk(clk_sys),
-	.ce(ph2_f & ~busy),
+	.ce(ph2_f),
 	.res_n(~reset),
 	.addr(uc3_a[6:0]),
 	.RW_n(uc3_rw),
@@ -326,7 +324,7 @@ via6522 ud5
 	.cb2_out(drv_rw),
 	.cb2_in(1'b0),
 
-	.ce(ph2_f & ~busy),
+	.ce(ph2_f),
 	.clk(clk_sys),
 	.reset(reset)
 );
@@ -354,7 +352,7 @@ ieeedrv_mem #(8,12) ieeedrv_ram
 
 	.clock_b(clk_sys),
 	.address_b(uc3_a[11:0]),
-	.wren_b(~uc3_rw & uc3_ram_cs & ph2_f & ~busy),
+	.wren_b(~uc3_rw & uc3_ram_cs & ph2_f),
 	.data_b(uc3_do),
 	.q_b(uc3_ram_data)
 );
