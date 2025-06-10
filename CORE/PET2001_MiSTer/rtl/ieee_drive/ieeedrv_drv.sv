@@ -168,7 +168,7 @@ ieeedrv_logic #(
 wire [NS:0] save_track;
 
 wire  [6:0] track[SUBDRV];
-wire        drv_act;
+wire        drv_act, drv_changing;
 reg  [15:0] dsk_id[SUBDRV];
 reg   [7:0] drv_sd_buff_din;
 wire        drv_we;
@@ -186,13 +186,16 @@ generate
 
 			.drv_type(drv_type),
 
-			.we(drv_we & (drv_ready | drv_sync_o) & drv_mtr[i] & (drv_sel == i)),
-
 			.img_mounted(img_mounted[i]),
-			.act(led_act[i] & (drv_sel == i)),
 
+			.selected(drv_sel == i),
+			.changing(drv_changing),
+			.sync(~drv_sync_i),
+			.busy(sd_busy[i]),
 			.mtr(drv_mtr[i]),
 			.stp(drv_step[i]),
+			.we(drv_we),
+			.hd(drv_hd),
 
 			.save_track(save_track[i]),
 			.track(track[i])
@@ -242,8 +245,10 @@ ieeedrv_track #(SUBDRV) drv_track
 
 	.drv_mtr(drv_mtr),
 	.drv_sel(drv_sel),
-	.drv_act(drv_act),
 	.drv_hd(drv_hd),
+
+	.drv_act(drv_act),
+	.drv_changing(drv_changing),
 
 	.sd_lba(sd_lba),
 	.sd_blk_cnt(sd_blk_cnt),
