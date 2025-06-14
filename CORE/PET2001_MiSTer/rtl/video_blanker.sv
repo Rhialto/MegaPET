@@ -33,22 +33,21 @@ module video_blanker
 localparam VISIBLE_H = 320 + 32;    // 352
 localparam VISIBLE_V = 250 + 46;    // 296
 
-// TODO: take off at least 2 msbits off all horizontal counters
-reg[11:0] dot_count;
-reg[11:0] hres;
+reg[9:0] dot_count;
+reg[9:0] hres;
 
 reg[8:0]  line_count;
 reg[8:0]  vres_buf[2];
 wire[8:0] vres = vres_buf[0] > vres_buf[1] ? vres_buf[0] : vres_buf[1];
 
-reg[11:0] de_left;
-reg[11:0] de_right;
+reg[9:0] de_left;
+reg[9:0] de_right;
 reg[8:0] de_top;
 reg[8:0] de_bottom;
 reg[8:0] de_line;
 
-reg[11:0] blank_left;
-reg[11:0] blank_right;
+reg[9:0] blank_left;
+reg[9:0] blank_right;
 reg[8:0] blank_top;
 reg[8:0] blank_bottom;
 
@@ -58,10 +57,10 @@ always @(posedge clk) begin
     reg de_r0;
     reg new_de_top;
     reg newfield;
-    reg[11:0] tmp_blank_top;
-    reg[11:0] tmp_blank_bottom;
-    reg[11:0] tmp_blank_left;
-    reg[11:0] tmp_blank_right;
+    reg[10:0] tmp_blank_top;
+    reg[10:0] tmp_blank_bottom;
+    reg[10:0] tmp_blank_left;
+    reg[10:0] tmp_blank_right;
 
     if (reset) begin
         line_count <= 0;
@@ -116,13 +115,13 @@ always @(posedge clk) begin
 		 * TODO: for programs that switch the 8032 to 40 columns, the
 		 * below wont work properly. It would have a very long hsync?
 		 */
-                tmp_blank_left  = de_left[11:1] + de_right[11:1] - VISIBLE_H/2;
+                tmp_blank_left  = de_left[9:1] + de_right[9:1] - VISIBLE_H/2;
 		if (tmp_blank_left > hres) begin
 		    blank_left <= tmp_blank_left + hres;
 		end else begin
 		    blank_left <= tmp_blank_left;
 		end;
-                tmp_blank_right = de_left[11:1] + de_right[11:1] + VISIBLE_H/2;
+                tmp_blank_right = de_left[9:1] + de_right[9:1] + VISIBLE_H/2;
 		if (tmp_blank_right > hres) begin
 		    blank_right <= tmp_blank_right - hres;
 		end else begin
