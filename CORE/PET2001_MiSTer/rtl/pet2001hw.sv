@@ -284,11 +284,14 @@ reg     ce_8m;
  * when ce_1m == 1. Playing with the vram's bus will make it write the same
  * thing twice.
  */
+wire    ce_pixel_40 = (cnt31_i[1:0] == 1);  // every 4 clocks
+wire    ce_pixel_80 = (cnt31_i[0] == 1);    // every 2 clocks
+
 always @(posedge clk)
 begin
-    ce_pixel <= pref_have_80_cols ? (cnt31_i[0] == 1)     // every 2 clocks
-                                  : (cnt31_i[1:0] == 1);  // every 4 clocks
-    ce_8m <= (cnt31_i[1:0] == 1);  // every 4 clocks
+    ce_pixel <= pref_have_80_cols ? ce_pixel_80
+                                  : ce_pixel_40;
+    ce_8m <= ce_pixel_40;                     // every 4 clocks
 
     if (cnt31_i == 3) begin
         vram_cpu_video <= 0;    // video; fetch character data; could be <= !chosen_de?
@@ -315,7 +318,12 @@ begin
     end;
 end;
 
-assign ce_pixel_o = ce_pixel;
+// Output pixel clock. Let it be fixed so the crop processing can work.
+assign ce_pixel_o = ce_pixel_80;
+
+// In the 2nd half of the cpu cycle, fetch the odd char from 80 col video
+// memory.
+wire vram_odd_char = cnt31_i[4];
 
 //////////////////////////////////////
 //
@@ -418,9 +426,9 @@ assign vram_addr_cpu = pref_have_8296 ? vram_addr_cpu_2
  * compatible with increasing the base address of screen memory. So we just OR
  * it in. That it will do at least something useful as long as you don't
  * program something conflicting.  */
-assign vram_addr_vid_2 = pref_have_80_cols ? { video_addr[11], video_addr[10] | vram_colour_bit, video_addr[9:0], cnt31_i[4] }
+assign vram_addr_vid_2 = pref_have_80_cols ? { video_addr[11], video_addr[10] | vram_colour_bit, video_addr[9:0], vram_odd_char }
                                            : { 1'b0, video_addr[11] | vram_colour_bit, video_addr[10:0] }; // 40 cols 8296
-assign vram_addr_vid_0 = pref_have_80_cols ? { vram_colour_bit, video_addr[9:0], cnt31_i[4] }
+assign vram_addr_vid_0 = pref_have_80_cols ? { vram_colour_bit, video_addr[9:0], vram_odd_char }
                                            : { vram_colour_bit, 1'b0, video_addr[9:0] };
 assign vram_addr_vid = pref_have_8296 ? vram_addr_vid_2
                                       : { 1'b0, vram_addr_vid_0 };
