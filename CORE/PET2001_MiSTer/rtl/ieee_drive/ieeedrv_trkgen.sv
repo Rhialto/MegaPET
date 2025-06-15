@@ -23,6 +23,7 @@ module ieeedrv_trkgen #(parameter SUBDRV=2)
 	input             drv_type,
 	input       [1:0] img_type,
 
+	input             halt,
 	input             drv_act,
 	input             drv_hd,
 	input             mtr,
@@ -32,7 +33,6 @@ module ieeedrv_trkgen #(parameter SUBDRV=2)
 	input      [15:0] id,
 	output reg [15:0] id_hdr,
 	output reg        id_wr,
-	input             busy,
 	input             wprot,
 	output reg        we,
 
@@ -109,7 +109,6 @@ always @(posedge clk_sys) begin
 	int       sum = 0;
 
 	reg [3:0] bit_clk_cnt;
-	reg [7:0] track_r;
 	reg       rw_r;
 
 	bit_clk_en <= 0;
@@ -118,12 +117,10 @@ always @(posedge clk_sys) begin
 	if (sum >= CLK) begin
 		sum = sum - CLK;
 
-		track_r <= track;
 		rw_r <= rw;
-
-		if ((track_r != track) || (rw_r != rw) || busy || !mtr)
+		if (rw_r != rw || !mtr)
 			bit_clk_cnt <= 4'(freq);
-		else begin
+		else if (!halt) begin
 			bit_clk_cnt <= bit_clk_cnt + 1'b1;
 
 			if (&bit_clk_cnt) begin
@@ -153,14 +150,11 @@ reg trk_reset, trk_reset_ack;
 always @(posedge clk_sys) begin
 	reg drv_act_l;
 
-	if (reset || !loaded || &track || img_type[1] != drv_type || (!img_type[0] && drv_hd) || drv_act != drv_act_l) begin
+	drv_act_l <= drv_act;
+	if (reset || !loaded || &track || img_type[1] != drv_type || (!img_type[0] && drv_hd) || drv_act != drv_act_l || halt)
 		trk_reset <= 1;
-		if (reset || !loaded || &track || img_type[1] != drv_type || (!img_type[0] && drv_hd) || busy)
-			drv_act_l <= drv_act;
-	end
-	else if (trk_reset_ack) begin
+	else if (trk_reset_ack)
 		trk_reset <= 0;
-	end
 end
 
 reg  [7:0] buff_addr;

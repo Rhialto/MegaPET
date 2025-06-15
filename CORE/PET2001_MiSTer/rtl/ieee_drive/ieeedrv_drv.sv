@@ -122,7 +122,7 @@ ieeedrv_logic #(
 	.reset(drv_reset),
 	.ph2_r(ph2_r),
 	.ph2_f(ph2_f),
-	.busy(sd_busy[drv_act]),
+	.halt_ctl(sd_busy[drv_act] & ~track_changing[drv_act]),
 
 	.drv_type({drv_type, ~drv_type}),
 	.dos_16k(dos_16k),
@@ -167,7 +167,8 @@ ieeedrv_logic #(
 
 wire [NS:0] save_track;
 
-wire  [6:0] track[SUBDRV];
+wire  [7:0] track[SUBDRV];
+wire [NS:0] track_changing;
 wire        drv_act, drv_changing;
 reg  [15:0] dsk_id[SUBDRV];
 reg   [7:0] drv_sd_buff_din;
@@ -183,22 +184,24 @@ generate
 		ieeedrv_step drv_stepper (
 			.clk_sys(clk_sys),
 			.reset(drv_reset),
+			.ce(ce),
 
 			.drv_type(drv_type),
 
-			.img_mounted(img_mounted[i]),
-
+			.mounted(img_mounted[i]),
 			.selected(drv_sel == i),
 			.changing(drv_changing),
+
 			.sync(~drv_sync_i),
-			.busy(sd_busy[i]),
 			.mtr(drv_mtr[i]),
 			.stp(drv_step[i]),
+			.rw(drv_rw),
 			.we(drv_we),
 			.hd(drv_hd),
 
 			.save_track(save_track[i]),
-			.track(track[i])
+			.track(track[i]),
+			.track_changing(track_changing[i])
 		);
 
 		always @(posedge clk_sys) begin
@@ -241,7 +244,6 @@ ieeedrv_track #(SUBDRV) drv_track
 	.drv_type(drv_type),
 
 	.mounted(img_mounted),
-	.loaded(img_loaded),
 
 	.drv_mtr(drv_mtr),
 	.drv_sel(drv_sel),
@@ -277,16 +279,20 @@ ieeedrv_trkgen #(SUBDRV) drv_trkgen
 	.drv_type(drv_type),
 	.img_type(img_type[drv_act]),
 
+	.halt(sd_busy[drv_act] | track_changing[drv_act] | ~id_loaded[drv_act]),
 	.drv_act(drv_act),
 	.drv_hd(drv_hd),
 	.mtr(drv_mtr[drv_act]),
 	.freq(drv_spd),
-	.track(ltrack),
-	.busy(sd_busy[drv_act] | ~id_loaded[drv_act]),
-	.wprot(img_readonly[drv_act]),
-	.rw(drv_rw),
 
+	.track(ltrack),
+	.id(dsk_id[drv_act]),
+	.id_hdr(id_hdr),
+	.id_wr(id_wr),
+	.wprot(img_readonly[drv_act]),
 	.we(drv_we),
+
+	.rw(drv_rw),
 	.byte_n(drv_ready),
 	.brdy_n(drv_brdy_n),
 	.error(drv_error),
@@ -302,11 +308,7 @@ ieeedrv_trkgen #(SUBDRV) drv_trkgen
 	.sd_buff_addr(sd_buff_addr),
 	.sd_buff_dout(sd_buff_dout),
 	.sd_buff_din(drv_sd_buff_din),
-	.sd_buff_wr(|sd_ack & sd_buff_wr),
-
-	.id(dsk_id[drv_act]),
-	.id_hdr(id_hdr),
-	.id_wr(id_wr)
+	.sd_buff_wr(|sd_ack & sd_buff_wr)
 );
 
 endmodule

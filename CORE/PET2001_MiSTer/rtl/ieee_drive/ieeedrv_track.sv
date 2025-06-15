@@ -24,7 +24,6 @@ module ieeedrv_track #(
 	input             drv_type,
 
 	input      [NS:0] mounted,
-	input      [NS:0] loaded,
 
 	input      [NS:0] drv_mtr,
 	input             drv_sel,
@@ -39,7 +38,7 @@ module ieeedrv_track #(
 	input      [NS:0] sd_ack,
 
 	input      [NS:0] save_track,
-	input       [6:0] track[SUBDRV],
+	input       [7:0] track[SUBDRV],
 	output reg  [7:0] ltrack,
 
 	output reg [NS:0] busy
@@ -47,16 +46,8 @@ module ieeedrv_track #(
 
 localparam NS = SUBDRV-1;
 
-wire  [6:0] track_s[SUBDRV];
 wire [NS:0] mounted_s;
 wire        reset_s, drv_sel_s, save_track_s;
-
-generate
-	genvar d;
-	for (d=0; d<SUBDRV; d=d+1) begin :track_sync
-		ieeedrv_sync #(7) track_sync(clk_sys, track[d], track_s[d]);
-	end
-endgenerate
 
 ieeedrv_sync #(SUBDRV) mounted_sync (clk_sys, mounted,             mounted_s);
 ieeedrv_sync #(1)      sel_sync     (clk_sys, drv_sel && SUBDRV>1, drv_sel_s);
@@ -88,8 +79,6 @@ wire [12:0] START_SECTOR[2][155] = '{
 	}
 };
 
-localparam SIDE0_START = 1;
-localparam SIDE1_START = 78;
 wire [7:0] INIT_TRACK  = 8'(drv_type  ? 18 : 39);
 
 reg [10:0] chg_count = 0;
@@ -104,20 +93,19 @@ always @(posedge clk_sys) begin
 		chg_count <= chg_count + 1'd1;
 	end
 
-`define select_track(drv, track) \
+`define select_track(drv, strack) \
 	busy[drv]       <= 1; \
-	ltrack          <= track; \
-	sd_blk_cnt[drv] <= 6'(START_SECTOR[drv_type][track] - START_SECTOR[drv_type][track - 1'd1] - 1); \
-	sd_lba[drv]     <= START_SECTOR[drv_type][track - 1'd1];
+	ltrack          <= strack; \
+	sd_blk_cnt[drv] <= 6'(START_SECTOR[drv_type][strack] - START_SECTOR[drv_type][strack - 1'd1] - 1); \
+	sd_lba[drv]     <= START_SECTOR[drv_type][strack - 1'd1];
 
 `define init_track(drv) \
 	`select_track(drv, INIT_TRACK); \
 	sd_rd[drv] <= 1;
 
 `define read_track(drv) \
-	new_ltrack = 8'(track_s[drv] + (drv_hd ? SIDE1_START : SIDE0_START)); \
-	if (drv != drv_act || new_ltrack != ltrack) begin \
-		`select_track(drv, new_ltrack); \
+	if (drv != drv_act || track[drv] != ltrack) begin \
+		`select_track(drv, track[drv]); \
 		sd_rd[drv] <= 1; \
 	end
 
@@ -127,10 +115,8 @@ always @(posedge clk_sys) begin
 
 
 always @(posedge clk_sys) begin
-	reg  [7:0] new_ltrack;
 	reg [NS:0] old_mounted, update;
 	reg        old_ack;
-	reg        saving = 0, initing = 0;
 	reg        old_save_track = 0;
 	reg        resetting = 0;
 
@@ -154,49 +140,22 @@ always @(posedge clk_sys) begin
 	else if (resetting) begin
 		if (!drv_sel_s || SUBDRV==1) begin
 			resetting    <= 0;
-			saving       <= 0;
 			update       <= '1;
 			ltrack       <= '1;/* Error: procedural assignment to a non-register ltrack is not permitted, left-hand side should be reg/integer/time/genvar */
 		end
 	end
-	else if (busy[drv_act]) begin
-		if (old_ack && !sd_ack[drv_act]) begin
-			busy[drv_act] <= 0;
-			saving <= 0;
-			initing <= 0;
-		
-			if (initing || saving) begin
-				if (drv_change) begin
-					drv_act <= drv_sel_s;
-
-					update[drv_sel_s] <= 0;
-					if (update[drv_sel_s]) begin
-						initing <= 1;
-						`init_track(drv_sel_s); /* Error: procedural assignment to a non-register sd_blk_cnt,sd_lba is not permitted, left-hand side should be reg/integer/time/genvar */
-					end
-					else begin
-						`read_track(drv_sel_s);
-					end
-				end
-				else begin
-					`read_track(drv_act);
-				end
-			end
-		end
-	end
-	else begin
+	else if (!busy[drv_act] || (old_ack && !sd_ack[drv_act])) begin
+		busy[drv_act] <= 0;
 		old_save_track <= save_track_s;
 
 		if (old_save_track != save_track_s) begin
-			saving <= 1;
 			`write_track(drv_act);
 		end
 		else if (drv_change) begin
 			drv_act <= drv_sel_s;
 
-			update[drv_sel_s] <= 0;
 			if (update[drv_sel_s]) begin
-				initing <= 1;
+				update[drv_sel_s] <= 0;
 				`init_track(drv_sel_s);
 			end
 			else begin
@@ -205,7 +164,6 @@ always @(posedge clk_sys) begin
 		end
 		else if (update[drv_act]) begin
 			update[drv_act] <= 0;
-			initing <= 1;
 			`init_track(drv_act);
 		end
 		else begin

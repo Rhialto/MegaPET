@@ -23,7 +23,7 @@ module ieeedrv_logic #(
 	input              ph2_r,
 	input              ph2_f,
 
-	input              busy,
+	input              halt_ctl,
 
 	input        [1:0] drv_type,   // 00=8050, 01=8250, 10=4040
 	input              dos_16k,
@@ -69,8 +69,8 @@ assign ctl_addr = uc3_a[10:0];
 
 wire ph2_r_dos = ph2_r;
 wire ph2_f_dos = ph2_f;
-wire ph2_r_ctl = ph2_r && !(busy && PAUSE_CTL);
-wire ph2_f_ctl = ph2_f && !(busy && PAUSE_CTL);
+wire ph2_r_ctl = ph2_r && !(halt_ctl && PAUSE_CTL);
+wire ph2_f_ctl = ph2_f && !(halt_ctl && PAUSE_CTL);
 
 // ====================================================================
 // CPU DOS (6502) UN1
