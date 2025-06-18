@@ -148,7 +148,7 @@ always @(posedge clk_sys) begin
 		busy[drv_act] <= 0;
 		old_save_track <= save_track_s;
 
-		if (old_save_track != save_track_s) begin
+		if ((old_save_track != save_track_s) && ~&ltrack) begin
 			`write_track(drv_act);
 		end
 		else if (drv_change) begin
