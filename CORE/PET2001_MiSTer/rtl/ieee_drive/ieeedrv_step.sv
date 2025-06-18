@@ -22,6 +22,7 @@ module ieeedrv_step (
 
 	input        mounted,
 	input        selected,
+	input        active,
 	input        changing,
 
 	input        mtr,
@@ -46,9 +47,11 @@ localparam SIDE1_START = 78;
 wire [8:0] MAX_HTRACK = 9'(drv_type ? 42*2 : 76*4);
 wire [8:0] DIR_HTRACK = 9'(drv_type ? 17*2 : 38*4);
 reg  [8:0] htrack;
+reg  [7:0] track_r;
 
-assign track = drv_type ? 8'(htrack[7:1] + SIDE0_START)
-								: 8'(htrack[8:2] + (hd ? SIDE1_START : SIDE0_START));
+assign track = track_changing ? track_r 
+										: (drv_type ? 8'(htrack[7:1] + SIDE0_START)
+														: 8'(htrack[8:2] + (hd ? SIDE1_START : SIDE0_START)));
 
 wire [20:0] CHANGE_DELAY = 21'(drv_type ? 'h40000: 'h20000);  // `ce` clock pulses between stepper pulses
 reg  [20:0] change_cnt;
@@ -77,17 +80,20 @@ always @(posedge clk_sys) begin
 	reg       hd_old, sync_old, rw_old;
 	reg [5:0] sync_cnt;
 
-	hd_old   <= hd;
-	rw_old   <= rw;
+	track_r  <= track;
 	sync_old <= sync;
-
 	stp_old  <= stp;
 	move     <= stp - stp_old;
+
+	if (reset || selected) begin
+		hd_old <= hd;
+		rw_old <= rw;
+	end
 
 	if (change_cnt && ce)
 		change_cnt <= change_cnt - 1'b1;
 
-	if (reset || mounted || !track_modified || track_changing || !mtr)
+	if (reset || !active || mounted || !track_modified || track_changing || !mtr)
 		sync_cnt <= SYNC_PULSES;
 	else if (sync_cnt && !sync_old && sync)
 		sync_cnt <= sync_cnt - 1'b1;

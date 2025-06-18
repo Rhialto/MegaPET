@@ -190,6 +190,7 @@ generate
 
 			.mounted(img_mounted[i]),
 			.selected(drv_sel == i),
+			.active(drv_act == i),
 			.changing(drv_changing),
 
 			.sync(~drv_sync_i),
