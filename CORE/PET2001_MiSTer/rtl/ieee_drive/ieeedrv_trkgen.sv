@@ -23,7 +23,7 @@ module ieeedrv_trkgen #(parameter SUBDRV=2)
 	input             drv_type,
 	input       [1:0] img_type,
 
-	input             halt,
+	input             invalid,
 	input             drv_act,
 	input             drv_hd,
 	input             mtr,
@@ -120,7 +120,7 @@ always @(posedge clk_sys) begin
 		rw_r <= rw;
 		if (rw_r != rw || !mtr)
 			bit_clk_cnt <= 4'(freq);
-		else if (!halt) begin
+		else begin
 			bit_clk_cnt <= bit_clk_cnt + 1'b1;
 
 			if (&bit_clk_cnt) begin
@@ -148,10 +148,13 @@ ieeedrv_mem #(8,13) buffer
 
 reg trk_reset, trk_reset_ack;
 always @(posedge clk_sys) begin
-	reg drv_act_l;
+	reg       drv_act_l;
+	reg [7:0] track_l;
 
 	drv_act_l <= drv_act;
-	if (reset || !loaded || &track || img_type[1] != drv_type || (!img_type[0] && drv_hd) || drv_act != drv_act_l || halt)
+	track_l   <= track;
+
+	if (reset || !loaded || img_type[1] != drv_type || (!img_type[0] && drv_hd) || drv_act != drv_act_l || track != track_l)
 		trk_reset <= 1;
 	else if (trk_reset_ack)
 		trk_reset <= 0;
@@ -469,6 +472,13 @@ always @(posedge clk_sys) begin
 						end
 					end
 			endcase
+
+			if (invalid) begin
+				error     <= 1;
+				byte_rd   <= 8'h0f;
+				sync_rd_n <= 1;
+				we        <= 0;
+			end
 		end
 	end
 end

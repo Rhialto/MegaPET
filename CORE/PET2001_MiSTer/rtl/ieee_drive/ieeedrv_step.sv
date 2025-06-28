@@ -26,7 +26,6 @@ module ieeedrv_step (
 	input        changing,
 
 	input        mtr,
-	input        sync,
 	input  [1:0] stp,
 	input        we,
 	input        rw,
@@ -41,47 +40,34 @@ module ieeedrv_step (
 // and 8520 "6530-47 RIOT DOS 2.7 Micropolis" part #901885-04
 // (some other RIOT versions for other drive types use different step motor control signals)
 
+// Track constants
 localparam SIDE0_START = 1;
 localparam SIDE1_START = 78;
+wire [8:0] MAX_HTRACK = 9'(drv_type ? 42*2 : 76*4);  // Max half/quarter track number
+wire [8:0] DIR_HTRACK = 9'(drv_type ? 17*2 : 38*4);  // Directory half/quarter track number
 
-wire [8:0] MAX_HTRACK = 9'(drv_type ? 42*2 : 76*4);
-wire [8:0] DIR_HTRACK = 9'(drv_type ? 17*2 : 38*4);
-reg  [8:0] htrack;
-reg  [7:0] track_r;
+// `ce` pulses to wait after drive stops writing before flushing buffer if controller is idle
+localparam SAVE_DELAY = 8_000_000;  // 0.5 seconds = 2.5 rotations at 300 RPM
 
+// max `ce` pulses between stepper pulses
+wire [18:0] CHANGE_DELAY = 19'(drv_type ? 'h4_0000 : 'h2_0000);
+
+assign track_changing = |change_cnt;
 assign track = track_changing ? track_r 
 										: (drv_type ? 8'(htrack[7:1] + SIDE0_START)
 														: 8'(htrack[8:2] + (hd ? SIDE1_START : SIDE0_START)));
 
-wire [20:0] CHANGE_DELAY = 21'(drv_type ? 'h40000: 'h20000);  // `ce` clock pulses between stepper pulses
-reg  [20:0] change_cnt;
-
-wire  [5:0] SYNC_PULSES = 6'(drv_type ? (
-										(track < 18) ? 5'd20 :
-										(track < 25) ? 5'd18 :
-										(track < 31) ? 5'd17 :
-															5'd16
-									) : (
-										(track <  40) ? 5'd28 :
-										(track <  54) ? 5'd26 :
-										(track <  65) ? 5'd24 :
-										(track <  78) ? 5'd22 :
-										(track < 117) ? 5'd28 :
-										(track < 131) ? 5'd26 :
-										(track < 142) ? 5'd24 :
-															 5'd22
-									)) << 1;
-
-assign track_changing = |change_cnt;
+reg  [8:0] htrack;
+reg  [7:0] track_r;
+reg [18:0] change_cnt;
 
 always @(posedge clk_sys) begin
-	reg       track_modified;
-	reg [1:0] move, stp_old;
-	reg       hd_old, sync_old, rw_old;
-	reg [5:0] sync_cnt;
+	reg [22:0] save_cnt;
+	reg        track_modified;
+	reg  [1:0] move, stp_old;
+	reg        hd_old, rw_old;
 
 	track_r  <= track;
-	sync_old <= sync;
 	stp_old  <= stp;
 	move     <= stp - stp_old;
 
@@ -93,10 +79,8 @@ always @(posedge clk_sys) begin
 	if (change_cnt && ce)
 		change_cnt <= change_cnt - 1'b1;
 
-	if (reset || !active || mounted || !track_modified || track_changing || !mtr)
-		sync_cnt <= SYNC_PULSES;
-	else if (sync_cnt && !sync_old && sync)
-		sync_cnt <= sync_cnt - 1'b1;
+	if (save_cnt && ce)
+		save_cnt <= save_cnt - 1'b1;
 
 	if (reset || mounted) begin
 		htrack <= DIR_HTRACK;
@@ -122,14 +106,17 @@ always @(posedge clk_sys) begin
 			if (hd != hd_old) begin
 				change_cnt <= CHANGE_DELAY;
 			end
-
-			if (track_modified && (changing || move[0] || !mtr || hd != hd_old || !sync_cnt)) begin
-				save_track <= ~save_track;
-				track_modified <= 0;
-			end
-
 			if (rw_old && !rw)
 				change_cnt <= 0;
+
+			if (!track_modified || we)
+				save_cnt <= 23'(SAVE_DELAY);
+		end
+
+		if (track_modified && (changing || move[0] || (selected && (!mtr || hd != hd_old || !save_cnt)))) begin
+			track_modified <= 0;
+			save_track     <= ~save_track;
+			save_cnt       <= 23'(SAVE_DELAY);
 		end
 	end
 end

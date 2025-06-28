@@ -193,7 +193,6 @@ generate
 			.active(drv_act == i),
 			.changing(drv_changing),
 
-			.sync(~drv_sync_i),
 			.mtr(drv_mtr[i]),
 			.stp(drv_step[i]),
 			.rw(drv_rw),
@@ -280,7 +279,7 @@ ieeedrv_trkgen #(SUBDRV) drv_trkgen
 	.drv_type(drv_type),
 	.img_type(img_type[drv_act]),
 
-	.halt(sd_busy[drv_act] | track_changing[drv_act] | ~id_loaded[drv_act]),
+	.invalid(track_changing[drv_act] | ~id_loaded[drv_act] | (drv_act != drv_sel)),
 	.drv_act(drv_act),
 	.drv_hd(drv_hd),
 	.mtr(drv_mtr[drv_act]),
