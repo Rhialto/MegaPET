@@ -52,6 +52,9 @@ localparam SAVE_DELAY = 8_000_000;  // 0.5 seconds = 2.5 rotations at 300 RPM
 // max `ce` pulses between stepper pulses
 wire [18:0] CHANGE_DELAY = 19'(drv_type ? 'h4_0000 : 'h2_0000);
 
+// max `ce` pulses between random `hd` signal changes
+localparam HD_CHANGE_DELAY = 1023;
+
 assign track_changing = |change_cnt;
 assign track = track_changing ? track_r 
 										: (drv_type ? 8'(htrack[7:1] + SIDE0_START)
@@ -63,6 +66,7 @@ reg [18:0] change_cnt;
 
 always @(posedge clk_sys) begin
 	reg [22:0] save_cnt;
+	reg  [9:0] hd_cnt;
 	reg        track_modified;
 	reg  [1:0] move, stp_old;
 	reg        hd_old, rw_old;
@@ -81,6 +85,9 @@ always @(posedge clk_sys) begin
 
 	if (save_cnt && ce)
 		save_cnt <= save_cnt - 1'b1;
+
+	if (hd_cnt && ce)
+		hd_cnt <= hd_cnt - 1'b1;
 
 	if (reset || mounted) begin
 		htrack <= DIR_HTRACK;
@@ -103,9 +110,11 @@ always @(posedge clk_sys) begin
 			if (we)
 				track_modified <= 1;
 
-			if (hd != hd_old) begin
+			if (hd == hd_old)
+				hd_cnt <= 10'(HD_CHANGE_DELAY);
+			else
 				change_cnt <= CHANGE_DELAY;
-			end
+
 			if (rw_old && !rw)
 				change_cnt <= 0;
 
@@ -113,7 +122,7 @@ always @(posedge clk_sys) begin
 				save_cnt <= 23'(SAVE_DELAY);
 		end
 
-		if (track_modified && (changing || move[0] || (selected && (!mtr || hd != hd_old || !save_cnt)))) begin
+		if (track_modified && (changing || move[0] || (selected && (!mtr || !hd_cnt || !save_cnt)))) begin
 			track_modified <= 0;
 			save_track     <= ~save_track;
 			save_cnt       <= 23'(SAVE_DELAY);

@@ -15,7 +15,7 @@
  
 module ieeedrv_drv #(
 	parameter SUBDRV=2,
-	parameter PAUSE_CTL=1
+	parameter PAUSE_CTL=0
 )(
    input       [31:0] CLK,
  
@@ -114,15 +114,16 @@ wire        drv_error;
 wire [NS:0] led_act_o;
 wire        led_err_o;
 
+wire        halt_ctl = PAUSE_CTL & sd_busy[drv_act] & ~track_changing[drv_act];
+
 ieeedrv_logic #(
-	.SUBDRV(SUBDRV), 
-	.PAUSE_CTL(PAUSE_CTL)
+	.SUBDRV(SUBDRV)
 ) drv_logic (
 	.clk_sys(clk_sys),
 	.reset(drv_reset),
 	.ph2_r(ph2_r),
 	.ph2_f(ph2_f),
-	.halt_ctl(sd_busy[drv_act] & ~track_changing[drv_act]),
+	.halt_ctl(halt_ctl),
 
 	.drv_type({drv_type, ~drv_type}),
 	.dos_16k(dos_16k),
@@ -235,11 +236,14 @@ wire  [7:0] ltrack;
 
 ieeedrv_sync #(SUBDRV) busy_sync(clk_sys, busy, sd_busy);
 
-ieeedrv_track #(SUBDRV) drv_track
+ieeedrv_track #(
+	SUBDRV
+) drv_track
 (
 	.clk_sys(clk_sys),
 	.reset(drv_reset),
 	.ce(ce),
+	.halt(halt_ctl),
 
 	.drv_type(drv_type),
 
@@ -279,6 +283,7 @@ ieeedrv_trkgen #(SUBDRV) drv_trkgen
 	.drv_type(drv_type),
 	.img_type(img_type[drv_act]),
 
+	.halt(halt_ctl),
 	.invalid(track_changing[drv_act] | ~id_loaded[drv_act] | (drv_act != drv_sel)),
 	.drv_act(drv_act),
 	.drv_hd(drv_hd),

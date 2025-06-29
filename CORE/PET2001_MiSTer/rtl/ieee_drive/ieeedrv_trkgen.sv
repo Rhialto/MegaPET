@@ -23,6 +23,7 @@ module ieeedrv_trkgen #(parameter SUBDRV=2)
 	input             drv_type,
 	input       [1:0] img_type,
 
+	input             halt,
 	input             invalid,
 	input             drv_act,
 	input             drv_hd,
@@ -120,7 +121,7 @@ always @(posedge clk_sys) begin
 		rw_r <= rw;
 		if (rw_r != rw || !mtr)
 			bit_clk_cnt <= 4'(freq);
-		else begin
+		else if (!halt) begin
 			bit_clk_cnt <= bit_clk_cnt + 1'b1;
 
 			if (&bit_clk_cnt) begin

@@ -14,12 +14,12 @@
  */
 
 module ieeedrv_track #(
-	parameter SUBDRV=2,
-	parameter PAUSE_CTL=1
+	parameter SUBDRV=2
 ) (
 	input             clk_sys,
 	input             reset,
 	input             ce,
+	input             halt,
 
 	input             drv_type,
 
@@ -89,7 +89,7 @@ wire   drv_change   = &chg_count;
 always @(posedge clk_sys) begin
 	if (SUBDRV == 1 || drv_sel_s == drv_act)
 		chg_count <= 0;
-	else if (~&chg_count && ce && !(busy && PAUSE_CTL))
+	else if (~&chg_count && ce && !halt)
 		chg_count <= chg_count + 1'd1;
 	end
 

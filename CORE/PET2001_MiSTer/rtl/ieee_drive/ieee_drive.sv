@@ -16,7 +16,7 @@
  module ieee_drive #(
 	parameter DRIVES=1,
 	parameter SUBDRV=2,
-	parameter PAUSE_CTL=1  // 1=pause controller while SD is busy (prevents timeouts if SD is slow)
+	parameter PAUSE_CTL=0  // 1=pause controller while SD is busy (prevents timeouts if SD is slow)
 )(
         input       [31:0] CLK,
 

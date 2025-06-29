@@ -14,8 +14,7 @@
  */
 
 module ieeedrv_logic #(
-	parameter SUBDRV=2,
-	parameter PAUSE_CTL=1
+	parameter SUBDRV=2
 ) (
    input              clk_sys,
    input              reset,
@@ -69,8 +68,8 @@ assign ctl_addr = uc3_a[10:0];
 
 wire ph2_r_dos = ph2_r;
 wire ph2_f_dos = ph2_f;
-wire ph2_r_ctl = ph2_r && !(halt_ctl && PAUSE_CTL);
-wire ph2_f_ctl = ph2_f && !(halt_ctl && PAUSE_CTL);
+wire ph2_r_ctl = ph2_r && !halt_ctl;
+wire ph2_f_ctl = ph2_f && !halt_ctl;
 
 // ====================================================================
 // CPU DOS (6502) UN1
