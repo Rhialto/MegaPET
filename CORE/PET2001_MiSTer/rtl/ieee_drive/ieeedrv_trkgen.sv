@@ -173,6 +173,7 @@ typedef enum bit[3:0] {RW_RESET, RW_IDLE, R_SYNCHDR, R_SYNCDATA, R_SYNCTEST, R_H
 always @(posedge clk_sys) begin
 	reg [3:0] bit_cnt;
 	reg [8:0] byte_cnt;
+	// unused: reg [2:0] hdr_cnt;
 	reg [7:0] chk;
 	reg [7:0] old_track;
 	reg       rw_l;
@@ -181,12 +182,12 @@ always @(posedge clk_sys) begin
 
 	buff_di <= 8'h00;
 	we <= 0;
-	id_wr <= 0;/* Error: procedural assignment to a non-register id_wr is not permitted, left-hand side should be reg/integer/time/genvar */
+	id_wr <= 0;
 
 	if (bit_clk_en) begin
 		bit_cnt <= bit_cnt + 1'b1;
-		brdy_n  <= 1;/* Error: procedural assignment to a non-register brdy_n is not permitted, left-hand side should be reg/integer/time/genvar */
-		byte_n  <= 1;/* Error: procedural assignment to a non-register byte_n is not permitted, left-hand side should be reg/integer/time/genvar */
+		brdy_n  <= 1;
+		byte_n  <= 1;
 
 		if (sync_rd_n) begin
 			if (bit_cnt == 0) brdy_n <= 0;
@@ -195,9 +196,9 @@ always @(posedge clk_sys) begin
 
 		if (bit_cnt == 9) begin
 			bit_cnt   <= 0;
-			byte_rd   <= 8'h0f;/* Error: procedural assignment to a non-register byte_rd is not permitted, left-hand side should be reg/integer/time/genvar */
-			sync_rd_n <= 1;/* Error: procedural assignment to a non-register sync_rd_n is not permitted, left-hand side should be reg/integer/time/genvar */
-			error     <= 0;/* Error: procedural assignment to a non-register error is not permitted, left-hand side should be reg/integer/time/genvar */
+			byte_rd   <= 8'h0f;
+			sync_rd_n <= 1;
+			error     <= 0;
 			old_track <= track;
 			rw_l      <= rw;
 
@@ -349,7 +350,7 @@ always @(posedge clk_sys) begin
 
 						if ((rw_l && !rw) || (!rw && sync_wr && !wprot) || trk_reset) begin
 							byte_cnt <= 0;
-							sector[drv_act] <= sector[drv_act] + 1'b1;	// Added by Rhialto
+							// sector[drv_act] <= sector[drv_act] + 1'b1;	// Added by Rhialto
 
 							if (trk_reset)
 								rwState <= RW_RESET;
@@ -443,7 +444,7 @@ always @(posedge clk_sys) begin
 								3: id_hdr[15:8] <= byte_wr;
 								4: begin
 										byte_cnt	   <= 0;
-										id_hdr[7:0] <= byte_wr;/* Error: procedural assignment to a non-register id_hdr is not permitted, left-hand side should be reg/integer/time/genvar */
+										id_hdr[7:0] <= byte_wr;
 										id_wr       <= 1;
 										rwState     <= RW_IDLE;
 									end

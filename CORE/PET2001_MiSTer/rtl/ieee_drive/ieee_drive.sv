@@ -18,7 +18,7 @@
 	parameter SUBDRV=2,
 	parameter PAUSE_CTL=0  // 1=pause controller while SD is busy (prevents timeouts if SD is slow)
 )(
-        input       [31:0] CLK,
+	input       [31:0] CLK,
 
 	input              clk_sys,    // which is CLK Hz
         input              clk_main,   // used for output buffering bus_o_*
@@ -105,11 +105,7 @@ reg [NB:0] img_loaded;
 reg [NB:0] img_readonly_l;
 reg  [1:0] img_type[NBD];
 
-/*
- * I would have preferred to have a single ieeedrv_sync for the whole lot
- * of {img_loaded_main, img_readonly_l_main, img_type_main} but I could not
- * find out how to tell this to Vivado. The obvious thing did not work.
- */
+/* Sync all image loading signals as a single unit. */
 ieeedrv_img_sync #(NBD) img_sync(
     .clk(clk_sys),
     .in1( img_loaded_main), .in2( img_readonly_l_main), .in3( img_type_main),
@@ -226,9 +222,9 @@ wire [13:0] dos_rom_addr;
 // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
 ieeedrv_rom #(8,14,16384,"../../PET2001_MiSTer/rtl/ieee_drive/roms/c4040_dos.hex") c4040_dos_rom
 (
-   .clock_a(clk_sys),
-   .address_a(dos_rom_addr),
-   .q_a(dos4040_data),
+	.clock_a(clk_sys),
+	.address_a(dos_rom_addr),
+	.q_a(dos4040_data),
 
 	.clock_b(clk_sys),
 	.wren_b(rom_wr && rom_sel && !rom_addr[14]),
@@ -283,9 +279,9 @@ wire [10:0] ctl_rom_addr;
 // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
 ieeedrv_rom #(8,11,2048,"../../PET2001_MiSTer/rtl/ieee_drive/roms/c4040_ctl.hex") c4040_controller_rom
 (
-   .clock_a(clk_sys),
-   .address_a(ctl_rom_addr),
-   .q_a(ctl4040_data),
+	.clock_a(clk_sys),
+	.address_a(ctl_rom_addr),
+	.q_a(ctl4040_data),
 
 	.clock_b(clk_sys),
 	.wren_b(rom_wr && rom_sel && rom_addr[14:11] == 'b1000),
@@ -297,9 +293,9 @@ ieeedrv_rom #(8,11,2048,"../../PET2001_MiSTer/rtl/ieee_drive/roms/c4040_ctl.hex"
 // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
 ieeedrv_rom #(8,11,2048,"../../PET2001_MiSTer/rtl/ieee_drive/roms/c8250_ctl.hex") c8250_controller_rom
 (
-   .clock_a(clk_sys),
-   .address_a(ctl_rom_addr),
-   .q_a(ctl8250_data),
+	.clock_a(clk_sys),
+	.address_a(ctl_rom_addr),
+	.q_a(ctl8250_data),
 
 	.clock_b(clk_sys),
 	.wren_b(rom_wr && !rom_sel && rom_addr[14:11] == 'b1000),

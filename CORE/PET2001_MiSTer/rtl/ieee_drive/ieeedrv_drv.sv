@@ -18,7 +18,7 @@ module ieeedrv_drv #(
 	parameter PAUSE_CTL=0
 )(
    input       [31:0] CLK,
- 
+
 	input              clk_sys,
    input              reset,
 	input              ce,
@@ -237,9 +237,8 @@ wire  [7:0] ltrack;
 ieeedrv_sync #(SUBDRV) busy_sync(clk_sys, busy, sd_busy);
 
 ieeedrv_track #(
-	SUBDRV
-) drv_track
-(
+	.SUBDRV(SUBDRV)
+) drv_track (
 	.clk_sys(clk_sys),
 	.reset(drv_reset),
 	.ce(ce),

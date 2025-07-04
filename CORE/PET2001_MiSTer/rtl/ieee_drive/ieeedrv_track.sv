@@ -28,6 +28,7 @@ module ieeedrv_track #(
 	input      [NS:0] drv_mtr,
 	input             drv_sel,
 	input             drv_hd,
+
 	output reg        drv_act,
 	output reg        drv_changing,
 
@@ -135,13 +136,13 @@ always @(posedge clk_sys) begin
 		sd_rd     <= '0;
 		sd_wr     <= '0;
 		resetting <= 1;
-		drv_act   <= 0; /* Error: procedural assignment to a non-register drv_act is not permitted, left-hand side should be reg/integer/time/genvar */
+		drv_act   <= 0;
 	end
 	else if (resetting) begin
 		if (!drv_sel_s || SUBDRV==1) begin
 			resetting    <= 0;
 			update       <= '1;
-			ltrack       <= '1;/* Error: procedural assignment to a non-register ltrack is not permitted, left-hand side should be reg/integer/time/genvar */
+			ltrack       <= '1;
 		end
 	end
 	else if (!busy[drv_act] || (old_ack && !sd_ack[drv_act])) begin

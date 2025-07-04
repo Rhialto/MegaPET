@@ -315,7 +315,7 @@ always @(posedge clk) begin
 		mux_state <= 0;
 
 	if (mux_state < NDR)
-		rom_addr <= drv_addr[mux_state[1:0]]; /* Error: procedural assignment to a non-register rom_addr is not permitted, left-hand side should be reg/integer/time/genvar */
+		rom_addr <= drv_addr[mux_state[1:0]];
 	
 	if (mux_state >= OFFSET && mux_state < NDR+OFFSET)
 		drv_data[drv_select] <= rom_q;

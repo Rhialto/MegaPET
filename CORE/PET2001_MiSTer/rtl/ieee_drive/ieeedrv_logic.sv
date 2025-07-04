@@ -15,7 +15,7 @@
 
 module ieeedrv_logic #(
 	parameter SUBDRV=2
-) (
+)(
    input              clk_sys,
    input              reset,
 
