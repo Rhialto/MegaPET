@@ -50,7 +50,7 @@ presets = {
         "4032b-nocrtc": [ "basic-4.901465-23-20-21.bin",    "edit-4-b.901474-02.bin",          "kernal-4.901465-22.bin", ],
         "4032n":        [ "basic-4.901465-23-20-21.bin",    "edit-4-40-n-50Hz.901498-01.bin",  "kernal-4.901465-22.bin", ],
         "4032b":        [ "basic-4.901465-23-20-21.bin",    "edit-4-40-b-50Hz.ts.bin",         "kernal-4.901465-22.bin", ],
-        "8032b":        [ "basic-4.901465-23-20-21.bin",    "edit-4-80-b-50Hz.901474-04_.bin", "kernal-4.901465-22.bin", ],
+        "8032b":        [ "basic-4.901465-23-20-21.bin",    "edit-4-80-b-50Hz.901474-04.bin",  "kernal-4.901465-22.bin", ],
 };
 
 def find_start_address(name, guess):
