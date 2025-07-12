@@ -331,11 +331,25 @@ wire vram_odd_char = cnt31_i[4];
 //
 //////////////////////////////////////
 
-wire [7:0]	user_port;
+/// Some HRE declarations before usage. HRE requires 8296.
+wire        hre_not_ramsel9;
+wire        hre_not_ramselA;
+wire        hre_not_ramon;
+wire        hre_active;
+wire [14:0] vram_addr_hre;
+reg   [7:0] hre_video_data;
+wire        io_sel;
 
-wire not_ram_sel_9 = pref_ramselUserPort ? user_port[1] : !pref_ramsel9;
-wire not_ram_sel_A = pref_ramselUserPort ? user_port[0] : !pref_ramselA;
-wire not_ram_on    = pref_ramselUserPort ? user_port[2] : 1'b1;
+
+wire  [7:0] user_port;          // Read effective values from the Parallel User Port
+
+/*
+ * HRE pulling down ramsel9 etc has lower prio than connecting the signals to
+ * the user port. Possibly in real hardware this is the other way around.
+ */
+wire not_ram_sel_9 = pref_ramselUserPort ? user_port[1] : !pref_ramsel9 & hre_not_ramsel9;
+wire not_ram_sel_A = pref_ramselUserPort ? user_port[0] : !pref_ramselA & hre_not_ramselA;
+wire not_ram_on    = pref_ramselUserPort ? user_port[2] : 1'b1          & hre_not_ramon;
 
 // See the 8296 Supplement page 4 for this memory mapping.
 // Assumes CR7 = 0; this is checked separately with !extram_sel.
@@ -374,12 +388,12 @@ wire    vram_sel_0 = ((addr[15:11] == 5'b1000_0) ||                   /* 8000-87
                       (pref_have_colour && addr[15:12] == 4'b1000));  /* 8000-8FFF */
 wire    vram_sel   = ! extram_sel &&
                      (pref_have_8296 ? vram_sel_2
-		                     : vram_sel_0);
+                                     : vram_sel_0);
 
 // In the 8296, writing to a ROM writes to the RAM "under" it
 wire    vram_sel_w = ! extram_sel &&
                      (pref_have_8296 ? addr[15] == 1'b1
-		                     : vram_sel_0);
+                                     : vram_sel_0);
 
 wire    vram_we = we && vram_sel_w && vram_cpu_video;
 
@@ -392,7 +406,8 @@ wire    vram_we = we && vram_sel_w && vram_cpu_video;
 wire [11:0] vram_addr_cpu_0;
 wire [14:0] vram_addr_cpu, vram_addr_cpu_2;
 wire [11:0] vram_addr_vid_0;
-wire [12:0] vram_addr_vid, vram_addr_vid_2;
+wire [12:0] vram_addr_vid_2;
+wire [14:0] vram_addr_vid;
 wire [14:0] vram_addr;
 
 /*
@@ -429,12 +444,13 @@ assign vram_addr_vid_2 = pref_have_80_cols ? { video_addr[11], video_addr[10] | 
                                            : { 1'b0, video_addr[11] | vram_colour_bit, video_addr[10:0] }; // 40 cols 8296
 assign vram_addr_vid_0 = pref_have_80_cols ? { vram_colour_bit, video_addr[9:0], vram_odd_char }
                                            : { vram_colour_bit, 1'b0, video_addr[9:0] };
-assign vram_addr_vid = pref_have_8296 ? vram_addr_vid_2
-                                      : { 1'b0, vram_addr_vid_0 };
+assign vram_addr_vid = hre_active     ? vram_addr_hre :
+                       pref_have_8296 ? { 2'b0, vram_addr_vid_2 }
+                                      : { 3'b0, vram_addr_vid_0 };
 
 assign vram_addr = vram_sel_w && (vram_cpu_video ||
                                   pref_eoi_blanks) ? vram_addr_cpu
-                                                   : { 2'b00, vram_addr_vid };
+                                                   : vram_addr_vid;
 
 dualport_2clk_ram #(.addr_width(15)) pet2001vram        // 4 KB, for 80 cols + colour, or 32 KB for 8296.
 (
@@ -461,13 +477,13 @@ wire        video_blank; // Blank screen during scrolling.
 wire        video_gfx;   // Display graphic characters vs. lower-case.
 
 wire chr_option = crtc_ma[13];  // MA13, use high half of character ROM
-wire invert = !crtc_ma[12];     // MA12, invert the screen
+wire invert = !pref_have_8296 && !crtc_ma[12];     // MA12, invert the screen, but not on 8296
 
 assign video_addr = crtc_ma[11:0]; // =(pet2001vram)=> vram_data
 assign charaddr   = {chr_option, video_gfx, vram_data[6:0], crtc_ra[2:0]}; // =(pet2001chars)=> chardata
 
-reg [7:0] vdata;        // pixel shift register
-reg [7:0] cdata;        // colour latch register
+reg [7:0] vdata;        // pixel shift register (video data)
+reg [7:0] cdata;        // colour latch register (colour data)
 reg       inv1, inv2;   // bit 7 from video ram: invert pixels
 
 wire no_row;    // name from schematic 8032087
@@ -500,8 +516,9 @@ end
 always @(posedge clk) begin
     if (ce_pixel) begin
         if (load_sr) begin
-            {inv2, vdata} <= (crtc_de && ~no_row) ? {inv1, chardata}
-                                                  : 9'd0;
+            {inv2, vdata} <= !crtc_de || no_row  ? 9'b0 :
+                             hre_active          ? { 1'b0, hre_video_data }
+                                                 : {inv1, chardata};
             cdata <= crtc_de ? vram_data
                              : 8'h00;      /* black bg in the borders */
         end else begin
@@ -509,6 +526,48 @@ always @(posedge clk) begin
         end
     end
 end
+
+//////////////////////////////////////
+// HRE (High-Res Emulator).
+// Replaces output from the character ROM, effectively.
+//////////////////////////////////////
+
+reg [7:0] reg_e888;
+
+wire   hre_latchon     = reg_e888[7] && pref_have_8296;
+
+assign hre_not_ramsel9 = reg_e888[0] || !hre_latchon;
+assign hre_not_ramselA = reg_e888[1] || !hre_latchon;
+assign hre_not_ramon   = reg_e888[2] || !hre_latchon;
+
+always @(posedge clk) begin
+    if (reset) begin
+        reg_e888 <= 8'b0;
+    end else if (ce_1m) begin
+        if (we && pref_have_8296 && io_sel && addr == 16'hE888) begin
+            reg_e888 <= data_in;
+        end
+    end
+end
+
+/*
+ * Shuffle the Matrix Address and the Row Address to create linear addressing
+ * for 64 bytes per scan line.
+ * The CRTC will be programmed to 32 chars wide and 32 chars high, making
+ * 32 * 2 * 8 = 512 horizontal pixels and 32 * 8 = 256 vertical pixels.
+ */
+assign vram_addr_hre = { crtc_ma[10:5], crtc_ra[2:0], crtc_ma[4:0], vram_odd_char };
+
+assign hre_active = pref_have_8296 && !crtc_ma[12];     /* MA12 */
+
+/* Delay HRE pixel data because there is no char rom lookup */
+always @(posedge clk) begin
+    hre_video_data <= vram_data;
+end
+
+//////////////////////////////////////
+// Pixel and colour selection
+//////////////////////////////////////
 
 // calculate effective pixel, taking blanking and inverting into account
 assign    pix_o = ((vdata[7] ^ inv2) & ~(video_blank & pref_eoi_blanks)) ^ invert;
@@ -561,7 +620,7 @@ end;
 ////////////////////////////////////////////////////////
 wire [7:0]      io_read_data;
 // This allows for "small I/O area" only. No I/O extensions in E900-EFFF.
-wire            io_sel = (addr[15:8] == 8'hE8) && !extram_sel && !ramE8;
+assign          io_sel = (addr[15:8] == 8'hE8) && !extram_sel && !ramE8;
 /* !ramE8 shortcuts !vram_sel, and vram_sel includes && !extram_sel which we
 * do here too. */;
 
@@ -599,8 +658,8 @@ pet2001io io
         .cass_read(cass_read),
         .audio(audio),
 
-	// User port
-	.user_port_eff(user_port),
+        // User port
+        .user_port_eff(user_port),
         .diag_l(diag_l),
 
         // IEEE-488
@@ -640,12 +699,12 @@ begin
         8'b1xxx_x_1_x_0: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times) or 8296 RAM 8000-FFFF
         8'b1xxx_x_0_x_1: data_out = extram_data;  // 8000-FFFF 64K EXT RAM (bank switched)
         8'b0xxx_x_x_1_0: data_out = ram_data;     // 0000-7FFF 32K RAM
-	// ^    ^ ^ ^ ^
-	// |    | | | +- extram_sel
-	// |    | | \--- ram_sel
-	// |    | \----- vram_sel
-	// |    \------- io_sel
-	// \------------ addr[15:12]
+        // ^    ^ ^ ^ ^
+        // |    | | | +- extram_sel
+        // |    | | \--- ram_sel
+        // |    | \----- vram_sel
+        // |    \------- io_sel
+        // \------------ addr[15:12]
         default: data_out = addr[15:8];
     endcase;
 end;

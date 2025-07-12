@@ -1,4 +1,4 @@
-#! /usr/pkg/bin/python3.10
+#! /usr/pkg/bin/python3.12
 
 import argparse
 import os.path
@@ -15,8 +15,8 @@ ROM = [0] * 65536
 # Some are 2 KB, some are 4 KB.
 
 start_addresses = {
-        0x9000: ["9000"],
-        0xa000: ["a000"],
+        0x9000: ["9000", "324992-02"],
+        0xa000: ["a000", "324993-02"],
         0xb000: ["b000", "901465-19", "901465-23", "basic-4",],
         0xc000: ["c000", "901439-01", "901447-01", "901439-09", "901447-09", "basic-1",
                          "901465-01", "901439-13", "901447-20", "basic-2",
@@ -41,6 +41,8 @@ start_addresses = {
                          "901439-19", "901447-26",]  # kernel-2
 };
 
+hre_roms = [ "hre-9000.324992-02.bin", "hre-a000.324993-02.bin" ];
+
 presets = {
         "2001":         [ "basic-1.901439-09-05-02-06.bin", "edit-1-n.901439-03.bin",          "kernal-1.901439-04-07.bin", ],
         "2001+ieee":    [ "basic-1.901439-09-05-02-06.bin", "edit-1-n.901439-03.bin",          "kernal-1.ef00-901439-04-07+ieee-patch.bin", ],
@@ -50,7 +52,7 @@ presets = {
         "4032b-nocrtc": [ "basic-4.901465-23-20-21.bin",    "edit-4-b.901474-02.bin",          "kernal-4.901465-22.bin", ],
         "4032n":        [ "basic-4.901465-23-20-21.bin",    "edit-4-40-n-50Hz.901498-01.bin",  "kernal-4.901465-22.bin", ],
         "4032b":        [ "basic-4.901465-23-20-21.bin",    "edit-4-40-b-50Hz.ts.bin",         "kernal-4.901465-22.bin", ],
-        "8032b":        [ "basic-4.901465-23-20-21.bin",    "edit-4-80-b-50Hz.901474-04.bin",  "kernal-4.901465-22.bin", ],
+        "8032b":        [ "basic-4.901465-23-20-21.bin",    "edit-4-80-b-50Hz.901474-04.bin",  "kernal-4.901465-22.bin", ] + hre_roms,
 };
 
 def find_start_address(name, guess):
