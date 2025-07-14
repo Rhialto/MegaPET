@@ -121,9 +121,6 @@ module pet2001hw
 /////////////////////////////////////////////////////////////
 wire [7:0]      rom_data;
 
-wire rom_wr = dma_we & ~dma_char_ce;
-wire chars_wr = dma_we & dma_char_ce;
-
 wire [7:0]      dma_rom_dout;
 wire [7:0]      dma_char_dout;
 
@@ -152,7 +149,7 @@ dualport_2clk_ram #(
         .address_b(dma_addr[14:0]),
         .data_b(dma_din),
         .q_b(dma_rom_dout),
-        .wren_b(rom_wr & ~dma_char_ce),
+        .wren_b(dma_we & ~dma_char_ce),
         .clock_b(dma_clk)
 );
 
@@ -181,7 +178,7 @@ dualport_2clk_ram #(
         .address_b(dma_addr[11:0]),
         .data_b(dma_din),
         .q_b(dma_char_dout),
-        .wren_b(chars_wr & dma_char_ce),
+        .wren_b(dma_we & dma_char_ce),
         .clock_b(dma_clk)
 );
 
@@ -330,7 +327,9 @@ wire vram_odd_char = cnt31_i[4];
 // 8296 memory extension.
 // This expands the vram to 32 KB, independent of 80 cols and colour.
 // The number of video matrix address bits (MA) increases 2 to 12 (MA11).
-// Use _2 for 8296 signals and _0 for the other cases.
+// Uses _2 for 8296 signals and _0 for the other cases.
+//
+//////////////////////////////////////
 
 wire [7:0]	user_port;
 
