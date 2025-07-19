@@ -48,6 +48,7 @@ module pet2001hw
         input [7:0]      data_in,
         output reg [7:0] data_out,
         input            we,
+        input            spram_sel,             // SuperPET expansion RAM select
         output           irq,
 
         output           ce_pixel_o,
@@ -116,6 +117,14 @@ module pet2001hw
         input            reset
 );
 
+/*
+ * The CPU bus interface works as follows.
+ * There is a 32 MHz clock clk. Every 32 cycles, ce_1m is 1 for 1 cycle.
+ * Write cycles: addr, data_in and we=1 are set and valid when ce_1m is 1.
+ * Read cycles: addr and we=0 are valid and set when ce_1m is 1.
+ * RAM etc has time to respond. The value present on data_out is sampled the
+ * next time that ce_1m is 1.
+*/
 /////////////////////////////////////////////////////////////
 // Pet ROMS excluding character ROM.
 /////////////////////////////////////////////////////////////
@@ -187,9 +196,10 @@ dualport_2clk_ram #(
 //////////////////////////////////////////////////////////////
 wire [7:0]      ram_data;
 
-wire    ram_sel = pref_have_32k ? !addr[15] :      // 32 KB
-                  pref_have_16k ? !addr[15:14] :   // 16 KB
-                                  !addr[15:13];    //  8 KB
+wire    ram_sel0 = pref_have_32k ? !addr[15] :      // 32 KB
+                   pref_have_16k ? !addr[15:14] :   // 16 KB
+                                   !addr[15:13];    //  8 KB
+wire    ram_sel = ram_sel0 && !spram_sel;
 wire    ram_we  = we && ram_sel;
 
 //32KB RAM
@@ -219,34 +229,44 @@ always @(posedge clk) begin
     end
 end
 
-wire    cr_enable  = cr_fff0[7] && pref_have_8096;
-wire    cr_iopeek  = cr_fff0[6];          /* I/O peek-through, E800-EFFF */
-wire    cr_scrpeek = cr_fff0[5];          /* screen peek-through, 8000-8FFF */
-wire    cr_block3  = cr_fff0[3];          /* when 1, block 3 is enabled in C000-FFFF, else block 2 */
-wire    cr_block1  = cr_fff0[2];          /* when 1, block 1 is enabled in 8000-BFFF, else block 0 */
-wire    cr_wp_cf   = cr_fff0[1];          /* when 1, expansion memory C000-FFFF is write-protected */
-wire    cr_wp_8b   = cr_fff0[0];          /* when 1, expansion memory 8000-BFFF is write-protected */
+wire    cr_enable   = cr_fff0[7] && pref_have_8096;
+wire    cr_iopeek   = cr_fff0[6];          /* I/O peek-through, E800-EFFF */
+wire    cr_scrpeek  = cr_fff0[5];          /* screen peek-through, 8000-8FFF */
+wire    cr_block3   = cr_fff0[3];          /* when 1, block 3 is enabled in C000-FFFF, else block 2 */
+wire    cr_block1   = cr_fff0[2];          /* when 1, block 1 is enabled in 8000-BFFF, else block 0 */
+wire    cr_wp_cf    = cr_fff0[1];          /* when 1, expansion memory C000-FFFF is write-protected */
+wire    cr_wp_8b    = cr_fff0[0];          /* when 1, expansion memory 8000-BFFF is write-protected */
 
-wire    extram_sel = addr[15] &&
-                     cr_enable &&
-		     !(cr_scrpeek && addr[15:12] == 4'h8) &&
-		     !(cr_iopeek  && addr[15:11] == 5'b1110_1); /* high 5 bits of E800 */
+(* dont_touch = "true",mark_debug = "true" *)
+wire    extram_sel0 = addr[15] &&
+                      cr_enable &&
+                      !(cr_scrpeek && addr[15:12] == 4'h8) &&
+                      !(cr_iopeek  && addr[15:11] == 5'b1110_1); /* high 5 bits of E800 */
 
-wire    extram_we  = we &&
-                     extram_sel &&
-                     !(cr_wp_8b && addr[14] == 1'b0) &&
-                     !(cr_wp_cf && addr[14] == 1'b1);
+(* dont_touch = "true",mark_debug = "true" *)
+wire    extram_we0  = we &&
+                      extram_sel0 &&
+                      !(cr_wp_8b && addr[14] == 1'b0) &&
+                      !(cr_wp_cf && addr[14] == 1'b1);
 
+(* dont_touch = "true",mark_debug = "true" *)
+wire    extram_sel  = extram_sel0 || spram_sel;
+(* dont_touch = "true",mark_debug = "true" *)
+wire    extram_we   = extram_we0  || (spram_sel && we);
+
+(* dont_touch = "true",mark_debug = "true" *)
 wire [15:0]     extram_addr;
+(* dont_touch = "true",mark_debug = "true" *)
 wire [7:0]      extram_data;
 
 /*
  * map $8... = %1000... to %00 or 01...: block 0 or 1, cr[2]
  * map $B... = %1100... to %10 or 11...: block 2 or 3, cr[3]
  */
-assign extram_addr = { addr[14], (addr[14] ? cr_block3 : cr_block1), addr[13:0] };
+wire [15:0]  extram_addr0 = { addr[14], (addr[14] ? cr_block3 : cr_block1), addr[13:0] };
+assign       extram_addr  = spram_sel ? addr : extram_addr0;
 
-// 64KB EXT RAM
+// 64KB EXT RAM, for 8096, but also doubles as SuperPET.
 dualport_2clk_ram #(.addr_width(16)) pet2001extram
 (
         .clock_a(clk),
@@ -697,7 +717,7 @@ begin
         8'b1010_x_0_x_0: data_out = rom_data;     // A000-AFFF OPT ROM 2
         8'b1001_x_0_x_0: data_out = rom_data;     // 9000-9FFF OPT ROM 1
         8'b1xxx_x_1_x_0: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times) or 8296 RAM 8000-FFFF
-        8'b1xxx_x_0_x_1: data_out = extram_data;  // 8000-FFFF 64K EXT RAM (bank switched)
+        8'bxxxx_x_0_x_1: data_out = extram_data;  // 8000-FFFF 64K EXT RAM (bank switched) or 0000-FFFF SuperPET EXT RAM
         8'b0xxx_x_x_1_0: data_out = ram_data;     // 0000-7FFF 32K RAM
         // ^    ^ ^ ^ ^
         // |    | | | +- extram_sel
