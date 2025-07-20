@@ -166,9 +166,28 @@ wire [7:0] data_from_acia = 8'hFF;
  */
 
 /*
- * 6702 dongle (not implemented yet)
+ * 6702 dongle.
+ *
+ *                7654 3210
+ * Selected at EF xxx0 xxxx, but internally has CS that effectively
+ *                111  00xx
+ * make it EFE0...3.
  */
-wire [7:0] data_from_6702 = 8'hFF;
+
+wire [7:0] data_from_6702;
+
+mos6702 dongle
+(
+    .clk(clk),
+    .ce(enable),
+    .reset(!res_n),
+
+    .data_in(dout),
+    .data_out(data_from_6702),
+    .write(!r_w_n_from_cpu),
+    .cs({a_from_cpu[2], a_from_cpu[3], !dongle_sel,                     // 6:4 must be all 0
+         a_from_cpu[5], a_from_cpu[6], a_from_cpu[7], a_from_cpu[7]})   // 3:0 must be all 1
+);
 
 /*
  * Expansion memory 9xxx
