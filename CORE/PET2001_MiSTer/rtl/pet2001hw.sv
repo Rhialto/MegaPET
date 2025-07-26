@@ -114,6 +114,7 @@ module pet2001hw
         input            clk,
         input [4:0]      cnt31_i,
         input            ce_1m,
+        input            ce_1m_opp,	// opposite phase of ce_1m
         input            reset
 );
 
@@ -237,26 +238,20 @@ wire    cr_block1   = cr_fff0[2];          /* when 1, block 1 is enabled in 8000
 wire    cr_wp_cf    = cr_fff0[1];          /* when 1, expansion memory C000-FFFF is write-protected */
 wire    cr_wp_8b    = cr_fff0[0];          /* when 1, expansion memory 8000-BFFF is write-protected */
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire    extram_sel0 = addr[15] &&
                       cr_enable &&
                       !(cr_scrpeek && addr[15:12] == 4'h8) &&
                       !(cr_iopeek  && addr[15:11] == 5'b1110_1); /* high 5 bits of E800 */
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire    extram_we0  = we &&
                       extram_sel0 &&
                       !(cr_wp_8b && addr[14] == 1'b0) &&
                       !(cr_wp_cf && addr[14] == 1'b1);
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire    extram_sel  = extram_sel0 || spram_sel;
-(* dont_touch = "true",mark_debug = "true" *)
 wire    extram_we   = extram_we0  || (spram_sel && we);
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire [15:0]     extram_addr;
-(* dont_touch = "true",mark_debug = "true" *)
 wire [7:0]      extram_data;
 
 /*
@@ -698,6 +693,7 @@ pet2001io io
         .ieee488_ndac_o(ieee488_ndac_o),
 
         .ce(ce_1m),
+        .ce_opp(ce_1m_opp),
         .ce_8m(ce_8m),    // keep this at 8 MHz
         .clk(clk),
         .reset(reset)

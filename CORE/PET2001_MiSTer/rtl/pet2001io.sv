@@ -104,15 +104,12 @@ module pet2001io
         input        ieee488_ndac_i,
         output       ieee488_ndac_o,
 
-        input        ce,
+        input        ce,		// clock enable for cpu bus access
+        input        ce_opp,		// clock enable for internal workings
         input        ce_8m,
         input        clk,
         input        reset
 );
-
-//delay ce for io for stability.
-reg strobe_io;
-always @(negedge clk) strobe_io <= ce;
 
 assign ieee488_ifc_o = ~reset;      // IEEE bus is active-low.
 
@@ -137,7 +134,7 @@ pia6520 pia1
 	.data_out(pia1_data_out),
 	.data_in(data_in),
 	.addr(addr[1:0]),
-	.strobe(strobe_io & pia1_sel),
+	.strobe(ce & pia1_sel),
 	.we(we),
 
 	.irq(pia1_irq),
@@ -178,7 +175,7 @@ pia6520 pia2
         .data_out(pia2_data_out),
         .data_in(data_in),
         .addr(addr[1:0]),
-        .strobe(strobe_io & pia2_sel),
+        .strobe(ce & pia2_sel),
         .we(we),
 
         .irq(pia2_irq),
@@ -204,38 +201,60 @@ pia6520 pia2
 //
 wire [7:0] via_data_out;
 wire       via_irq;
+wire [7:0] via_port_a_o;
+wire [7:0] via_port_a_i = 8'hFF;        // Parallel User Port
+wire [7:0] via_port_a_t;                // 1 = output, 0 = input
 wire [7:0] via_portb_out;
+wire [7:0] via_port_b_t;                // 1 = output, 0 = input
 wire [7:0] via_portb_in = {ieee488_dav_i, ieee488_nrfd_i, retrace_irq_n_i, 4'b0_000, ieee488_ndac_i}; // msb first
+wire       via_ca2_t;
+wire       via_cb1_o;
+wire       via_cb1_t;
+wire       via_cb2_t;
 
-via6522 via
+gideonvia6522 via
 (
-	.data_out(via_data_out),
-	.data_in(data_in),
-	.addr(addr[3:0]),
-	.strobe(strobe_io & via_sel),
-	.we(we),
+        .clock(clk),
+        .rising(ce_opp),
+        .falling(ce),
+        .reset(reset),
 
-	.irq(via_irq),
-	.porta_out(),
-	.porta_eff(user_port_eff),
-	.porta_in(8'hFF),
-	.portb_out(via_portb_out),
-	.portb_in(via_portb_in),
+        .addr(addr[3:0]),
+        .wen(via_sel && we),
+        .ren(via_sel && !we),
+        .data_in(data_in),
+        .data_out(via_data_out),
 
-	.ca1_in(1'b0),
-	.ca2_out(video_gfx),
-	.ca2_in(1'b0),
+        .phi2_ref(),
 
-	.cb1_out(),
-	.cb1_in(1'b0),
-	.cb2_out(audio),
-	.cb2_in(1'b0),
+        // -- pio --
+        .port_a_o(via_port_a_o),
+        .port_a_t(via_port_a_t),
+        .port_a_i(via_port_a_i & (via_port_a_o | ~via_port_a_t)),
 
-	.ce(ce),
+        .port_b_o(via_portb_out),
+        .port_b_t(via_port_b_t),
+        .port_b_i(via_portb_in & (via_portb_out | ~via_port_b_t)),
 
-	.clk(clk),
-	.reset(reset)
+        // -- handshake pins
+        .ca1_i(1'b1),
+
+        .ca2_o(video_gfx),
+        .ca2_i(1'b1 /*video_gfx | ~via_ca2_t*/), // loop back output to input
+        .ca2_t(via_ca2_t),
+
+        .cb1_o(via_cb1_o),
+        .cb1_i(1'b1 /*via_cb1_o | ~via_ca2_t*/),// loop back output to input, but messes up viasr??ifr tests from VICE
+        .cb1_t(via_cb1_t),
+
+        .cb2_o(audio),
+        .cb2_i(1'b1 /*audio | ~via_cb2_t*/),    // loop back output to input, but messes up viasr??ifr tests from VICE
+        .cb2_t(via_cb2_t),
+
+        .irq(via_irq)
 );
+
+assign user_port_eff = (via_port_a_o & via_port_a_t) | (via_port_a_i & ~via_port_a_t);
 
 assign ieee488_nrfd_o = via_portb_out[1];
 assign ieee488_atn_o = via_portb_out[2];
@@ -255,7 +274,7 @@ crtc_or_not crtc
         .pref_have_crtc(pref_have_crtc),
 
         // Bus interface if we use the CRTC
-        .enable(strobe_io & crtc_sel),
+        .enable(ce & crtc_sel),
         .r_nw(~(we & crtc_sel)),
         .rs(addr[0]),
         .data_in(data_in),
@@ -277,20 +296,15 @@ crtc_or_not crtc
 );
 
 /////////////// Read data mux /////////////////////////
-// register I/O stuff, therefore RDY must be delayed a cycle!
-// (The above comment seems to be from a time with a different
-// CPU implementation. The current one doesn't have a RDY signal.
-// Yet strobe_io is delayed anyway.)
 // If no I/O chips are selected return E8 (high byte of the address).
 //
-always @(posedge clk) begin
-        data_out <= {pia1_sel,pia2_sel,via_sel,crtc_sel} == 4'b000 ? 8'hE8 :
+
+assign data_out = {pia1_sel,pia2_sel,via_sel,crtc_sel} == 4'b000 ? 8'hE8 :
                        (8'hFF
                         & (pia1_sel ? pia1_data_out : 8'hFF)
                         & (pia2_sel ? pia2_data_out : 8'hFF)
                         & (via_sel  ? via_data_out  : 8'hFF)
                         & (crtc_sel ? crtc_data_out : 8'hFF));
-end
 
 assign irq = pia1_irq || pia2_irq || via_irq;
 
