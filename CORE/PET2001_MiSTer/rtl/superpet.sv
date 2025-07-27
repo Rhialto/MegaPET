@@ -269,13 +269,23 @@ end
 (* dont_touch = "true",mark_debug = "true" *)
 wire Q = pref_use_6809 && (cnt31[4] ^ cnt31[3]);
 
+// Latch the Data towards the 6809 on the rising edge of "enable" since
+// the 6502 does it that way. The 6809 uses the bus inputs when Q falls.
+(* dont_touch = "true",mark_debug = "true" *)
+reg [7:0] din_to_6809;
+always @(posedge clk) begin
+    if (cnt31 == 0 && pref_use_6809) begin
+        din_to_6809 <= din_to_cpu;
+    end
+end
+
 (* dont_touch = "true",mark_debug = "true" *)
 wire bs, ba;                    // for SuperOS9 MMU
 wire nfirq = 1'b1;              // for SuperOS9 MMU
 
 mc6809e cpu6809e
 (
-    .D(din_to_cpu),             // input   [7:0] D,    TODO: pref_use_6809 ? din_to_cpu : 8'h00
+    .D(din_to_6809),            // input   [7:0] D,    TODO: pref_use_6809 ? din_to_cpu : 8'h00
     .DOut(dout_from_6809),      // output  [7:0] DOut,
     .ADDR(a_from_6809),         // output  [15:0] ADDR,
     .RnW(r_w_n_from_6809),      // output  RnW,
@@ -283,9 +293,9 @@ mc6809e cpu6809e
     .Q(Q),                      // input   Q,
     .BS(bs),                    // output  BS,
     .BA(ba),                    // output  BA,
-    .nIRQ(irq_n),               // input   nIRQ,
+    .nIRQ(irq_n || !pref_use_6809),// input   nIRQ,
     .nFIRQ(nfirq),              // input   nFIRQ,
-    .nNMI(nmi_n),               // input   nNMI,
+    .nNMI(nmi_n || !pref_use_6809),// input   nNMI,
     .AVMA(),                    // output  AVMA,
     .BUSY(),                    // output  BUSY,
     .LIC(),                     // output  LIC,
