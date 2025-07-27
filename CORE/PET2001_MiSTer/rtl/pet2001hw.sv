@@ -121,10 +121,10 @@ module pet2001hw
 /*
  * The CPU bus interface works as follows.
  * There is a 32 MHz clock clk. Every 32 cycles, ce_1m is 1 for 1 cycle.
- * Write cycles: addr, data_in and we=1 are set and valid when ce_1m is 1.
- * Read cycles: addr and we=0 are valid and set when ce_1m is 1.
+ * Write cycles: addr, data_in and we=1 are set and valid after ce_1m was 1.
+ * Read cycles: addr and we=0 are valid and set after ce_1m was 1.
  * RAM etc has time to respond. The value present on data_out is sampled the
- * next time that ce_1m is 1.
+ * next time that ce_1m rises to 1.
 */
 /////////////////////////////////////////////////////////////
 // Pet ROMS excluding character ROM.

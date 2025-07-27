@@ -39,11 +39,14 @@ module superpet
     input    [1:0]  mode,        // "00" => 6502, "01" => 65C02, "10" => 65C816
   //input           bcd_en = 1,  // '0' => 2A03/2A07, '1' => others
 
+(* dont_touch = "true",mark_debug = "true" *)
     input           res_n,
+(* dont_touch = "true",mark_debug = "true" *)
     input           enable,
     input           clk,
     input           rdy,
     input           abort_n = 1,
+(* dont_touch = "true",mark_debug = "true" *)
     input           irq_n = 1,
     input           nmi_n = 1,
     input           so_n = 1,
@@ -56,8 +59,11 @@ module superpet
   //output          vp_n,       // there is no 6809 equivalent
   //output          vda,        // there is no 6809 equivalent
   //output          vpa,        // there is no 6809 equivalent
+(* dont_touch = "true",mark_debug = "true" *)
     output   [23:0] a,
+(* dont_touch = "true",mark_debug = "true" *)
     input     [7:0] din,
+(* dont_touch = "true",mark_debug = "true" *)
     output    [7:0] dout,
     // 6502 registers (MSB) PC, SP, P, Y, X, A (LSB)
   //output   [63:0] regs,
@@ -67,22 +73,43 @@ module superpet
     // Extra signals for management
     input           pref_have_superpet,
 
-    input           pref_enable_6809
+(* dont_touch = "true",mark_debug = "true" *)
+    input           pref_use_6809,
+(* dont_touch = "true",mark_debug = "true" *)
+    input    [4:0]  cnt31
 );
 
-wire [23:0] a_from_cpu;
+(* dont_touch = "true",mark_debug = "true" *)
+wire [23:0] a_from_6502;
+(* dont_touch = "true",mark_debug = "true" *)
+wire [15:0] a_from_6809;
+wire [15:0] a_from_cpu = pref_use_6809 ? a_from_6809 : a_from_6502[15:0];
 
-wire [7:0] din_from_mainboard = din;    // give it a better name
-reg  [7:0] din_to_cpu;
+(* dont_touch = "true",mark_debug = "true" *)
+wire [7:0]  dout_from_6809;
+(* dont_touch = "true",mark_debug = "true" *)
+wire [7:0]  dout_from_6502;
+assign dout = pref_use_6809 ? dout_from_6809 : dout_from_6502;
 
-wire        r_w_n_from_cpu;
-wire        r_w_n_to_mainboard;
+(* dont_touch = "true",mark_debug = "true" *)
+wire        r_w_n_from_6502;
+(* dont_touch = "true",mark_debug = "true" *)
+wire        r_w_n_from_6809;
+(* dont_touch = "true",mark_debug = "true" *)
+wire        r_w_n_from_cpu =  pref_use_6809 ? r_w_n_from_6809 : r_w_n_from_6502;
+
+(* dont_touch = "true",mark_debug = "true" *)
+wire        r_w_n_to_mainboard;         // possibly modified by R/O switch for ext ram
 assign      r_w_n = r_w_n_to_mainboard;
+
+wire [7:0] din_from_mainboard = din;    // to give it a better name
+(* dont_touch = "true",mark_debug = "true" *)
+reg  [7:0] din_to_cpu;
 
 T65 cpu6502
 (
     .mode(mode),
-    .res_n(res_n),
+    .res_n(res_n && !pref_use_6809),
     .enable(enable),
     .clk(clk),
     .rdy(rdy),
@@ -90,16 +117,20 @@ T65 cpu6502
     .irq_n(irq_n),
     .nmi_n(nmi_n),
     .so_n(so_n),
-    .r_w_n(r_w_n_from_cpu),
-    .a(a_from_cpu),
+    .r_w_n(r_w_n_from_6502),
+    .a(a_from_6502),
     .din(din_to_cpu),
-    .dout(dout)
+    .dout(dout_from_6502)
 );
 
+(* dont_touch = "true",mark_debug = "true" *)
 wire spet_extram_sel;   // 9xxx
+(* dont_touch = "true",mark_debug = "true" *)
 wire spet_iosel;        // EFxx
 wire spet_EFFx;         // EFFx
+(* dont_touch = "true",mark_debug = "true" *)
 wire dongle_sel;        // EFE0  EF xxx0 xxxx
+(* dont_touch = "true",mark_debug = "true" *)
 wire acia_sel;          // EFF0: EF 1111 00xx
 //re acia2_sel;         // EFF4: EF 1111 01xx
 wire system_latch_sel;  // EFF8: EF 1111 10xx
@@ -190,12 +221,147 @@ mos6702 dongle
 );
 
 /*
- * Expansion memory 9xxx
+ * Expansion memory 9xxx (actually implemented on the main board)
  */
-assign a = spet_extram_sel ? { 8'b1, bank, a_from_cpu[11:0] }
-                           : { 8'b0, a_from_cpu[15      :0] };
+assign a = spet_extram_sel ? { 8'b00000001, bank, a_from_cpu[11:0] }
+                           : { 8'b00000000, a_from_cpu[15      :0] };
 assign r_w_n_to_mainboard = spet_extram_sel ? r_w_n_from_cpu || !spet_ram_wp
                                             : r_w_n_from_cpu;
+
+///////////////////////////
+// The other cpu: 6809
+///////////////////////////
+
+/*
+ * Use cnt31 to generate E and Q. They must go like this:
+ * 
+ *    +    +----+
+ * E  |    |    |
+ *    +----+    +....
+ * 
+ *      +----+
+ * Q    |    |
+ *    --+    +---...
+ *
+ * It changes its state to the next one on the falling edge of E.
+ * TODO: shift the falling edge of E a bit later so it corresponds to the
+ * falling edge of "enable" aka "ce_1m".
+ */ 
+(* dont_touch = "true",mark_debug = "true" *)
+wire E = pref_use_6809 && cnt31[4];
+(* dont_touch = "true",mark_debug = "true" *)
+wire Q = pref_use_6809 && (cnt31[4] ^ cnt31[3]);
+
+(* dont_touch = "true",mark_debug = "true" *)
+wire bs, ba;                    // for SuperOS9 MMU
+wire nfirq = 1'b1;              // for SuperOS9 MMU
+
+mc6809e cpu6809e
+(
+    .D(din_to_cpu),             // input   [7:0] D,    TODO: pref_use_6809 ? din_to_cpu : 8'h00
+    .DOut(dout_from_6809),      // output  [7:0] DOut,
+    .ADDR(a_from_6809),         // output  [15:0] ADDR,
+    .RnW(r_w_n_from_6809),      // output  RnW,
+    .E(E),                      // input   E,
+    .Q(Q),                      // input   Q,
+    .BS(bs),                    // output  BS,
+    .BA(ba),                    // output  BA,
+    .nIRQ(irq_n),               // input   nIRQ,
+    .nFIRQ(nfirq),              // input   nFIRQ,
+    .nNMI(nmi_n),               // input   nNMI,
+    .AVMA(),                    // output  AVMA,
+    .BUSY(),                    // output  BUSY,
+    .LIC(),                     // output  LIC,
+    .nHALT(1'b1),               // input   nHALT,
+    .nRESET(res_n)              // input   nRESET
+);
+
+// 6809-specific ROMs. 3 x 8 KB.
+
+wire io_gap     = (a_from_6809[15:11] == 5'b1110_1);    // E800 - EFFF
+
+(* dont_touch = "true",mark_debug = "true" *)
+wire rom_ab_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b101);
+(* dont_touch = "true",mark_debug = "true" *)
+wire rom_cd_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b110);
+(* dont_touch = "true",mark_debug = "true" *)
+wire rom_ef_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b111) && !io_gap;
+
+wire [7:0] rom_ab_data;
+wire [7:0] rom_cd_data;
+wire [7:0] rom_ef_data;
+
+dualport_2clk_ram #(
+        .addr_width(13),
+        .data_width(8),
+        .rom_preload(1),
+        .rom_file_hex(1),
+        // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+        .rom_file("../../PET2001_MiSTer/roms/waterloo-a000-bfff.970018-12.hex")
+        //.falling_b(1)
+) waterloo_ab (
+        // A: Access from CPU
+        .address_a(a_from_6809[12:0]),
+        .data_a(),
+        .q_a(rom_ab_data),
+        .wren_a(0),
+        .clock_a(clk)
+
+        // B: Access from QNICE on falling edge
+        //.address_b(dma_addr[14:0]),
+        //.data_b(dma_din),
+        //.q_b(dma_rom_dout),
+        //.wren_b(dma_we & ),
+        //.clock_b(dma_clk)
+);
+
+dualport_2clk_ram #(
+        .addr_width(13),
+        .data_width(8),
+        .rom_preload(1),
+        .rom_file_hex(1),
+        // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+        .rom_file("../../PET2001_MiSTer/roms/waterloo-c000-dfff.970019-12.hex")
+        //.falling_b(1)
+) waterloo_cd (
+        // A: Access from CPU
+        .address_a(a_from_6809[12:0]),
+        .data_a(),
+        .q_a(rom_cd_data),
+        .wren_a(0),
+        .clock_a(clk)
+
+        // B: Access from QNICE on falling edge
+        //.address_b(dma_addr[14:0]),
+        //.data_b(dma_din),
+        //.q_b(dma_rom_dout),
+        //.wren_b(dma_we & ),
+        //.clock_b(dma_clk)
+);
+
+dualport_2clk_ram #(
+        .addr_width(13),
+        .data_width(8),
+        .rom_preload(1),
+        .rom_file_hex(1),
+        // Relative to PET_MEGA65/CORE/CORE-R6.runs/synth_1 (or sth.)
+        .rom_file("../../PET2001_MiSTer/roms/waterloo-e000-ffff.970020-12.hex")
+        //.falling_b(1)
+) waterloo_ef (
+        // A: Access from CPU
+        .address_a(a_from_6809[12:0]),
+        .data_a(),
+        .q_a(rom_ef_data),
+        .wren_a(0),
+        .clock_a(clk)
+
+        // B: Access from QNICE on falling edge
+        //.address_b(dma_addr[14:0]),
+        //.data_b(dma_din),
+        //.q_b(dma_rom_dout),
+        //.wren_b(dma_we & ),
+        //.clock_b(dma_clk)
+);
 
 ///////////////////////////
 // Read data mux (to CPU)
@@ -203,12 +369,21 @@ assign r_w_n_to_mainboard = spet_extram_sel ? r_w_n_from_cpu || !spet_ram_wp
 
 always @(*)
 begin
-    casex({spet_extram_sel, spet_iosel, dongle_sel, acia_sel})
-        4'b1_x_x_x:  din_to_cpu = din_from_mainboard;
-        4'bx_1_0_0:  din_to_cpu = a_from_cpu[15:8];     // approximation of "empty bus"
-        4'bx_x_1_x:  din_to_cpu = data_from_6702;
-        4'bx_x_x_1:  din_to_cpu = data_from_acia;
-        default:     din_to_cpu = din_from_mainboard;
+    casex({rom_ab_sel, rom_cd_sel, rom_ef_sel, spet_extram_sel, spet_iosel, dongle_sel, acia_sel})
+        7'b1_x_x_x_x_x_x:  din_to_cpu = rom_ab_data;            // Axxx, Bxxx
+        7'bx_1_x_x_x_x_x:  din_to_cpu = rom_cd_data;            // Cxxx, Dxxx
+        7'bx_x_1_x_x_x_x:  din_to_cpu = rom_ef_data;            // Exxx, Fxxx, but not E800-EFFF
+        7'bx_x_x_1_x_x_x:  din_to_cpu = din_from_mainboard;     // 9xxx
+        7'bx_x_x_x_1_0_0:  din_to_cpu = a_from_cpu[15:8];       // EFxx  approximation of "empty bus"
+        7'bx_x_x_x_x_1_x:  din_to_cpu = data_from_6702;         // EFE0
+        7'bx_x_x_x_x_x_1:  din_to_cpu = data_from_acia;         // EFF0
+        default:           din_to_cpu = din_from_mainboard;
+//         ^ ^ ^ ^ ^ ^ ^
+//         | | | | | | +--- acia_sel
+//         | | | | | +----- dongle_sel
+//         | | | | +------- spet_iosel EFxx
+//         / | | +--------- spet_extram_sel
+//       ab cd ef
     endcase;
 end;
 

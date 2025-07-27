@@ -240,15 +240,15 @@ gideonvia6522 via
         .ca1_i(1'b1),
 
         .ca2_o(video_gfx),
-        .ca2_i(1'b1 /*video_gfx | ~via_ca2_t*/), // loop back output to input
+        .ca2_i(1'b1 /* &(video_gfx | ~via_ca2_t)*/), // loop back output to input
         .ca2_t(via_ca2_t),
 
         .cb1_o(via_cb1_o),
-        .cb1_i(1'b1 /*via_cb1_o | ~via_ca2_t*/),// loop back output to input, but messes up viasr??ifr tests from VICE
+        .cb1_i(1'b1 /* &(via_cb1_o | ~via_ca2_t)*/),// loop back output to input, but messes up viasr??ifr tests from VICE
         .cb1_t(via_cb1_t),
 
         .cb2_o(audio),
-        .cb2_i(1'b1 /*audio | ~via_cb2_t*/),    // loop back output to input, but messes up viasr??ifr tests from VICE
+        .cb2_i(1'b1 /* &(audio | ~via_cb2_t)*/),    // loop back output to input, but messes up viasr??ifr tests from VICE
         .cb2_t(via_cb2_t),
 
         .irq(via_irq)
