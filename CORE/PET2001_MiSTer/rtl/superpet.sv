@@ -244,11 +244,28 @@ assign r_w_n_to_mainboard = spet_extram_sel ? r_w_n_from_cpu || !spet_ram_wp
  *    --+    +---...
  *
  * It changes its state to the next one on the falling edge of E.
- * TODO: shift the falling edge of E a bit later so it corresponds to the
- * falling edge of "enable" aka "ce_1m".
- */ 
+ *
+ * Basic idea:
+ * E = cnt31[4];
+ * Q = cnt31[4] ^ cnt31[3];
+ *
+ * but we need to shift the falling edge of E a bit later so it corresponds to
+ * the falling edge of "enable" aka "ce_1m". Remember that ce_1m is set in
+ * reaction to cnt31==0, so it is 1 while cnt31 is 1.
+ *
+ * We don't care so much about the exact edges of Q.
+ */
 (* dont_touch = "true",mark_debug = "true" *)
-wire E = pref_use_6809 && cnt31[4];
+// wire E = pref_use_6809 && cnt31[4];
+reg E;
+always @(posedge clk) begin
+    if (!pref_use_6809) begin
+        E <= 1;
+    end else begin
+        E <= cnt31[4] || (cnt31 == 0);
+    end
+end
+
 (* dont_touch = "true",mark_debug = "true" *)
 wire Q = pref_use_6809 && (cnt31[4] ^ cnt31[3]);
 
