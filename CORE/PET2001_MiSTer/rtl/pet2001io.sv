@@ -244,7 +244,7 @@ gideonvia6522 via
         .ca2_t(via_ca2_t),
 
         .cb1_o(via_cb1_o),
-        .cb1_i(1'b1 /* &(via_cb1_o | ~via_ca2_t)*/),// loop back output to input, but messes up viasr??ifr tests from VICE
+        .cb1_i(1'b1 /* &(via_cb1_o | ~via_cb1_t)*/),// loop back output to input, but messes up viasr??ifr tests from VICE
         .cb1_t(via_cb1_t),
 
         .cb2_o(audio),
