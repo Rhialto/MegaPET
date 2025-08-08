@@ -2,7 +2,7 @@
  * SuperPET expansion board.
  * Written by Olaf Seibert <rhialto@falu.nl> in 2025
  * for use with the MegaPET.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * * Redistributions of source code must retain the above copyright
@@ -39,14 +39,11 @@ module superpet
     input    [1:0]  mode,        // "00" => 6502, "01" => 65C02, "10" => 65C816
   //input           bcd_en = 1,  // '0' => 2A03/2A07, '1' => others
 
-(* dont_touch = "true",mark_debug = "true" *)
     input           res_n,
-(* dont_touch = "true",mark_debug = "true" *)
     input           enable,
     input           clk,
     input           rdy,
     input           abort_n = 1,
-(* dont_touch = "true",mark_debug = "true" *)
     input           irq_n = 1,
     input           nmi_n = 1,
     input           so_n = 1,
@@ -59,11 +56,8 @@ module superpet
   //output          vp_n,       // there is no 6809 equivalent
   //output          vda,        // there is no 6809 equivalent
   //output          vpa,        // there is no 6809 equivalent
-(* dont_touch = "true",mark_debug = "true" *)
     output   [23:0] a,
-(* dont_touch = "true",mark_debug = "true" *)
     input     [7:0] din,
-(* dont_touch = "true",mark_debug = "true" *)
     output    [7:0] dout,
     // 6502 registers (MSB) PC, SP, P, Y, X, A (LSB)
   //output   [63:0] regs,
@@ -73,37 +67,26 @@ module superpet
     // Extra signals for management
     input           pref_have_superpet,
 
-(* dont_touch = "true",mark_debug = "true" *)
     input           pref_use_6809,
-(* dont_touch = "true",mark_debug = "true" *)
     input    [4:0]  cnt31
 );
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire [23:0] a_from_6502;
-(* dont_touch = "true",mark_debug = "true" *)
 wire [15:0] a_from_6809;
 wire [15:0] a_from_cpu = pref_use_6809 ? a_from_6809 : a_from_6502[15:0];
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire [7:0]  dout_from_6809;
-(* dont_touch = "true",mark_debug = "true" *)
 wire [7:0]  dout_from_6502;
 assign dout = pref_use_6809 ? dout_from_6809 : dout_from_6502;
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire        r_w_n_from_6502;
-(* dont_touch = "true",mark_debug = "true" *)
 wire        r_w_n_from_6809;
-(* dont_touch = "true",mark_debug = "true" *)
 wire        r_w_n_from_cpu =  pref_use_6809 ? r_w_n_from_6809 : r_w_n_from_6502;
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire        r_w_n_to_mainboard;         // possibly modified by R/O switch for ext ram
 assign      r_w_n = r_w_n_to_mainboard;
 
 wire [7:0] din_from_mainboard = din;    // to give it a better name
-(* dont_touch = "true",mark_debug = "true" *)
 reg  [7:0] din_to_cpu;
 
 T65 cpu6502
@@ -123,23 +106,20 @@ T65 cpu6502
     .dout(dout_from_6502)
 );
 
-(* dont_touch = "true",mark_debug = "true" *)
-wire spet_extram_sel;   // 9xxx
-(* dont_touch = "true",mark_debug = "true" *)
+wire spet_extram_sel;   // 9xxx or os9flat
 wire spet_iosel;        // EFxx
 wire spet_EFFx;         // EFFx
-(* dont_touch = "true",mark_debug = "true" *)
 wire dongle_sel;        // EFE0  EF xxx0 xxxx
-(* dont_touch = "true",mark_debug = "true" *)
 wire acia_sel;          // EFF0: EF 1111 00xx
 //re acia2_sel;         // EFF4: EF 1111 01xx
 wire system_latch_sel;  // EFF8: EF 1111 10xx
 wire bank_sw_sel;       // EFFC: EF 1111 110x
 wire ramrom_sel;        // EFFE: EF 1111 111x
+wire os9flat;           // flat memory mapping in effect for OS/9
 
-assign spet_extram_sel  = pref_have_superpet && a_from_cpu[15:12] == 4'h9;
-assign spet_iosel       = pref_have_superpet && a_from_cpu[15: 8] == 8'hEF;
-assign spet_EFFx        = spet_iosel         && a_from_cpu[ 7: 4] == 4'hF;
+assign spet_extram_sel  = pref_have_superpet && (a_from_cpu[15:12] == 4'h9   ||  os9flat);
+assign spet_iosel       = pref_have_superpet && (a_from_cpu[15: 8] == 8'hEF) && !os9flat;
+assign spet_EFFx        = spet_iosel         && (a_from_cpu[ 7: 4] == 4'hF);
 
 assign dongle_sel       = spet_iosel && a_from_cpu[4]   == 1'b0;
 assign acia_sel         = spet_EFFx  && a_from_cpu[3:2] == 2'b00;
@@ -152,11 +132,14 @@ assign ramrom_sel       = spet_EFFx  && a_from_cpu[3:1] == 3'b111;
  */
 reg  [7:0] bank_sw;
 
-wire [3:0] bank   = bank_sw[3:0];
-wire       ctrlwp = bank_sw[7];         // 1 allows the System Latch to be written.
+wire [3:0] bank    = bank_sw[3:0];
+wire       syncdis = bank_sw[5];        // also named firq-disable
+wire       os9sel  = bank_sw[6];        // OS/9 flat memory mapping
+wire       ctrlwp  = bank_sw[7];        // 1 allows the System Latch to be written.
+wire       sync_happened;               // resets OS/9 flat memory mapping
 
 always @(posedge clk) begin
-    if (!res_n) begin
+    if (!res_n || sync_happened) begin
         bank_sw <= 8'h00;
     end else if (enable) begin
         if (bank_sw_sel && !r_w_n_from_cpu) begin
@@ -223,7 +206,8 @@ mos6702 dongle
 /*
  * Expansion memory 9xxx (actually implemented on the main board)
  */
-assign a = spet_extram_sel ? { 8'b00000001, bank, a_from_cpu[11:0] }
+assign a = os9flat         ? { 8'b00000001, a_from_cpu[15      :0] } :
+           spet_extram_sel ? { 8'b00000001, bank, a_from_cpu[11:0] }
                            : { 8'b00000000, a_from_cpu[15      :0] };
 assign r_w_n_to_mainboard = spet_extram_sel ? r_w_n_from_cpu || !spet_ram_wp
                                             : r_w_n_from_cpu;
@@ -234,11 +218,11 @@ assign r_w_n_to_mainboard = spet_extram_sel ? r_w_n_from_cpu || !spet_ram_wp
 
 /*
  * Use cnt31 to generate E and Q. They must go like this:
- * 
+ *
  *    +    +----+
  * E  |    |    |
  *    +----+    +....
- * 
+ *
  *      +----+
  * Q    |    |
  *    --+    +---...
@@ -255,8 +239,6 @@ assign r_w_n_to_mainboard = spet_extram_sel ? r_w_n_from_cpu || !spet_ram_wp
  *
  * We don't care so much about the exact edges of Q.
  */
-(* dont_touch = "true",mark_debug = "true" *)
-// wire E = pref_use_6809 && cnt31[4];
 reg E;
 always @(posedge clk) begin
     if (!pref_use_6809) begin
@@ -266,12 +248,10 @@ always @(posedge clk) begin
     end
 end
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire Q = pref_use_6809 && (cnt31[4] ^ cnt31[3]);
 
 // Latch the Data towards the 6809 on the rising edge of "enable" since
 // the 6502 does it that way. The 6809 uses the bus inputs when Q falls.
-(* dont_touch = "true",mark_debug = "true" *)
 reg [7:0] din_to_6809;
 always @(posedge clk) begin
     if (cnt31 == 0 && pref_use_6809) begin
@@ -279,13 +259,14 @@ always @(posedge clk) begin
     end
 end
 
-(* dont_touch = "true",mark_debug = "true" *)
 wire bs, ba;                    // for SuperOS9 MMU
-wire nfirq = 1'b1;              // for SuperOS9 MMU
+assign sync_happened = ba && !bs && !syncdis;
+wire nfirq = !sync_happened;    // for SuperOS9 MMU
+assign os9flat = os9sel && !ba;
 
 mc6809e cpu6809e
 (
-    .D(din_to_6809),            // input   [7:0] D,    TODO: pref_use_6809 ? din_to_cpu : 8'h00
+    .D(din_to_6809),            // input   [7:0] D,
     .DOut(dout_from_6809),      // output  [7:0] DOut,
     .ADDR(a_from_6809),         // output  [15:0] ADDR,
     .RnW(r_w_n_from_6809),      // output  RnW,
@@ -305,14 +286,12 @@ mc6809e cpu6809e
 
 // 6809-specific ROMs. 3 x 8 KB.
 
+
 wire io_gap     = (a_from_6809[15:11] == 5'b1110_1);    // E800 - EFFF
 
-(* dont_touch = "true",mark_debug = "true" *)
-wire rom_ab_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b101);
-(* dont_touch = "true",mark_debug = "true" *)
-wire rom_cd_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b110);
-(* dont_touch = "true",mark_debug = "true" *)
-wire rom_ef_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b111) && !io_gap;
+wire rom_ab_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b101)            && !os9flat;
+wire rom_cd_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b110)            && !os9flat;
+wire rom_ef_sel = pref_use_6809 && (a_from_6809[15:13] == 3'b111) && !io_gap && !os9flat;
 
 wire [7:0] rom_ab_data;
 wire [7:0] rom_cd_data;

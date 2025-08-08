@@ -61,7 +61,6 @@ module mc6809i
     input   nHALT,
     input   nRESET,
     input   nDMABREQ,
-(* dont_touch = "true",mark_debug = "true" *)
     output  [111:0] RegData
 );
 
