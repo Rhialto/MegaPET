@@ -34,6 +34,7 @@ module ieeedrv_drv #(
 
 	input              drv_type,
 	input              dos_16k,
+	input              drv_type_sides,
 
 	input       [NS:0] img_mounted,
 	input       [NS:0] img_loaded,
@@ -67,9 +68,11 @@ reg [23:0] drv_reset_cnt;
 
 always @(posedge clk_sys) begin
 	reg drv_type_l;
+	reg drv_type_sides_l;
 
 	drv_type_l <= drv_type;
-	if (reset || drv_type_l != drv_type)
+	drv_type_sides_l <= drv_type_sides;
+	if (reset || drv_type_l != drv_type || drv_type_sides_l != drv_type_sides)
 		drv_reset_cnt <= '1;
 	else if (drv_reset_cnt && ce)
 		drv_reset_cnt <= drv_reset_cnt - 1'b1;
@@ -125,7 +128,7 @@ ieeedrv_logic #(
 	.ph2_f(ph2_f),
 	.halt_ctl(halt_ctl),
 
-	.drv_type({drv_type, ~drv_type}),
+	.drv_type({drv_type, drv_type_sides}),
 	.dos_16k(dos_16k),
 
 	.dev_id(dev_id),

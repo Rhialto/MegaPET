@@ -55,7 +55,8 @@
         output [7:0]       bus_o_data,
 
 
-	input       [ND:0] drv_type,                    // clk_main core clock domain
+	input       [ND:0] drv_type,                    // clk_main core clock domain 0=8x50, 1=4040
+	input       [ND:0] drv_type_sides,              // clk_main core clock domain 0=1, 1=2 sides
 
 	input       [NB:0] img_mounted,                 // clk_main core clock domain
 	input       [31:0] img_size,                    // clk_main core clock domain
@@ -135,6 +136,9 @@ ieeedrv_sync #(NBD) img_mounted_sync(clk_sys, img_mounted_str, img_mounted_s);
 
 wire [NB:0] drv_type_s;         /* synced signal in clk_sys domain */
 ieeedrv_sync #(NBD) drv_type_sync(clk_sys, drv_type, drv_type_s);
+
+wire [NB:0] drv_type_sides_s;   /* synced signal in clk_sys domain */
+ieeedrv_sync #(NBD) drv_type_sides_sync(clk_sys, drv_type_sides, drv_type_sides_s);
 
 st_ieee_bus drv_bus_i;
 st_ieee_bus drv_bus_o[NDR];
@@ -343,6 +347,7 @@ generate
 
 			.drv_type(drv_type_s[d]),
 			.dos_16k(c4040_dos_16k | ~drv_type_s[d]),
+			.drv_type_sides(drv_type_sides_s[d]),
 
 			.dos_addr(dos_addr[d]),
 			.dos_data(dos_data[d]),
