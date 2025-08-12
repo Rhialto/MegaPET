@@ -405,9 +405,9 @@ wire    vram_sel   = ! extram_sel &&
                      (pref_have_8296 ? vram_sel_2
                                      : vram_sel_0);
 
-// In the 8296, writing to a ROM writes to the RAM "under" it
+// In the 8296, writing to a ROM (but not I/O) writes to the RAM "under" it.
 wire    vram_sel_w = ! extram_sel &&
-                     (pref_have_8296 ? addr[15] == 1'b1
+                     (pref_have_8296 ? (addr[15] == 1'b1 && (addr[14:8] != 7'b110_1000 || ramE8))
                                      : vram_sel_0);
 
 wire    vram_we = we && vram_sel_w && vram_cpu_video;
