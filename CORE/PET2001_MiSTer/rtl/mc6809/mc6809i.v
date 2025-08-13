@@ -82,8 +82,8 @@ assign BUSY = rBUSY;
 // Bus control
 // BS    BA
 //  0     0   normal (CPU running, CPU is master)
-//  0     1   Interrupt Ack
-//  1     0   Sync Ack
+//  0     1   Sync Ack       | was incorrectly: Interrupt Ack
+//  1     0   Interrupt Ack  | was incorrectly: Sync Ack
 //  1     1   CPU has gone high-Z on A, D, R/W
 //
 

@@ -173,7 +173,7 @@ end
 /*
  * ACIA 6551 (not implemented)
  */
-wire [7:0] data_from_acia = 8'hFF;
+wire [7:0] data_from_acia = 8'h00;
 
 /*
  * ACIA 6850 (not implemented; supposedly EFF4-EFF5)
@@ -262,7 +262,7 @@ end
 wire bs, ba;                    // for SuperOS9 MMU
 assign sync_happened = ba && !bs && !syncdis;
 wire nfirq = !sync_happened;    // for SuperOS9 MMU
-assign os9flat = os9sel && !ba;
+assign os9flat = pref_use_6809 && os9sel && !ba;
 
 mc6809e cpu6809e
 (
