@@ -3832,7 +3832,7 @@ begin
         CpuState_nxt = CPUSTATE_IRQ_DONTCARE;
         if (InstPage3)
             IntType_nxt = INTTYPE_SWI3;
-        if (InstPage2)
+        else if (InstPage2)
             IntType_nxt = INTTYPE_SWI2;
         else
             IntType_nxt = INTTYPE_SWI;        
