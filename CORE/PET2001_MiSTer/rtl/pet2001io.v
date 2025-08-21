@@ -248,6 +248,7 @@ mc6845 crtc
 (
         .CLOCK(clk),
         .CLKEN(ce),
+        .CLKEN_CPU(ce),
         .nRESET(~reset || ~pref_have_crtc),
 
         // Bus interface
@@ -264,6 +265,8 @@ mc6845 crtc
         .CURSOR(crtc_cursor),
         .LPSTB(),   // no light pen connected.
 
+        .VGA(0),    // we don't want VGA
+
         // Memory interface
         .MA(crtc_ma),
         .RA(crtc_ra)
@@ -274,7 +277,7 @@ mc6845 crtc
 // pixels in the character ROM.
 always @(posedge clk) begin
     if (ce) begin
-	crtc_irq_vsync <= crtc_vsync_out;
+        crtc_irq_vsync <= crtc_vsync_out;
     end
 end
 
@@ -315,7 +318,7 @@ always @(posedge clk) begin
                     & (via_sel  ? via_data_out  : 8'hFF)
                     & (crtc_sel ? crtc_data_out : 8'hFF);
 end
- 
+
 assign irq = pia1_irq || pia2_irq || via_irq;
 
 endmodule // pet2001io
