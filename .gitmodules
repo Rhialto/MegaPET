@@ -1,0 +1,3 @@
+[submodule "M2M/QNICE"]
+	path = M2M/QNICE
+	url = https://github.com/sy2002/QNICE-FPGA
