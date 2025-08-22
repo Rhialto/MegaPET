@@ -51,7 +51,7 @@ module pet2001hw
         input            spram_sel,             // SuperPET expansion RAM select
         output           irq,
 
-        output           ce_pixel_o,
+        output reg       ce_pixel_o,
         output           pix_o,
         output reg [7:0] video_red_o,
         output reg [7:0] video_green_o,
@@ -301,9 +301,12 @@ wire    ce_pixel_80 = (cnt31_i[0] == 1);    // every 2 clocks
 
 always @(posedge clk)
 begin
-    ce_pixel <= pref_have_80_cols ? ce_pixel_80
-                                  : ce_pixel_40;
-    ce_8m <= ce_pixel_40;                     // every 4 clocks
+    ce_pixel   <= pref_have_80_cols ? ce_pixel_80
+                                    : ce_pixel_40;
+    // Output pixel clock. Let it be fixed so the crop processing can work.
+    ce_pixel_o <= ce_pixel_80;              // every 2 clocks
+    ce_8m      <= ce_pixel_40;              // every 4 clocks
+
 
     if (cnt31_i == 3) begin
         vram_cpu_video <= 0;    // video; fetch character data; could be <= !chosen_de?
@@ -329,9 +332,6 @@ begin
         end
     end;
 end;
-
-// Output pixel clock. Let it be fixed so the crop processing can work.
-assign ce_pixel_o = ce_pixel_80;
 
 // In the 2nd half of the cpu cycle, fetch the odd char from 80 col video
 // memory.
