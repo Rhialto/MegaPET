@@ -1,0 +1,27 @@
+diff --git a/c/vasm/cond.c b/c/vasm/cond.c
+index 8d1a12c..910065a 100644
+--- qnice/c/vasm/cond.c
++++ QNICE/c/vasm/cond.c
+@@ -8,7 +8,7 @@ int clev;  /* conditional level */
+ static char cond[MAXCONDLEV+1];
+ static char *condsrc[MAXCONDLEV+1];
+ static int condline[MAXCONDLEV+1];
+-static ifnesting;
++static int ifnesting;
+ 
+ 
+ /* initialize conditional assembly */
+diff --git a/emulator/uart.h b/emulator/uart.h
+index f5b3e49..86ce36c 100644
+--- qnice/emulator/uart.h
++++ QNICE/emulator/uart.h
+@@ -55,7 +55,8 @@ typedef struct uart
+ #define RESET_OUTPUT_PORT 15
+ 
+ //flag to ensure restoring a working terminal when closing the emulator by closing the SDL window
+-enum uart_status_t {uart_undef, uart_init, uart_rundown} uart_status;
++enum uart_status_t {uart_undef, uart_init, uart_rundown};
++extern enum uart_status_t uart_status;
+ 
+ unsigned int uart_read_register(uart *, unsigned int);
+ void uart_write_register(uart *, unsigned int, unsigned int);

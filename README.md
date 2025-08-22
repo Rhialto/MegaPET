@@ -5,20 +5,29 @@ This is the MegaPET, the PET implementation on the Mega-65 hardware.
 
 *THIS IS A WORK IN PROGRESS! IT IS NOT FINISHED!*
 
-There have been many different versions of PET, and the MegaPET aims to support most of them, eventually.
+There have been many different versions of PET, and the MegaPET supports all those I am aware of.
 
-This project is organized in 3 git repositories. The top-level one is a snapshot of the MiSTer2MEGA65 framework (which also brings the QNICE repo with it), and much of the actual PET is in a submodule [CORE/PET2001_MiSTer](https://github.com/Rhialto/PET2001_MiSTer). If you want to get the source code, use these commands:
+This project is organized in 2 git repositories. The main one contains a snapshot of the MiSTer2MEGA65 framework (which also brings the QNICE repo with it as as submodule). Much of the actual PET is in subdirectory `CORE/PET2001_MiSTer` which started as a clone of the PET2001\_MiSTer project. If you want to get the source code and build it, use these commands:
 
-* `git clone https://github.com/Rhialto/PET_MEGA65`
-* `cd PET_MEGA65`
-* `git submodule init`
+* `git clone https://github.com/Rhialto/MegaPET`
+* `cd MegaPET`
+* `git submodule init`      # to get the QNICE submodule
 * `git submodule update`
+* You may need to apply the patch `M2M/QNICE.patch` for the next step
+* `cd M2M/QNICE/tools; ./make-toolchain.sh`   
+* start Vivado, then open project `CORE/CORE-R6.xpr`, then "Generate Bitstream".
 
 Releases
 --------
 There are currently no real releases.
 
 From time to time there is a pre-release, when there seems to be some useful addition to the code base. There is absolutely no guarantee when those happen.
+
+v0.00016
+--------
+- Fixed SWI3 instruction in the 6809 (it used the wrong vector) and now Super-OS/9 boots.
+- Fixed some small memory mapping bugs for 8296 and OS9 flat mode.
+- Reorganized the separate `PET_MEGA65` and `PET2001_MiSTer` repositories into a single `MegaPET`, preserving history.
 
 v0.00015
 --------
@@ -164,7 +173,6 @@ All the differences in display and keyboard manifest in the "editor" ROM. The Ba
 
 Later models are all variants of the 8032 model. These include a 64 KB memory expansion (making a 8096) and the 8296 which has 128 KB of memory (essentially the 64 KB memory expansion built-in and using 2 banks of 64 Kbit RAM chips).
 A different and incompatible expansion is the SuperPET a.k.a. MicroMainFrame 9000 (an 8032 with an additional 6809 CPU and a *different* 64 KB memory expansion).
-This is all not implemented at this time.
 
 PROGRAMMING INFO
 ----------------
@@ -182,13 +190,14 @@ goes to the submenu for model options (see below).
 
 ### Disk Drive, Unit 8
 
-#### disabled, 4040 or 8250
+#### disabled, 4040, 8050, or 8250
 
 This chooses if you want the disk drive and if so which type.
 If you switch from one drive type to the other, the drive is reset so that its tiny little minds can adjust to the changed hardware around them.
 
 You can use disk images of type `.D64` (174 848 bytes) with the 4040.
-You can use disk images of types `.D80` (1-sided, 533 248 bytes) and `.D82` (2-sided, 1 066 496 bytes) with the 8250.
+You can use disk images of types `.D80` (1-sided, 533 248 bytes) in the 8050. Reading double-sided `.D82` images might also work sometimes, but you have the risk of corruption and losing data on the second side (just the same as if you put a real double sided floppy in a real single sided drive).
+You can use disk images of types `.D80` and `.D82` (2-sided, 1 066 496 bytes) with the 8250.
 When using a D80 disk image (single sided, for 8050 drives), the first disk access will result in an error.  This is normal behaviour of the 8250 drive.
 
 #### 0:\<Mount Drive>, 1:\<Mount Drive>
@@ -247,6 +256,8 @@ This enables the memory configuration of the 8296. This maps an additional 32 KB
 
 If you select this option then normally you would also select the 8096 memory and its Control Register. In theory you could have an 8296 and remove the 8096 style extra 64 KB RAM chips (and the Control Register), so it's a separate option. But in practice I estimate that nobody would do such a silly thing.
 
+Selecting this option also includes the HRE (HiRes Emulator) with its memory control register at `$E888`.
+
 #### $9000 RAM, $A000 RAM
 
 Activates (pulls down) the `/RAM SEL 9` and `/RAM SEL A` signals (see the Supplement section 2.4: JU1, JU2). 
@@ -260,9 +271,9 @@ Since the memory mapping sometimes depends on bit 6 (I/O Peek Through) of the $F
 
 This offers yet another way to replace the ROMs by RAM and run with dynamically modified ROMs. Just copy addresses $B000-$FFFF (skipping $FFF0 and $E800-$E8FF) to themselves, which copies the ROMs into RAM. Set $FFF0 to $40 (I/O peek though). Then enable this option, write some values to the user port, and finally set the 3 user port bits to output.
 
-The HRE (HiRes Emulator) has a write-only memory mapping register at `$E888` which also controls these 3 signals. Bit 0 controls /ramSEL9, bit 1 /ramSELA, bit 2 /ramON, and bit 7 must be set to enable this. In the MegaPET, the Userport control preference overrides the E888 register. I don't know if this matches original hardware; if I have evidence that it does not then I will change it.
+The HRE (HiRes Emulator) has a write-only memory mapping register at `$E888` which also controls these 3 signals. Bit 0 controls /ramSEL9, bit 1 /ramSELA, bit 2 /ramON, and bit 7 must be set to enable this. In the MegaPET, the Userport control preference overrides the `$E888` register. I don't know if this matches original hardware; if I have evidence that it does not then I will change it.
 
-#### SuperPET
+### SuperPET
 
 This enables the SuperPET expansion board. This is another expansion based on the 8032. It is not compatible with 8096 or 8296 expansions. If they are selected in combination, all of them will be disabled instead.
 
