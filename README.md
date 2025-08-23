@@ -399,9 +399,9 @@ CREDITS
 This project is based on, and would have been impossible without, the following other projects:
 
 * [MiSTer2MEGA65](https://github.com/sy2002/MiSTer2MEGA65) by MJoergen and sy2002 is a framework to simplify porting MiSTer cores to the MEGA65.
-* [Pet2001_Nexys3](http://www.skibo.net/projects/pet2001_arty/) which in turn evolved into
-* [Pet2001_Arty](https://github.com/skibo/Pet2001_Arty) [Project page](https://www.skibo.net/projects/pet2001fpga/), which was the starting point for
-* [PET2001_MiSTer](https://github.com/MiSTer-devel/PET2001_MiSTer) from sorgelig. This was the starting point of the PET core.
+* [Pet2001_Nexys3](https://www.skibo.net/projects/pet2001fpga/) which in turn evolved into
+* [Pet2001_Arty](https://github.com/skibo/Pet2001_Arty) [Project page](https://www.skibo.net/projects/pet2001_arty/), which was the starting point for
+* [PET2001_MiSTer](https://github.com/MiSTer-devel/PET2001_MiSTer) from sorgelig. This was the starting point for the MegaPET core.
 * [C64_MiSTerMEGA65](https://github.com/MJoergen/C64_MiSTerMEGA65) by MJoergen and sy2002 and contributors. I used the 1541 from this, and converted it to a 2031 drive (replaced the serial IEC bus with a parallel IEEE-488 bus) so it can connect to a PET.
 * The work-in-progress [CBM-II_MiSTer](https://github.com/eriks5/CBM-II_MiSTer) from which I first used the 6845 CRTC and the 4040 / 8250 dual disk drive. Big thanks to Erik Scheffers for his improvements.
 * The BBC micro implementation [BeebFpga](https://github.com/hoglet67/BeebFpga) from which I used the updates to the CRTC.

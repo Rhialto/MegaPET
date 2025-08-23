@@ -1,38 +1,29 @@
-YOUR PROJECT NAME for MEGA65 aka GITHUB REPO SHORT NAME
-=======================================================
+MegaPET for MEGA65
+==================
 
-done in YEAR by YOUR NAME
+done in 2025 by Olaf "Rhialto" Seibert
 
-YOUR WEBSITE
-YOUR GITHUB SITE
+https://github.com/Rhialto/MegaPET
 
-REPO SHORT NAME is licensed under the terms of GNU/GPL v3, for more information please read the file LICENSE
-Parts of REPO SHORT NAME are licensed under other Free-software licenses as described in the source code
+MegaPET is licensed under the terms of GNU/GPL v3, for more information please read the file LICENSE
+Parts of MegaPET are licensed under other Free-software licenses as described in the source code
 
-GITHUB REPO SHORT NAME:
------------------------
+GITHUB MegaPET:
+--------------
 
-  GITHUB REPO SHORT NAME is a port of MISTER'S REPO SHORT NAME
+  GITHUB MegaPET is a port of MISTER'S PET2001_MiSTer
       done by the MiSTer Development Team
-      Original GitHub Repository: https://github.com/MiSTer-devel/MISTER-REPO-LINK
+      Original GitHub Repository: https://github.com/MiSTer-devel/PET2001_MiSTer
       Significant contributors:
-      * NAME THE MAIN
-      * CONTRIBUTORS
-      * ON MiSTer's SIDE
+      * Thomas Skibo
+      * sorgelig
 
-  MISTER'S REPO SHORT NAME is a port of MiST's MiST NAME/OTHER SOURCE IN CASE MiSTer ported it from MIST/OTHER SOURCE
-      done by the MiST Development Team
-      Original GitHub Repository: https://github.com/mist-devel/MIST-REPO-LINK OR OTHER SOURCE
-      Significant contributors:
-      * NAME THE MAIN
-      * CONTRIBUTORS
-      * ON MiST's SIDE (OR OTHER SOURCE)
+  PET2001_MiSTer is a port of Thomas Skibo's Pet2001_Arty.
 
-  LIST SOME MORE SIGNIFICANT / MAIN AUTHERS OF SUBMODULES
-  HAVE A LOOK AT THIS EXAMPLE HOW TO: https://github.com/sy2002/gbc4mega65/blob/master/AUTHORS
+  See the README.md file, section CREDITS, for more components.
 
-Other than that and my own work, REPO SHORT NAME uses:
-------------------------------------------------------
+Other than that and my own work, MegaPET uses:
+----------------------------------------------
 
 DO NOT FORGET TO CREDIT EVERYTHING YOU USE FROM OTHER PEOPLE HERE
 THE FOLLOWING LIST NEEDS ALWAYS TO BE PART OF YOUR LIST:
