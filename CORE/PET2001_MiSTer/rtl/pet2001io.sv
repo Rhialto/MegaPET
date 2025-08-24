@@ -145,11 +145,11 @@ pia6520 pia1
 
 	.ca1_in(pia1_ca1_in),
 	.ca2_out(pia1_ca2_out),
-	.ca2_in(1'b1),
+	.ca2_in(1'b1 & pia1_ca2_out),
 
 	.cb1_in(retrace_irq_n_i),
 	.cb2_out(cass_motor_n),
-	.cb2_in(1'b1),
+	.cb2_in(1'b1 & cass_motor_n),
 
 	.clk(clk),
 	.reset(reset)
@@ -186,11 +186,11 @@ pia6520 pia2
 
         .ca1_in(ieee488_atn_i),
         .ca2_out(ieee488_ndac_o),
-        .ca2_in(1'b1),                  // loopback via bus driver
+        .ca2_in(1'b1 & ieee488_ndac_o), // loopback also via bus driver
 
         .cb1_in(ieee488_srq_i),
         .cb2_out(ieee488_dav_o),
-        .cb2_in(1'b1),                  // loopback via bus driver
+        .cb2_in(1'b1 & ieee488_dav_o),  // loopback also via bus driver
 
         .clk(clk),
         .reset(reset)
