@@ -52,6 +52,7 @@
 module pet2001io
 (
         output reg [7:0] data_out,      // CPU interface
+        output       data_oe,           // output enable
         input  [7:0] data_in,
         input  [7:0] addr,
         input        cs,
@@ -299,12 +300,13 @@ crtc_or_not crtc
 // If no I/O chips are selected return E8 (high byte of the address).
 //
 
-assign data_out = {pia1_sel,pia2_sel,via_sel,crtc_sel} == 4'b000 ? 8'hE8 :
-                       (8'hFF
+assign data_out = (8'hFF
                         & (pia1_sel ? pia1_data_out : 8'hFF)
                         & (pia2_sel ? pia2_data_out : 8'hFF)
                         & (via_sel  ? via_data_out  : 8'hFF)
                         & (crtc_sel ? crtc_data_out : 8'hFF));
+
+assign data_oe = pia1_sel || pia2_sel || via_sel || crtc_sel;
 
 assign irq = pia1_irq || pia2_irq || via_irq;
 

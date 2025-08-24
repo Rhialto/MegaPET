@@ -651,6 +651,7 @@ end;
 // I/O hardware
 ////////////////////////////////////////////////////////
 wire [7:0]      io_read_data;
+wire            io_read_oe;
 // This allows for "small I/O area" only. No I/O extensions in E900-EFFF.
 assign          io_sel = (addr[15:8] == 8'hE8) && !extram_sel && !ramE8;
 /* !ramE8 shortcuts !vram_sel, and vram_sel includes && !extram_sel which we
@@ -659,6 +660,7 @@ assign          io_sel = (addr[15:8] == 8'hE8) && !extram_sel && !ramE8;
 pet2001io io
 (
         .data_out(io_read_data),
+        .data_oe(io_read_oe),
         .data_in(data_in),
         .addr(addr[7:0]),               // E8xx only!
         .cs(io_sel),
@@ -719,26 +721,41 @@ pet2001io io
 /////////////////////////////////////
 // Read data mux (to CPU)
 /////////////////////////////////////
+reg [7:0] last_bus_data;
+
+// When the bus is "open" it keeps its last value.
+always @(posedge clk) begin
+    if (ce_1m) begin
+        if (we) begin
+            last_bus_data <= data_in;
+        end else begin
+            last_bus_data <= data_out;
+        end
+    end
+end
+
 always @(*)
 begin
-    casex({addr[15:12], io_sel, vram_sel, ram_sel, extram_sel })
-        8'b1111_x_0_x_0: data_out = rom_data;     // F000-FFFF KERNAL
-        8'b1xxx_1_0_x_0: data_out = io_read_data; // E800-E8FF I/O
-        8'b1110_0_0_x_0: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
-        8'b110x_x_0_x_0: data_out = rom_data;     // C000-DFFF BASIC
-        8'b1011_x_0_x_0: data_out = rom_data;     // B000-BFFF BASIC 4
-        8'b1010_x_0_x_0: data_out = rom_data;     // A000-AFFF OPT ROM 2
-        8'b1001_x_0_x_0: data_out = rom_data;     // 9000-9FFF OPT ROM 1
-        8'b1xxx_x_1_x_0: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times) or 8296 RAM 8000-FFFF
-        8'bxxxx_x_0_x_1: data_out = extram_data;  // 8000-FFFF 64K EXT RAM (bank switched) or 0000-FFFF SuperPET EXT RAM
-        8'b0xxx_x_x_1_0: data_out = ram_data;     // 0000-7FFF 32K RAM
-        // ^    ^ ^ ^ ^
-        // |    | | | +- extram_sel
-        // |    | | \--- ram_sel
-        // |    | \----- vram_sel
-        // |    \------- io_sel
-        // \------------ addr[15:12]
-        default: data_out = addr[15:8];
+    casex({we, addr[15:12], io_sel, io_read_oe, vram_sel, ram_sel, extram_sel })
+        10'b0_1111_xx_0_x_0: data_out = rom_data;     // F000-FFFF KERNAL
+        10'b0_1xxx_11_0_x_0: data_out = io_read_data; // E800-E8FF I/O with output enable
+        10'b0_1110_0x_0_x_0: data_out = rom_data;     // E000-EFFF except E8xx: EDITOR
+        10'b0_110x_xx_0_x_0: data_out = rom_data;     // C000-DFFF BASIC
+        10'b0_1011_xx_0_x_0: data_out = rom_data;     // B000-BFFF BASIC 4
+        10'b0_1010_xx_0_x_0: data_out = rom_data;     // A000-AFFF OPT ROM 2
+        10'b0_1001_xx_0_x_0: data_out = rom_data;     // 9000-9FFF OPT ROM 1
+        10'b0_1xxx_xx_1_x_0: data_out = vram_data;    // 8000-8FFF VIDEO RAM (mirrored several times) or 8296 RAM 8000-FFFF
+        10'b0_xxxx_xx_0_x_1: data_out = extram_data;  // 8000-FFFF 64K EXT RAM (bank switched) or 0000-FFFF SuperPET EXT RAM
+        10'b0_0xxx_xx_x_1_0: data_out = ram_data;     // 0000-7FFF 32K RAM
+        10'b1_xxxx_xx_x_x_x: data_out = data_in;      // loop back cpu output to cpu input
+        //  ^ ^    ^  ^ ^ ^
+        //  | |    |  | | +- extram_sel
+        //  | |    |  | \--- ram_sel
+        //  | |    |  \----- vram_sel
+        //  | |    \-------- io_sel, io_read_oe
+        //  | \------------- addr[15:12]
+        //  \--------------- we
+        default:             data_out = last_bus_data;
     endcase;
 end;
 

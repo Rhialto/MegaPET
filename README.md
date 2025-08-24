@@ -28,6 +28,7 @@ v0.00016
 - Fixed SWI3 instruction in the 6809 (it used the wrong vector) and now Super-OS/9 boots.
 - Fixed some small memory mapping bugs for 8296 and OS9 flat mode.
 - Reorganized the separate `PET_MEGA65` and `PET2001_MiSTer` repositories into a single `MegaPET`, preserving history.
+- Improved "empty bus" reading.
 
 v0.00015
 --------
