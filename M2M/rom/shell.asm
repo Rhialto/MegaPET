@@ -1044,7 +1044,7 @@ _HDR_SEND_LOOP  CMP     R6, R0                  ; transmission done?
                 MOVE    VD_B_WREN, R8           ; ~~strobe~~ assert write enable
                 MOVE    1, R9
                 RSUB    VD_CAD_WRITE, 1
-;[Rhialto]       XOR     0, R9                  ; don't bother to run these
+;[Rhialto]       XOR     0, R9                  ; don''t bother to run these
 ;[Rhialto]       RSUB    VD_CAD_WRITE, 1        ; in-effective instructions
 
                 ADD     1, R6                   ; next byte
@@ -1062,7 +1062,7 @@ _HDR_SEND_DONE  MOVE    R11, R8                 ; virtual drive ID
                 RSUB    VD_DRV_WRITE, 1
 
                 ; unassert write enable.                                    ; [Rhialto]
-                ; we don't want it active when reading from the disk later! ; [Rhialto]
+                ; we don''t want it active when reading from the disk later!; [Rhialto]
                 MOVE    VD_B_WREN, R8           ; [Rhialto] unassert write enable
                 XOR     R9, R9                  ; [Rhialto] set to 0
                 RSUB    VD_CAD_WRITE, 1         ; [Rhialto]
