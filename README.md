@@ -257,6 +257,7 @@ This enables the memory configuration of the 8296. This maps an additional 32 KB
 If you select this option then normally you would also select the 8096 memory and its Control Register. In theory you could have an 8296 and remove the 8096 style extra 64 KB RAM chips (and the Control Register), so it's a separate option. But in practice I estimate that nobody would do such a silly thing.
 
 Selecting this option also includes the HRE (HiRes Emulator) with its memory control register at `$E888`.
+This option also disables "screen snow" because the current implementation would have way too much "snow", and the combination didn't exist in real hardware anyway.
 
 #### $9000 RAM, $A000 RAM
 
@@ -390,6 +391,8 @@ The Power LED can take 3 different colours:
 POSSIBLE FUTURE WORK
 --------------------
 - The method that QNice uses to copy data to and from the disk drive's internal track buffer should be made faster. Currently it can take more than 20 ms which caused time-outs in the FDC. This has a workaround but it slows down the drive.
+- When there is an expansion board which can support an external RS-232 port, the ACIA can be added to the SuperPET. If the M2M framework supports this too.
+- Similar for an extra numerical keypad: the keyboard could be improved.
 - Supply the disk unit with a track buffer for each drive, instead of a shared one.
 - Turbo mode, with 2x, 4x CPU speed. Probably won't speed up VIA timers and the disk unit. May also be tricky for the 6809.
 

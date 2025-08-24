@@ -376,6 +376,8 @@ wire ramE   = not_ram_on ?           1'b0 : !not_ram_sel_9 || !not_ram_sel_A;  /
 wire ramE8  = not_ram_on ?           1'b0 : !not_ram_sel_A && !cr_iopeek;
 wire ramF   = not_ram_on ?           1'b0 : !not_ram_sel_A;
 
+// vram_sel_2 indicates a potential read access to the extra 8296 RAM (8000-FFFF in bank 1).
+// This behaves differently from other _sel signals.
 wire vram_sel_2 = (addr[15:12] == 4'h8)  ? 1'b1 :
                   (addr[15:12] == 4'h9)  ? ram9 :
                   (addr[15:12] == 4'hA)  ? ramA :
@@ -387,6 +389,11 @@ wire vram_sel_2 = (addr[15:12] == 4'h8)  ? 1'b1 :
                   (addr[15:12] == 4'hF)  ? ramF :
                                            1'b0;
 
+// vram_sel_2_w indicates a potential write access to the extra 8296 RAM (8000-FFFF in
+// bank 1). Superset of vram_sel_2.
+// In the 8296, writing to a ROM address (but not I/O) writes to the RAM "under" it.
+wire vram_sel_2_w = addr[15] == 1'b1 && (addr[14:8] != 7'b110_1000 || ramE8);
+
 //////////////////////////////////////
 // Video RAM.
 // The video hardware shares access to VRAM some of the time.
@@ -395,19 +402,29 @@ wire vram_sel_2 = (addr[15:12] == 4'h8)  ? 1'b1 :
 // Later models only mirror up to $87FF.
 // For colour ram, assume the same kind of mirroring $8800-$8FFF.
 
+wire pref_scr_mirrors = pref_eoi_blanks;
+
+// Video snow is one of the "2001 quirks".
+// When "video snow" is enabled, this would snow also for all ROM accesses,
+// since accessing those for write would write to the same RAM. That's a bit
+// too much, so we just disable the snow for 8296.
+wire pref_video_snow = pref_eoi_blanks && !pref_have_8296;
+
 wire [7:0]      vram_data;
 wire [11:0]     video_addr;     /* 4 KB from crtc_ma */
 
-wire    vram_sel_0 = ((addr[15:11] == 5'b1000_0) ||                   /* 8000-87FF */
-                      (pref_eoi_blanks  && addr[15:12] == 4'b1000) || /* 8000-8FFF */
-                      (pref_have_colour && addr[15:12] == 4'b1000));  /* 8000-8FFF */
+wire    vram_sel_0 = ((addr[15:11] == 5'b1000_0) ||                   /* 8000-87FF, standard range*/
+                      (pref_scr_mirrors && addr[15:12] == 4'b1000) || /* 8000-8FFF, extra screen mirrors */
+                      (pref_have_colour && addr[15:12] == 4'b1000));  /* 8000-8FFF, add colour ram */
+// vram_sel indicates when a read on vram is done. Subset of vram_sel_w.
 wire    vram_sel   = ! extram_sel &&
                      (pref_have_8296 ? vram_sel_2
                                      : vram_sel_0);
 
-// In the 8296, writing to a ROM (but not I/O) writes to the RAM "under" it.
+// vram_sel_w indicates either read or write access of video RAM, which in
+// turn indicates when video snow might occur (if enabled).
 wire    vram_sel_w = ! extram_sel &&
-                     (pref_have_8296 ? (addr[15] == 1'b1 && (addr[14:8] != 7'b110_1000 || ramE8))
+                     (pref_have_8296 ? vram_sel_2_w
                                      : vram_sel_0);
 
 wire    vram_we = we && vram_sel_w && vram_cpu_video;
@@ -416,7 +433,7 @@ wire    vram_we = we && vram_sel_w && vram_cpu_video;
 // On the 2001, the CPU always has priority, so the address is from the cpu if
 // vram_sel is true.
 // For later models, also vram_cpu_video must be true.
-// pref_eoi_blanks is the indicator that the first behaviour is wanted.
+// pref_video_snow is the indicator that the first behaviour is wanted.
 
 wire [11:0] vram_addr_cpu_0;
 wire [14:0] vram_addr_cpu, vram_addr_cpu_2;
@@ -464,7 +481,7 @@ assign vram_addr_vid = hre_active     ? vram_addr_hre :
                                       : { 3'b0, vram_addr_vid_0 };
 
 assign vram_addr = vram_sel_w && (vram_cpu_video ||
-                                  pref_eoi_blanks) ? vram_addr_cpu
+                                  pref_video_snow) ? vram_addr_cpu
                                                    : vram_addr_vid;
 
 dualport_2clk_ram #(.addr_width(15)) pet2001vram        // 4 KB, for 80 cols + colour, or 32 KB for 8296.
