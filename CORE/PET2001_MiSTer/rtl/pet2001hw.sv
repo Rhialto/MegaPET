@@ -633,7 +633,7 @@ wire [7:0] blue_o = palette[rgbi][7:0];
 // final selection of black/white, colour or black/green
 always_comb  begin
     if (pref_have_2001_white) begin
-        video_red_o   = pix_o ? 8'hAA : 8'h0F;  // test signal
+        video_red_o   = pix_o ? 8'hAA : 8'h00;
         video_green_o = pix_o ? 8'hAA : 8'h00;
         video_blue_o  = pix_o ? 8'hFF : 8'h00;
     end else if (pref_have_colour) begin
@@ -641,7 +641,7 @@ always_comb  begin
         video_green_o = green_o;
         video_blue_o  = blue_o;
     end else begin
-        video_red_o   = 8'h0F;  // test signal
+        video_red_o   = 8'h00;
         video_green_o = pix_o ? 8'hFF : 8'h00;
         video_blue_o  = 8'h00;
     end;
