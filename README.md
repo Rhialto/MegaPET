@@ -3,9 +3,35 @@ MEGAPET
 
 This is the MegaPET, the PET implementation on the Mega-65 hardware.
 
-*THIS IS A WORK IN PROGRESS! IT IS NOT FINISHED!*
-
 There have been many different versions of PET, and the MegaPET supports all those I am aware of.
+
+Included features
+-----------------
+- The HELP key gets you to the options menu.
+- There is an "About & Help" item to remind you of the keyboard layout.
+- Copy the files from the "PET" directory in the release archive to the /PET directory on your sdcard.
+- You can choose all known PET models by setting options in the menu and loading the corresponding ROM set.
+- Supported PET models and features are:
+  - 8, 16 or 32 KB of RAM available to Basic programs.
+  - PET 2001 with white-ish screen, screen snow, 4 screen memory mirrors, EOI which blanks the screen.
+  - PET 3032 with green screen.
+  - Normal (graphics) or Business (N or B) keyboards.
+  - PET 4032 with or without CRTC.
+  - CoulourPET (as designed by Steve Gray).
+  - PET 8032.
+  - PET 8096 with the 64 KB RAM expansion.
+  - PET 8296 with 128 KB of RAM and additional HiRes Emulator (HRE).
+  - SuperPET 9000 also known as MicroMainFrame with additional Super-OS/9 MMU (as designed by TPUG).
+  - Dual floppy disk drive, switchable between models 4040, 8050 and 8250.
+  - HDMI video output.
+- Not supported:
+  - the C2N datasette.
+  - VGA video output.
+
+See further down for details about all possible settings (there are many).
+
+Source code
+-----------
 
 This project is organized in 2 git repositories. The main one contains a snapshot of the MiSTer2MEGA65 framework (which also brings the QNICE repo with it as as submodule). Much of the actual PET is in subdirectory `CORE/PET2001_MiSTer` which started as a clone of the PET2001\_MiSTer project. If you want to get the source code and build it, use these commands:
 
@@ -19,121 +45,11 @@ This project is organized in 2 git repositories. The main one contains a snapsho
 
 Releases
 --------
-There are currently no real releases.
+There is currently no real release yet.
 
 From time to time there is a pre-release, when there seems to be some useful addition to the code base. There is absolutely no guarantee when those happen.
 
-v0.00016
---------
-- Fixed SWI3 instruction in the 6809 (it used the wrong vector) and now Super-OS/9 boots.
-- Fixed some small memory mapping bugs for 8296 and OS9 flat mode.
-- Reorganized the separate `PET_MEGA65` and `PET2001_MiSTer` repositories into a single `MegaPET`, preserving history.
-- Improved "empty bus" reading.
-
-v0.00015
---------
-We now have a PET 8296-GD *and* a SuperPET! (not at the same time)
-
-- Add HRE graphics (324890-01) to the 8296 (so it is enabled if 8296 is enabled). HRE stands for High-Res Emulator; the "emulator" part means that the drawing is done in software, so quite slow compared to the HSG (High Speed Graphics, 324402-01). The HRE ROMs are included in the 8032b set: `SYS 9*4096` to initialize the BASIC extension. They are pretty compatible with the [HSG](https://mikenaberezny.com/hardware/pet-cbm/cbm-hsg-graphics-board/) software; the [HSG demos](http://www.cbmsteve.ca/hsg/) also run. This makes the MegaPET an 8296-GD.
-- Tweaked "HDMI: Zoom-in" a bit more so it (just) shows the whole HRE image.
-- Set the ascal filter when CRT emulation is off to bicubic. This seems to be the least bad of the options, but it still seems to lose pixels here and there.
-- Added 8050 as a floppy disk drive model option, for `.d80` floppy images. Do not put `.d82` images into this drive!
-- First phase of adding a SuperPET: an extra board that plugs into the 6502 socket and just passes through the 6502.
-- Second phase of SuperPET: adding the 64 KB memory expansion and the I/O registers which control it.
-- Third phase: add the 6702 dongle chip.
-- Fourth phase: add the 6809 cpu and its ROMs.
-- Next: Fifth phase: add the SuperOS/9 MMU from Toronto PET Users Group (TPUG). Unfortunately, Super-OS/9 doesn't boot. This may be a bug in the MMU, or equally well in an earlier phase.
-- The menu system doesn't show it, but you can't have SuperPET and 8x96 expansions at the same time. Internally in the core it is enforced that if you select both at the same time, you get neither. You could simply not plug in all those boards at the same time. Furthermore, the same 64 KB of RAM in the MegaPET is used for both.
-
-v0.00014
---------
-This prerelease is again mostly a floppy disk drive bugfix edition.
-
-- Made the "HDMI: Zoom-in" option more useful. It now zooms in to the maximum area of those used by the usual ROMs. It may need some further small adjustments to improve aspect ratios, if possible.
-- Switched to a more authentic editor ROM for the 8032. I noticed that the previous one only left one vertical pixel between text characters, instead of the 2 that it is supposed to do. You need to update the `/pet/8032b.rom` file on your sd-card to keep the rom file in sync with the builtin one.
-- Make disk errors a bit more visible by using more red in the LED and less green. The activity LEDs for both drive now also (usually) don't light up at the same time, which reduces confusing colour combinations.
-- More improvements/bug fixes in the floppy disk drive regarding track buffer management. One bug in the M2M framework contributed to this as well and was fixed (nr 52).
-
-v0.00013
---------
-This prerelease is mostly a bugfix edition. Finding (hopefully good!) fixes for two problems took some time.
-
-- Fixed the reset bug with the symptom that, after a reset, there was a chance that the HELP key did not work any more. (This was because the QNICE CPU was waiting forever on a hyperram bus transaction).
-- Worked around the disk drive issues with write errors. The 8250 is no longer Read Only (and the 4040 also works better again).
-- You can switch the disk drive type directly (it always reset automatically).
-- Loadable disk drive ROMs since upstream supports this now.
-
-v0.00012
---------
-This prerelease adds/changes, compared to v0.00011:
-
-- Uses the MiSTer2MEGA65 framework version 2.0.1.
-- Fixes the bug where the keyboard becomes unresponsive after leaving the menu.
-- Adds [8296-style](https://www.zimmers.net/anonftp/pub/cbm/pet/manuals/8296supplement/index.html) memory extension (extra 32 KB of RAM "under" the ROMs) for a total of 128 KB.
-- The presence of the disk drive is now optional.
-- New 8250 floppy disk drive type. Unfortunately there is an upstream bug, and this type is effectively Read Only for now.
-  - When switching types, go via "disabled" as an intermediate step (this resets the drive).
-  - You can still use disk images of type `.D64` (174 848 bytes) for the 4040.
-  - You can use disk images of types `.D80` (533 248 bytes) and `.D82` (1 066 496 bytes) for the 8250.
-    When using a D80 disk image (single sided, for 8050 drives), the first disk access will result in an error.  This is normal behaviour of the 8250 drive.
-  - Use the correct disk image for the disk unit type.
-  - Disk images are stored in Attic RAM.
-- Together this makes the MegaPET a 8296-D. Although that actual model had a different CRT and so required a different Editor ROM.
-
-v0.00011
---------
-This prerelease adds/changes, compared to v0.00010:
-
-- Starts up as model 8032: with CRTC, 80 columns, B keyboard, 8032b.rom. Some people preferred this.
-- Updated ColourPET editor ROM `4032n+colour.rom` to [cpet-c0-40-n-mega-wedge (2025-01-31).bin](https://github.com/sjgray/cbm-edit-rom/blob/269e4fb2f405f558f6d94e1a3dfefce39e28b60b/binaries/ColourPET/Test/cpet-c0-40-n-mega-wedge%20(2025-01-31).bin). Copy the new version to your sdcard.
-- Imported 4040 dual disk drive from [CBM-II_MiSTer core](https://github.com/eriks5/CBM-II_MiSTer/tree/e011b6586fce3deaf1a7e5ce361e8cd2ff80420e/rtl/ieee_drive) by Erik Scheffers. This drive is not considered final yet so there may be updates in the future.
-- Loading custom drive ROMs is for now not possible (the feature is missing from the 4040's code).
-- There are 3 LEDs to show (2 drive activity LEDs and the error LED). I tried to map them to the 2 halves of the M65's drive LED but you could not really see a difference between left and right in most cases. So I mapped them to colours: red = error, green = drive 0, blue = drive 1.
-- The Power LED is yellow when the drive cache is dirty and/or being flushed. This previously was the task of the drive LED.
-
-v0.00010
---------
-This prerelease adds, compared to v0.00009:
-
-- Steve Gray's [ColourPET](http://cbmsteve.ca/colourpet/index.html) board. Try it with [GridRunner](https://milasoft64.itch.io/gridrunner). I have included a test version of an editor ROM set for 40 columns `4032n+colour.rom`, specially created by Steve Gray for the MegaPET. Keep an eye on [github](https://github.com/sjgray/cbm-edit-rom/tree/master/binaries/ColourPET) for updates.
-- You can now select 8, 16 or 32 KB as the basic memory size.
-- 64 KB memory extension board, [8096-style](https://mikenaberezny.com/hardware/pet-cbm/cbm-64k-ram-expansion/). Not so well-tested but it seems ok. This brings the total amount of RAM to 32 + 64 = 96 KB.
-- The optional second half of the character ROM can now be used (if it is 4 KB), by setting MA13 (`poke 59520,12: poke 59521,3*16`). The MegaPET comes loaded with the character ROM from the SuperPET, which has ASCII and APL characters in the extra part. To go back to normal use `poke 59520,12: 59521,1*16`.
-- Similarly the screen as a whole can be inverted by unsetting MA12 (use `poke 59521,0*16` or `2*16`).
-  These features only work with the CRTC, and these address bits may be repurposed in later PET models: for example, the HRE uses MA12.
-- Incorporated upstream fixes from the to-be-released next version of the M2M framework, fixing the "barcode" issue that affects a small number of Mega65 revision 6 machines.
-
-v0.00009
---------
-This prerelease adds, compared to v0.00007:
-
-- 80 columns of text. Enabling this option automatically enables the CRTC too, but you need to load the `8032b.rom` yourself. You will also need to enable the following new feature:
-- B-type ("business") keyboard. By itself this is not so interesting, since with the symbolic mapping of the Mega-65 keyboard you don't notice much difference (but do refer to the keyboard mapping section below).
-- 2001-style screen snow. This is enabled as part of "2001 screen blank etc". This option affects 2001-specific quirks as part of the "etcetera". At his time they are:
-  - screen snow, when the CPU accesses screen memory at the same time as the video system.
-  - the screen blanks when EOI is sent on the IEEE-488 bus. This is used by the ROM to mask the previous effect when scrolling (only the non-CRTC ROMs do this).
-  - the 1 KB of screen memory $8000-$83FF is repeated 3 more times, up to $8FFF. Later models go only up to $87FF.
-- I have extended the set of ROMs with B keyboard and 80 column ROMs. You can get more variants from the well-known Zimmers site.
-- I am including a `petcfg` file which you can copy to the `/PET` directory on the sd-card. It will remember the menu selections. Unfortunately not the ROM file you loaded, so it is less useful than it could be. Actually I would recommend against using this. It got me into a scare when I left it set to 80 columns, and on the next load of the core I just got a black screen, because the corresponding ROM was not loaded any more...
-
-v0.00007
---------
-As of v0.00007, the core features:
-
-- R3 and R6 versions. I have an R6 myself and the R3 is generated from the MiSTeR2MEGA framework but not tested.
-- PET with or without CRTC (the CRT Controller which is used in later models)
-- 40 columns only
-- with "2001" properties, or without (= screen blanks when EOI is sent, screen memory has more mirrors)
-- with "2001" blue-ish white, or green screen
-- for now, some ROM files are available from https://github.com/Rhialto/PET_MEGA65/releases/tag/v0.00005
-- a 2031 floppy drive on the IEEE bus. At some point this will become a 4040. Even an 8250, if I can store disk images in Attic RAM (the 2 drives with 1 MB per disk image is too much for the BRAM in the core, I think).
-- default directory for the SD-card file selector is "/PET" so storing your ROM files and disk images is probably the most convenient.
-- the core includes the "4032n-nocrtc" ROM by default, so it is usable even before you copy over ROM files or whatever to your SD-card.
-- Furture plans include saving the settings, 80 columns, ColourPET mode, 8096 memory expansion, 8296 memory expansion, but nobody knows when those things might be realised.
-
-I have only tested IMDH output, not VGA output. One report mentions that VGA output isn't very good. As far as the VGA output follows the PET core output, rather than the scaled output, this is to be expected: PET video timings are certainly not "standard" and differ from ROM to ROM. Many have a 16 KHz line frequency but I think 20 KHz and other values occur as well.
-
-PET MODELS
+PET Models
 ----------
 
 First, a bit about the different models of PET. MegaPET has several settings so that it can do many of them, but that also means that some combinations of settings make no sense and will not work. Additionally, you need to choose the correct set of ROMs for the hardware.
@@ -154,13 +70,13 @@ At least the following variations of PET exist:
 -   Basic 4.0
     *   with N keyboard (Normal, or Graphic) (`4032n.rom`) or
     *   with B keyboard (Business, without graphic symbols), (`4032b.rom`)
-	and
+    and
     *   as upgrade for machines without CRT controller (`-nocrtc` rom files), or
     *   for new machines with CRT controller (default),
-	and
-    *   40 columns, or
-    *   80 columns (unimplemented so far),
-	and
+    and
+    *   40 columns (`4032*.rom`), or
+    *   80 columns (`8032b.rom`),
+    and
     *   50 Hz screen refresh (and IRQ), or
     *   60 Hz screen refresh (and IRQ).
 
@@ -175,15 +91,15 @@ All the differences in display and keyboard manifest in the "editor" ROM. The Ba
 Later models are all variants of the 8032 model. These include a 64 KB memory expansion (making a 8096) and the 8296 which has 128 KB of memory (essentially the 64 KB memory expansion built-in and using 2 banks of 64 Kbit RAM chips).
 A different and incompatible expansion is the SuperPET a.k.a. MicroMainFrame 9000 (an 8032 with an additional 6809 CPU and a *different* 64 KB memory expansion).
 
-PROGRAMMING INFO
+Programming Info
 ----------------
 
 Two very good resources for programming PETs are "Programming the PET/CBM" by Raeto West (lots of text), and "The Complete Commodore Inner Space Anthology" by Karl J. H. Hildon (lots of lists and tables).
 
-MENU
+Menu
 ----
 
-If you press the HELP key, the main menu opens. Some of the options are inherited from the Mister2Mega framework and have not yet been given a fitting meaning for this core.
+When you press the HELP key, the main menu opens.
 
 ### Model options...
 
@@ -205,7 +121,19 @@ When using a D80 disk image (single sided, for 8050 drives), the first disk acce
 
 The dual drive units have 2 drives and here you can insert a disk image into either one.  Use the correct disk image for the disk unit type.
 
-MODEL OPTIONS
+### HDMI: 720p 50 Hz 16:9
+
+This is actually a submenu where you can choose from several display resolutions. The HDMI-compatible display is created via a frame buffer, so there is no direct link between the PET's output frame frequency and the display. Note that in many cases VGA monitors cannot handle the quirky PET video output, and this can give a disappointing result. Use HDMI for best results.
+
+### HDMI: CRT emulation
+
+This option is enabled by default and creates the "scanline effect". When disabled, a different filtering is used which (at least on my screen) seems to hide some pixels, so it is less recommended.
+
+### HDMI: Zoom-in
+
+This crops a lot of the screen border and uses the full HDMI wide-screen width. This affects the aspect ratio of the characters. It works out the best for the 8032 lower-case screen. For other cases, choosing a 4:3 or 5:4 screen output may work better.
+
+Model Options
 -------------
 
 These are the settings in the "Model options..." submenu.
@@ -239,7 +167,7 @@ This enables 80 columns of text (rather than the default 40), making an 8xxx mod
 
 ### ColourPET rgbi
 
-This enables the [ColourPET extension](http://cbmsteve.ca/colourpet/index.html) from Steve Gray. It is made for 40 columns but in principle it could be made to work with 80 columns. Again, needs a supporting [Editor ROM](http://cbmsteve.ca/editrom/index.html). Enabling this option implicitly enables the CRTC.
+This enables the [ColourPET extension](http://cbmsteve.ca/colourpet/index.html) from Steve Gray. It is made for 40 columns but in principle it could be made to work with 80 columns. Again, needs a supporting [Editor ROM](http://cbmsteve.ca/editrom/index.html) such as `4032n+colour.rom`. Enabling this option implicitly enables the CRTC.
 
 Without a supporting Editor ROM, the colour memory ($8800...) will be initialized to all zero bytes and your text will be black on black: invisible. (On real PET hardware, screen memory is random on power-on). To help a bit with that, the "2001 white" option will partially override the Colour option and display in b/w, while keeping the colour RAM enabled so you can initialize it.
 
@@ -253,7 +181,7 @@ Adding to a 8032, this enables the optional expansion board with 64 KB of RAM, c
 
 ### 8296 memory expansion
 
-This enables the memory configuration of the 8296. This maps an additional 32 KB of RAM at $8000-$FFFF "behind" the ROMs and I/O space. This brings the total amount of RAM to 128 KB. For details, see the [8296 Supplement](https://www.zimmers.net/anonftp/pub/cbm/pet/manuals/8296supplement/8296supplement.html) sections 2.3 though 3.
+This enables the memory configuration of the 8296. This model simplified the memory hardware by using 128 KB of RAM in 2 banks of 64 KB, instead of separate Basic, screen and expansion RAM. This maps an additional 32 KB of RAM at $8000-$FFFF "behind" the ROMs and I/O space. For details, see the [8296 Supplement](https://www.zimmers.net/anonftp/pub/cbm/pet/manuals/8296supplement/8296supplement.html) sections 2.3 though 3.
 
 If you select this option then normally you would also select the 8096 memory and its Control Register. In theory you could have an 8296 and remove the 8096 style extra 64 KB RAM chips (and the Control Register), so it's a separate option. But in practice I estimate that nobody would do such a silly thing.
 
@@ -262,7 +190,7 @@ This option also disables "screen snow" because the current implementation would
 
 #### $9000 RAM, $A000 RAM
 
-Activates (pulls down) the `/RAM SEL 9` and `/RAM SEL A` signals (see the Supplement section 2.4: JU1, JU2). 
+Activates (pulls down) the `/RAM SEL 9` respectively `/RAM SEL A` signals (see the Supplement section 2.4: JU1, JU2).
 This makes it for example possible to LOAD ROM images into the EPROM socket address spaces $9xxx and $Axxx, if you have them as PRG files (with start address) on a floppy disk image.
 
 #### Userport controls RAM
@@ -284,23 +212,28 @@ The SuperPET has its own stype of memory expansion: RAM is mapped in blocks of 4
 #### Use 6502 / 6809 cpu
 
 The SuperPET has an extra cpu of type 6809 from Motorola. Only one can run at a time. Here you can choose which one.
-(There is also "program control" in the original hardware but this is not implemented.
+(There is also "program control" in the original hardware but this is not implemented.)
 
-The Super-OS/9 MMU from TPUG is built-in and always enabled if the 6809 is active. It is meant for running OS-9. as adapted by TPUG.
+The Super-OS/9 MMU from TPUG is built-in and always enabled if the 6809 is active. It is meant for running OS-9 as adapted by TPUG.
 
 There is [software and documentation](https://www.zimmers.net/anonftp/pub/cbm/pet/SuperPET/os9/index.html) at the Zimmers site. The [TPUG cd](https://archive.org/details/tpugusersgroupcd) contains lots of SuperPET software. 
 
 ### PET ROM: \<Load>
 
-Load a ROM file. See below in the ROMMAKER section for how these are put together.
+Load a ROM file. You need to reset the MegaPET after loading a different ROM (press the reset button on the left side of the case).
+
+See below in the ROMMAKER section for how these are put together.
+Unfortunately the MiSTer2MEGA65-framework does not save the name of the loaded ROM to the petcfg file.
 
 ### Charset: \<Load>
 
 Load a character generator ROM. These can be 2 KB or 4 KB. Only the non-reversed characters are present. Inverting them is done in hardware.
 
-The optional second half of the character ROM can be used (if it is 4 KB), by setting MA13 (`poke 59520,12: poke 59521,3*16`). The MegaPET comes loaded with the character ROM from the SuperPET, which has ASCII and APL characters in the extra part.
+The optional second half of the 4 KB character ROM can be used by setting MA13 (`poke 59520,12: poke 59521,3*16`). The MegaPET comes loaded with the character ROM from the SuperPET, which has ASCII and APL characters in the extra part.
 Similarly the screen as a whole can be inverted by unsetting MA12 (use `poke 59521,0*16` or `2*16`).
 These features only work with the CRTC, and these address bits may be repurposed in later PET models: the HRE uses MA12.
+
+Unfortunately the MiSTer2MEGA65-framework does not save the name of the loaded ROM to the petcfg file.
 
 ### Drive ROM: \<Load>
 
@@ -314,25 +247,9 @@ In that case, the first 4 KiB of the ROM should be padded with `FF` bytes to ali
 When the Controller ROM is only 1 KiB, the first 1 KiB should be padded with `FF` bytes to align the
 ROM properly.
 
-### HDMI: Zoom-in
+Unfortunately the MiSTer2MEGA65-framework does not save the name of the loaded ROM to the petcfg file.
 
-This crops a lot of the screen border and uses the full HDMI wide-screen width. This affects the aspect ratio of the characters. It works out the best for the 8032 lower-case screen. Unfortunately the non-crtc screens get stretched unreasonably wide.
-
-ROMMAKER
---------
-MegaPET ROM files are 32 KB which cover addresses $8000-$FFFF. The first 4 KB, $8000-$8FFF aren't actually used (this is screen memory area) but this is simpler for the implementation. The range $E800-$E8FF also isn't used since this is where the I/O chips are addressed.
-
-The Python program `./CORE/PET2001_MiSTer/roms/rommaker.py` is included in the submodule to help with creating ROM sets from the parts that are separately available. This can be helpful to make new combinations that aren't supplied here.
-
-It has built-in knowledge of many ROM part numbers to know at which address they belong. For unknown ones, it falls back to an address in the file name.
-
-You use it by calling `python3 rommaker.py -o OUTPUT file1 file2` or `python3 rommaker -p PRESET` (use `-p help` to see which presets are available). `.rom` is automatically appended. Also a `.hex` file is created, suitable for using in core development.
-
-You can also use the rommaker to modify an existing 32 KB ROM file, by listing it as the first input. The next ROM files will be overlaid on top of this, effectively modifying the contents. This would be convenient for plugging for example a Toolkit ROM into the $9xxx, $Axxx or $Bxxx EPROM socket. As long as the file name contains "9000", "a000" or "b000", rommaker knows where to place it.
-
-PET ROM files are easily found online by googling for the part numbers known to rommaker.
-
-KEYBOARD MAPPING
+Keyboard Mapping
 ----------------
 MegaPET can be set to both keyboard layouts. Use the submenu item `B keyboard` to choose the B layout. The N version is default.
 
@@ -388,8 +305,21 @@ The Power LED can take 3 different colours:
 - yellow when the disk cache is dirty and/or is being written to the sdcard
 - green at other times when the Mega-65 is on.
 
+Rommaker
+--------
+MegaPET ROM files are 32 KB which cover addresses $8000-$FFFF. The first 4 KB, $8000-$8FFF aren't actually used (this is screen memory area) but this is simpler for the implementation. The range $E800-$E8FF also isn't used since this is where the I/O chips are addressed.
 
-POSSIBLE FUTURE WORK
+The Python program `./CORE/PET2001_MiSTer/roms/rommaker.py` is included to help with creating ROM sets from the parts that are separately available. This can be helpful to make new combinations that aren't supplied here.
+
+It has built-in knowledge of many ROM part numbers to know at which address they belong. For unknown ones, it falls back to an address in the file name.
+
+You use it by calling `python3 rommaker.py -o OUTPUT file1 file2` or `python3 rommaker -p PRESET` (use `-p help` to see which presets are available). `.rom` is automatically appended. Also a `.hex` file is created, suitable for using in core development.
+
+You can also use the rommaker to modify an existing 32 KB ROM file, by listing it as the first input. The next ROM files will be overlaid on top of this, effectively modifying the contents. This would be convenient for plugging for example a Toolkit ROM into the $9xxx, $Axxx or $Bxxx EPROM socket. As long as the file name contains "9000", "a000" or "b000", rommaker knows where to place it.
+
+PET ROM files are easily found online by googling for the part numbers known to rommaker.
+
+Possible future work
 --------------------
 - The method that QNice uses to copy data to and from the disk drive's internal track buffer should be made faster. Currently it can take more than 20 ms which caused time-outs in the FDC. This has a workaround but it slows down the drive.
 - When there is an expansion board which can support an external RS-232 port, the ACIA can be added to the SuperPET. If the M2M framework supports this too.
@@ -413,5 +343,123 @@ This project is based on, and would have been impossible without, the following 
 * The [VIA 6522](https://github.com/GideonZ/1541ultimate) from Gideon Zweijtzer, commit 9be4339e19996249f33efed0fcd340b3fac0b2b3 dated Sun Jul 20 12:55:22 2025 +0200 ([cbf5d288](https://github.com/GideonZ/1541ultimate/blob/cbf5d2884d65a37c051e2d0c9a7a0ae41b9e2fb5/fpga/1541/vhdl_source/via6522.vhd) dated Fri Jun 25 07:23:20 2021 +0200 for the VIA itself).
 * The [6809 cpu core](https://github.com/cavnex/mc6809) from Greg Miller, commit [17e94a6e](https://github.com/cavnex/mc6809/tree/17e94a6ef163be8b79a9b15b2e814847b6062f0f) dated Thu Nov 26 13:54:48 2020 -0800.
 * The [MMU for Super-OS/9](https://mikenaberezny.com/hardware/superpet/super-os9-mmu/) from the [Toronto PET Users Group](https://www.tpug.ca/) (TPUG)
+
+Release Notes
+-------------
+
+### v0.00016
+
+- This is intended to be the last pre-release before version 1.0.
+- Removed the "welcome screen" and moved it to a "About & Help" menu item.
+- Fixed SWI3 instruction in the 6809 (it used the wrong vector) and now Super-OS/9 boots.
+- Fixed some small memory mapping bugs for 8296 and OS9 flat mode.
+- Reorganized the separate `PET_MEGA65` and `PET2001_MiSTer` repositories into a single `MegaPET`, preserving history.
+- Improved "empty bus" reading. But the $9xxx and $Axxx ROMs are still present and (in most versions) filled with fake-empty values.
+- Removed "audio improvements" menu item since I didn't hear any effect from it, and the audio is filtered alread inside the core.
+- Removed the faint red "test signal" from the screen output.
+
+### v0.00015
+
+We now have a PET 8296-GD *and* a SuperPET! (not at the same time)
+
+- Add HRE graphics (324890-01) to the 8296 (so it is enabled if 8296 is enabled). HRE stands for High-Res Emulator; the "emulator" part means that the drawing is done in software, so quite slow compared to the HSG (High Speed Graphics, 324402-01). The HRE ROMs are included in the 8032b set: `SYS 9*4096` to initialize the BASIC extension. They are pretty compatible with the [HSG](https://mikenaberezny.com/hardware/pet-cbm/cbm-hsg-graphics-board/) software; the [HSG demos](http://www.cbmsteve.ca/hsg/) also run. This makes the MegaPET an 8296-GD.
+- Tweaked "HDMI: Zoom-in" a bit more so it (just) shows the whole HRE image.
+- Set the ascal filter when CRT emulation is off to bicubic. This seems to be the least bad of the options, but it still seems to lose pixels here and there.
+- Added 8050 as a floppy disk drive model option, for `.d80` floppy images. Do not put `.d82` images into this drive!
+- First phase of adding a SuperPET: an extra board that plugs into the 6502 socket and just passes through the 6502.
+- Second phase of SuperPET: adding the 64 KB memory expansion and the I/O registers which control it.
+- Third phase: add the 6702 dongle chip.
+- Fourth phase: add the 6809 cpu and its ROMs.
+- Next: Fifth phase: add the SuperOS/9 MMU from Toronto PET Users Group (TPUG). Unfortunately, Super-OS/9 doesn't boot. This may be a bug in the MMU, or equally well in an earlier phase.
+- The menu system doesn't show it, but you can't have SuperPET and 8x96 expansions at the same time. Internally in the core it is enforced that if you select both at the same time, you get neither. You could simply not plug in all those boards at the same time. Furthermore, the same 64 KB of RAM in the MegaPET is used for both.
+
+### v0.00014
+
+This prerelease is again mostly a floppy disk drive bugfix edition.
+
+- Made the "HDMI: Zoom-in" option more useful. It now zooms in to the maximum area of those used by the usual ROMs. It may need some further small adjustments to improve aspect ratios, if possible.
+- Switched to a more authentic editor ROM for the 8032. I noticed that the previous one only left one vertical pixel between text characters, instead of the 2 that it is supposed to do. You need to update the `/pet/8032b.rom` file on your sd-card to keep the rom file in sync with the builtin one.
+- Make disk errors a bit more visible by using more red in the LED and less green. The activity LEDs for both drive now also (usually) don't light up at the same time, which reduces confusing colour combinations.
+- More improvements/bug fixes in the floppy disk drive regarding track buffer management. One bug in the M2M framework contributed to this as well and was fixed (nr 52).
+
+### v0.00013
+
+This prerelease is mostly a bugfix edition. Finding (hopefully good!) fixes for two problems took some time.
+
+- Fixed the reset bug with the symptom that, after a reset, there was a chance that the HELP key did not work any more. (This was because the QNICE CPU was waiting forever on a hyperram bus transaction).
+- Worked around the disk drive issues with write errors. The 8250 is no longer Read Only (and the 4040 also works better again).
+- You can switch the disk drive type directly (it always reset automatically).
+- Loadable disk drive ROMs since upstream supports this now.
+
+### v0.00012
+
+This prerelease adds/changes, compared to v0.00011:
+
+- Uses the MiSTer2MEGA65 framework version 2.0.1.
+- Fixes the bug where the keyboard becomes unresponsive after leaving the menu.
+- Adds [8296-style](https://www.zimmers.net/anonftp/pub/cbm/pet/manuals/8296supplement/index.html) memory extension (extra 32 KB of RAM "under" the ROMs) for a total of 128 KB.
+- The presence of the disk drive is now optional.
+- New 8250 floppy disk drive type. Unfortunately there is an upstream bug, and this type is effectively Read Only for now.
+  - When switching types, go via "disabled" as an intermediate step (this resets the drive).
+  - You can still use disk images of type `.D64` (174 848 bytes) for the 4040.
+  - You can use disk images of types `.D80` (533 248 bytes) and `.D82` (1 066 496 bytes) for the 8250.
+    When using a D80 disk image (single sided, for 8050 drives), the first disk access will result in an error.  This is normal behaviour of the 8250 drive.
+  - Use the correct disk image for the disk unit type.
+  - Disk images are stored in Attic RAM.
+- Together this makes the MegaPET a 8296-D. Although that actual model had a different CRT and so required a different Editor ROM.
+
+### v0.00011
+
+This prerelease adds/changes, compared to v0.00010:
+
+- Starts up as model 8032: with CRTC, 80 columns, B keyboard, 8032b.rom. Some people preferred this.
+- Updated ColourPET editor ROM `4032n+colour.rom` to [cpet-c0-40-n-mega-wedge (2025-01-31).bin](https://github.com/sjgray/cbm-edit-rom/blob/269e4fb2f405f558f6d94e1a3dfefce39e28b60b/binaries/ColourPET/Test/cpet-c0-40-n-mega-wedge%20(2025-01-31).bin). Copy the new version to your sdcard.
+- Imported 4040 dual disk drive from [CBM-II_MiSTer core](https://github.com/eriks5/CBM-II_MiSTer/tree/e011b6586fce3deaf1a7e5ce361e8cd2ff80420e/rtl/ieee_drive) by Erik Scheffers. This drive is not considered final yet so there may be updates in the future.
+- Loading custom drive ROMs is for now not possible (the feature is missing from the 4040's code).
+- There are 3 LEDs to show (2 drive activity LEDs and the error LED). I tried to map them to the 2 halves of the M65's drive LED but you could not really see a difference between left and right in most cases. So I mapped them to colours: red = error, green = drive 0, blue = drive 1.
+- The Power LED is yellow when the drive cache is dirty and/or being flushed. This previously was the task of the drive LED.
+
+### v0.00010
+
+This prerelease adds, compared to v0.00009:
+
+- Steve Gray's [ColourPET](http://cbmsteve.ca/colourpet/index.html) board. Try it with [GridRunner](https://milasoft64.itch.io/gridrunner). I have included a test version of an editor ROM set for 40 columns `4032n+colour.rom`, specially created by Steve Gray for the MegaPET. Keep an eye on [github](https://github.com/sjgray/cbm-edit-rom/tree/master/binaries/ColourPET) for updates.
+- You can now select 8, 16 or 32 KB as the basic memory size.
+- 64 KB memory extension board, [8096-style](https://mikenaberezny.com/hardware/pet-cbm/cbm-64k-ram-expansion/). Not so well-tested but it seems ok. This brings the total amount of RAM to 32 + 64 = 96 KB.
+- The optional second half of the character ROM can now be used (if it is 4 KB), by setting MA13 (`poke 59520,12: poke 59521,3*16`). The MegaPET comes loaded with the character ROM from the SuperPET, which has ASCII and APL characters in the extra part. To go back to normal use `poke 59520,12: 59521,1*16`.
+- Similarly the screen as a whole can be inverted by unsetting MA12 (use `poke 59521,0*16` or `2*16`).
+  These features only work with the CRTC, and these address bits may be repurposed in later PET models: for example, the HRE uses MA12.
+- Incorporated upstream fixes from the to-be-released next version of the M2M framework, fixing the "barcode" issue that affects a small number of Mega65 revision 6 machines.
+
+### v0.00009
+
+This prerelease adds, compared to v0.00007:
+
+- 80 columns of text. Enabling this option automatically enables the CRTC too, but you need to load the `8032b.rom` yourself. You will also need to enable the following new feature:
+- B-type ("business") keyboard. By itself this is not so interesting, since with the symbolic mapping of the Mega-65 keyboard you don't notice much difference (but do refer to the keyboard mapping section below).
+- 2001-style screen snow. This is enabled as part of "2001 screen blank etc". This option affects 2001-specific quirks as part of the "etcetera". At his time they are:
+  - screen snow, when the CPU accesses screen memory at the same time as the video system.
+  - the screen blanks when EOI is sent on the IEEE-488 bus. This is used by the ROM to mask the previous effect when scrolling (only the non-CRTC ROMs do this).
+  - the 1 KB of screen memory $8000-$83FF is repeated 3 more times, up to $8FFF. Later models go only up to $87FF.
+- I have extended the set of ROMs with B keyboard and 80 column ROMs. You can get more variants from the well-known Zimmers site.
+- I am including a `petcfg` file which you can copy to the `/PET` directory on the sd-card. It will remember the menu selections. Unfortunately not the ROM file you loaded, so it is less useful than it could be. Actually I would recommend against using this. It got me into a scare when I left it set to 80 columns, and on the next load of the core I just got a black screen, because the corresponding ROM was not loaded any more...
+
+### v0.00007
+
+As of v0.00007, the core features:
+
+- R3 and R6 versions. I have an R6 myself and the R3 is generated from the MiSTeR2MEGA framework but not tested.
+- PET with or without CRTC (the CRT Controller which is used in later models)
+- 40 columns only
+- with "2001" properties, or without (= screen blanks when EOI is sent, screen memory has more mirrors)
+- with "2001" blue-ish white, or green screen
+- for now, some ROM files are available from https://github.com/Rhialto/PET_MEGA65/releases/tag/v0.00005
+- a 2031 floppy drive on the IEEE bus. At some point this will become a 4040. Even an 8250, if I can store disk images in Attic RAM (the 2 drives with 1 MB per disk image is too much for the BRAM in the core, I think).
+- default directory for the SD-card file selector is "/PET" so storing your ROM files and disk images is probably the most convenient.
+- the core includes the "4032n-nocrtc" ROM by default, so it is usable even before you copy over ROM files or whatever to your SD-card.
+- Furture plans include saving the settings, 80 columns, ColourPET mode, 8096 memory expansion, 8296 memory expansion, but nobody knows when those things might be realised.
+
+I have only tested IMDH output, not VGA output. One report mentions that VGA output isn't very good. As far as the VGA output follows the PET core output, rather than the scaled output, this is to be expected: PET video timings are certainly not "standard" and differ from ROM to ROM. Many have a 16 KHz line frequency but I think 20 KHz and other values occur as well.
+
 
 /* vim:lbr
