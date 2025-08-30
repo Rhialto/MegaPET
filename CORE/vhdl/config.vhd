@@ -76,36 +76,46 @@ type WHS_RECORD_ARRAY_TYPE is array (0 to WHS_RECORDS - 1) of WHS_RECORD_TYPE;
 -- Within a selector's address range, address 0 is the beginning of the string itself, while address 0xFFF of the 4k
 -- window contains the amount of pages, so each zero-terminated string can be up to 4095 bytes = 4094 characters long.
 
-constant SCR_WELCOME : string :=
+constant VERSION_STRING : string := "v0.00016";
+constant VERSION_UNDERL : string := CHR_LINE_5 & CHR_LINE_1 & CHR_LINE_1 & CHR_LINE_1;
 
-   "MegaPET Core Version 0.0...\n" &
-   "Port from MiSTer done by\n" & 
-   "Olaf 'Rhialto' Seibert in 2025\n\n" &
+constant SCR_WELCOME : string := "";
 
+constant HELP_1 : string :=
+
+   "MegaPET Core Version " & VERSION_STRING & "\n" &
+   CHR_LINE_10 & CHR_LINE_10 & CHR_LINE_1 & VERSION_UNDERL & "\n" &
+   "\n" &
+   "Created (starting from the  MiSTer core)\n" &
+   "by Olaf 'Rhialto' Seibert in 2024-2025.\n" &
+   "\n" &
+   "\n" &
    -- We are not insisting. But it would be nice if you gave us credit for MiSTer2MEGA65 by leaving these lines in
    "Powered by MiSTer2MEGA65 Version 2.0.1,\n" &
    "done by sy2002 and MJoergen in 2022\n" &
    "\n" &
-
+   "\n" &
    "  Key                PET with N keyboard\n" &
    "  " & CHR_LINE_10 & CHR_LINE_10 & CHR_LINE_10 & CHR_LINE_10 & "\n" &
    "  CTRL               OFF/RVS\n" &
    "  0123456789/*+=.-   Keypad\n" &
    "  !" & CHR_QUOTE & "#$%&'()<>?[]     Forced unshifted\n" &
    "  Mega + above       Shift those anyway\n" &
-   "\n\n" &
+   "\n" &
+   "\n" &
    "  Key                PET with B keyboard\n" &
    "  " & CHR_LINE_10 & CHR_LINE_10 & CHR_LINE_10 & CHR_LINE_10 & "\n" &
    "  Mega + 1234567890. Keypad\n" &
    "  Mega + []          Forced shifted\n" &
-   "  ALT,TAB,ESC        REPEAT, TAB, ESC\n" &
+   "  ALT, TAB, ESC      REPEAT, TAB, ESC\n" &
    "  CTRL               OFF/RVS\n" &
    "\n" &
    "CTRL+MEGA: diagnostic sense\n" &
-
-   "\n\n    Press Space to continue.\n\n\n";
-
-constant HELP_1 : string := "";
+   "\n" &
+   "\n" &
+   "Readme and source:\n" &
+   "\n" &
+   "  https://github.com/Rhialto/MegaPET\n";
 
 constant HELP_2 : string := "";
 
@@ -127,14 +137,14 @@ constant HELP_3_START      : natural := HELP_2_START + HELP_2'length;
 -- Make sure that array element 0 is always your Welcome page. If you don't use a welcome page, fill everything with zeros.
 constant WHS : WHS_RECORD_ARRAY_TYPE := (
    --- Welcome Screen
-   (page_count    => 1,
+   (page_count    => 0,
     page_start    => (SCR_WELCOME_START,  0, 0),
     page_length   => (SCR_WELCOME'length, 0, 0)),
 
    --- Help pages
-   (page_count    => 3,
-    page_start    => (HELP_1_START,  HELP_2_START,  HELP_3_START),
-    page_length   => (HELP_1'length, HELP_2'length, HELP_3'length))
+   (page_count    => 1,                                                   -- actual page count
+    page_start    => (HELP_1_START, HELP_2_START, HELP_3_START),          -- WHS_MAX_PAGES of start position
+    page_length   => (HELP_1'length, HELP_2'length, HELP_3'length))       -- WHS_MAX_PAGES of lenghts
 );
 
 --------------------------------------------------------------------------------------------------------------------
@@ -166,7 +176,7 @@ constant RESET_COUNTER     : natural := 100;
 constant OPTM_PAUSE        : boolean := false;
 
 -- show the welcome screen in general
-constant WELCOME_ACTIVE    : boolean := true;
+constant WELCOME_ACTIVE    : boolean := false;
 
 -- shall the welcome screen also be shown after the core is reset?
 -- (only relevant if WELCOME_ACTIVE is true)
@@ -227,7 +237,7 @@ constant SEL_CORENAME      : std_logic_vector(15 downto 0) := x"0200";
 
 -- Currently this is only used in the debug console. Use the welcome screen and the
 -- help system to display the name and version of your core to the end user
-constant CORENAME          : string := "MegaPET CORE V0.0";
+constant CORENAME          : string := "MegaPET CORE " & VERSION_STRING;
 
 --------------------------------------------------------------------------------------------------------------------
 -- "Help" menu / Options menu  (Selectors 0x0300 .. 0x0312): DO NOT TOUCH
@@ -288,7 +298,7 @@ constant OPTM_S_SAVING     : string := "<Saving>";          -- the internal writ
 --             Do use a lower case \n. If you forget one of them or if you use upper case, you will run into undefined behavior.
 --          2. Start each line that contains an actual menu item (multi- or single-select) with a Space character,
 --             otherwise you will experience visual glitches.
-constant OPTM_SIZE         : natural := 55;  -- amount of items including empty lines:
+constant OPTM_SIZE         : natural := 58;  -- amount of items including empty lines:
                                              -- needs to be equal to the number of lines in OPTM_ITEMS and amount of items in OPTM_GROUPS
                                              -- IMPORTANT: If SAVE_SETTINGS is true and OPTM_SIZE changes: Make sure to re-generate and
                                              -- and re-distribute the config file. You can make a new one using M2M/tools/make_config.sh
@@ -300,61 +310,64 @@ constant OPTM_DY           : natural := 24;
 
 constant OPTM_ITEMS        : string :=
 
-   " Model options...\n"     &	-- 0
-   " MegaPET Model options\n"&	-- 1  Model options submenu
+   " MegaPET for Mega-65\n"  & -- 0
+   "\n"                      & -- 1
+   " Model options...\n"     &
+   " MegaPET Model Options\n"&        -- Model options submenu
    "\n"                      &
-   " 2001 screen blank etc\n"&
+   " 2001 screen blank etc\n"& --  5
    " 2001 white\n"           &
-   " B keyboard\n"           & -- 5
+   " B keyboard\n"           &
    " 6545 CRT Controller\n"  &
    " 80 columns\n"           &
-   " ColourPET rgbi\n"       &
+   " ColourPET rgbi\n"       & -- 10
    "  8 KB memory\n"         &
-   " 16 KB memory\n"         & -- 10
+   " 16 KB memory\n"         &
    " 32 KB memory\n"         &
    " 8096 memory expansion\n"&
-   " 8296 memory exp + HRE\n"&
-   "   9xxx RAM\n"           &
-   "   Axxx RAM\n"           & -- 15
-   "   User Port control\n"  &      
+   " 8296 memory exp + HRE\n"& -- 15
+   "   9xxx RAM\n"           &      
+   "   Axxx RAM\n"           &
+   "   User Port control\n"  &
    " SuperPET\n"             &
-   "   use 6502 cpu\n"       &
-   "   use 6809 cpu\n"       &
-   " PET ROM: %s\n"          & -- 20
+   "   use 6502 cpu\n"       & -- 20
+   "   use 6809 cpu\n"       &      
+   " PET ROM: %s\n"          &      
    " Charset: %s\n"          &      
-   " Drive ROM: %s (TODO)\n" &      
-   "\n"                      &      
-   " Back to main menu\n"    &      
+   " Drive ROM: %s\n"        &      
    "\n"                      & -- 25
+   " Back to main menu\n"    &      
+   "\n"                      &      
    " Disk Drive, Unit 8\n"   &      
    "\n"                      &      
-   " disabled\n"             &      
-   " 4040 (.d64)\n"          &      
-   " 8050 (.d80)\n"          & -- 30
-   " 8250 (.d80,.d82)\n"     & 
+   " disabled\n"             & -- 30
+   " 4040 (.d64)\n"          & 
+   " 8050 (.d80)\n"          &      
+   " 8250 (.d80,.d82)\n"     &      
    "\n"                      &      
-   " 0:%s\n"                 &      
-   " 1:%s\n"                 &      
-   "\n"                      & -- 35
+   " 0:%s\n"                 & -- 35
+   " 1:%s\n"                 &
+   "\n"                      &      
    " HDMI settings\n"        &
    "\n"                      &      
-   " HDMI: %s\n"             &       -- HDMI submenu
-   " HDMI Settings\n"        &      
-   "\n"                      & -- 40      
-   " 720p 50 Hz 16:9\n"      &
+   " HDMI: %s\n"             & -- 40    -- HDMI submenu
+   " HDMI Settings\n"        &
+   "\n"                      &      
+   " 720p 50 Hz 16:9\n"      &      
    " 720p 60 Hz 16:9\n"      &      
-   " 576p 50 Hz 4:3\n"       &      
-   " 576p 50 Hz 5:4\n"       &      
-   " 640x480 60 Hz\n"        & -- 45      
+   " 576p 50 Hz 4:3\n"       & -- 45
+   " 576p 50 Hz 5:4\n"       &
+   " 640x480 60 Hz\n"        &      
    " 720x480 59.94 Hz\n"     &
-   " 800x600 60 Hz\n"        &      
-   "\n"                      &
-   " Back to main menu\n"    & 
-   " HDMI: CRT emulation\n"  & -- 50
+   " 800x600 60 Hz\n"        & 
+   "\n"                      & -- 50
+   " Back to main menu\n"    &
+   " HDMI: CRT emulation\n"  &
    " HDMI: Zoom-in\n"        &
-   " Audio improvements\n"   &
    "\n"                      &
-   " Close Menu\n";            -- 54
+   " About & Help\n"         & -- 55
+   "\n"                      &
+   " Close Menu\n";            -- 57
 
 -- define your own constants here and choose meaningful names
 -- make sure that your first group uses the value 1 (0 means "no menu item", such as text and line),
@@ -384,7 +397,7 @@ constant OPTM_G_Drive_0    : integer := 20;
 constant OPTM_G_Drive_1    : integer := 21;
 constant OPTM_G_CRT        : integer := 22;
 constant OPTM_G_Zoom       : integer := 23;
-constant OPTM_G_Audio      : integer := 24;
+constant OPTM_G_AboutHelp  : integer := 24;
 
 -- !!! DO NOT TOUCH !!!
 type OPTM_GTYPE is array (0 to OPTM_SIZE - 1) of integer range 0 to 2**OPTM_GTC- 1;
@@ -393,6 +406,8 @@ type OPTM_GTYPE is array (0 to OPTM_SIZE - 1) of integer range 0 to 2**OPTM_GTC-
 -- where are separator lines? which items should be selected by default?
 -- make sure that you have exactly the same amount of entries here than in OPTM_ITEMS and defined by OPTM_SIZE
 constant OPTM_GROUPS       : OPTM_GTYPE := (
+	 OPTM_G_TEXT + OPTM_G_HEADLINE,            -- Headline "MegaPET"
+	 OPTM_G_LINE,                              -- Line
 	 OPTM_G_SUBMENU + OPTM_G_START,            -- Model Options
 	 OPTM_G_TEXT + OPTM_G_HEADLINE,            -- Headline "Model Options"
 	 OPTM_G_LINE,                              -- Line
@@ -446,7 +461,8 @@ constant OPTM_GROUPS       : OPTM_GTYPE := (
 						   -- HDMI submenu block: END
 	 OPTM_G_CRT +OPTM_G_SINGLESEL+OPTM_G_STDSEL, -- On/Off toggle ("Single Select")
 	 OPTM_G_Zoom  + OPTM_G_SINGLESEL,          -- On/Off toggle ("Single Select")
-	 OPTM_G_Audio + OPTM_G_SINGLESEL,          -- On/Off toggle ("Single Select")
+	 OPTM_G_LINE,                              -- Line
+	 OPTM_G_AboutHelp + OPTM_G_HELP,           -- About & Help
 	 OPTM_G_LINE,                              -- Line
 	 OPTM_G_CLOSE                              -- Close Menu
        );

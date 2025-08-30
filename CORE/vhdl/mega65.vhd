@@ -547,7 +547,7 @@ begin
    qnice_dvi_o                <= '0';                                         -- 0=HDMI (with sound), 1=DVI (no sound)
    qnice_scandoubler_o        <= '1';                                         -- have a scandoubler
    qnice_audio_mute_o         <= '0';                                         -- audio is not muted
-   qnice_audio_filter_o       <= qnice_osm_control_i(C_MENU_IMPROVE_AUDIO);   -- 0 = raw audio, 1 = use filters from globals.vhd
+   qnice_audio_filter_o       <= '0';                                         -- 0 = raw audio, 1 = use filters from globals.vhd
    qnice_zoom_crop_o          <= qnice_osm_control_i(C_MENU_HDMI_ZOOM);       -- 0 = no zoom/crop
    
    -- These two signals are often used as a pair (i.e. both '1'), particularly when
@@ -685,7 +685,6 @@ begin
          rst_i                 => qnice_rst_i,
          s_qnice_wait_o        => qnice_pet_mount0_buf_ram_wait,
 -- for >1MB we need 21 address bits, 20 downto 0
-         --s_qnice_address_i     => "0000000000" & C_HMAP_BUF0(9 downto 6) & qnice_dev_addr_i(17 downto 0),
          s_qnice_address_i     => ( 24 downto 13 => std_logic_vector(unsigned(C_HMAP_BUF0(11 downto 0)) +
                                                                      unsigned(qnice_dev_addr_i(24 downto 13))),
                                     12 downto 0  => qnice_dev_addr_i(12 downto 0),
@@ -713,7 +712,6 @@ begin
          rst_i                 => qnice_rst_i,
          s_qnice_wait_o        => qnice_pet_mount1_buf_ram_wait,
 -- for >1MB we need 21 address bits, 20 downto 0
-         --s_qnice_address_i     => "0000000000" & C_HMAP_BUF1(9 downto 6) & qnice_dev_addr_i(17 downto 0),
          s_qnice_address_i     => ( 24 downto 13 => std_logic_vector(unsigned(C_HMAP_BUF1(11 downto 0)) +
                                                                      unsigned(qnice_dev_addr_i(24 downto 13))),
                                     12 downto 0  => qnice_dev_addr_i(12 downto 0),
