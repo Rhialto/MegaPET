@@ -257,8 +257,6 @@ architecture synthesis of main is
    --signal hard_rst_counter     : natural   := 0;
    --signal hard_reset_n_d       : std_logic := '1';
    --signal cold_start_done      : std_logic := '0';
-   constant C_DRIVE_RST_DELAY  : natural   := 1_000_000; -- 1 second at ce_1m speed
-   signal drive_reset_counter  : natural   := 0;
    signal drive_is_4040        : std_logic := '0';
    signal drive_is_8050        : std_logic := '0';
    signal drive_is_8250        : std_logic := '0';
