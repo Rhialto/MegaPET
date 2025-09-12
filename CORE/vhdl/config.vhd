@@ -76,8 +76,8 @@ type WHS_RECORD_ARRAY_TYPE is array (0 to WHS_RECORDS - 1) of WHS_RECORD_TYPE;
 -- Within a selector's address range, address 0 is the beginning of the string itself, while address 0xFFF of the 4k
 -- window contains the amount of pages, so each zero-terminated string can be up to 4095 bytes = 4094 characters long.
 
-constant VERSION_STRING : string := "v0.00016";
-constant VERSION_UNDERL : string := CHR_LINE_5 & CHR_LINE_1 & CHR_LINE_1 & CHR_LINE_1;
+constant VERSION_STRING : string := "v1.0";
+constant VERSION_UNDERL : string := CHR_LINE_1 & CHR_LINE_1 & CHR_LINE_1 & CHR_LINE_1;
 
 constant SCR_WELCOME : string := "";
 

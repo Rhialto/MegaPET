@@ -1,32 +1,34 @@
-MEGAPET
-=======
+The Mega-65 MegaPET
+====================
 
 This is the MegaPET, the PET implementation on the Mega-65 hardware.
 
-There have been many different versions of PET, and the MegaPET supports all those I am aware of.
+There have been many different versions of PET, and the MegaPET supports all those I am aware of. It comes preset as a 8032; no additional files are required for this model. Just flash the core into a core slot as usual. There are versions for R3 and R6 boards.
 
 Included features
 -----------------
+
 - The HELP key gets you to the options menu.
 - There is an "About & Help" item to remind you of the keyboard layout.
 - Copy the files from the "PET" directory in the release archive to the /PET directory on your sdcard.
-- You can choose all known PET models by setting options in the menu and loading the corresponding ROM set.
+- You can choose all known PET models by setting options in the menu and loading the corresponding ROM set from the /PET directory.
 - Supported PET models and features are:
   - 8, 16 or 32 KB of RAM available to Basic programs.
   - PET 2001 with white-ish screen, screen snow, 4 screen memory mirrors, EOI which blanks the screen.
   - PET 3032 with green screen.
   - Normal (graphics) or Business (N or B) keyboards.
   - PET 4032 with or without CRTC.
-  - CoulourPET (as designed by Steve Gray).
+  - ColourPET (as designed by Steve Gray).
   - PET 8032.
   - PET 8096 with the 64 KB RAM expansion.
-  - PET 8296 with 128 KB of RAM and additional HiRes Emulator (HRE).
+  - PET 8296 with 128 KB of RAM and additional HiRes Emulator (HRE). If you consider the 8250 disk drive as built-in, you have a 8296-GD model!
   - SuperPET 9000 also known as MicroMainFrame with additional Super-OS/9 MMU (as designed by TPUG).
   - Dual floppy disk drive, switchable between models 4040, 8050 and 8250.
   - HDMI video output.
 - Not supported:
   - the C2N datasette.
   - VGA video output.
+- If some program doesn't work, the most common reason is that the MegaPET is not set to the correct model for which the program was made.
 
 See further down for details about all possible settings (there are many).
 
@@ -45,14 +47,14 @@ This project is organized in 2 git repositories. The main one contains a snapsho
 
 Releases
 --------
-There is currently no real release yet.
-
-From time to time there is a pre-release, when there seems to be some useful addition to the code base. There is absolutely no guarantee when those happen.
+Releases are publised on the Mega-65 filehost and on github.
 
 PET Models
 ----------
 
-First, a bit about the different models of PET. MegaPET has several settings so that it can do many of them, but that also means that some combinations of settings make no sense and will not work. Additionally, you need to choose the correct set of ROMs for the hardware.
+First, a bit about the different models of PET. MegaPET has several settings so that it can do all of them, but that also means that some combinations of settings make no sense and will not work. Additionally, you need to choose the correct set of ROMs for the hardware.
+
+The MegaPET comes preset as a PET 8032.
 
 Note that when I say ROM I do mean actual data that originally was in ROM chips. This in contrast to how people in emulator circles often seem to mis-use the word for other things.
 
@@ -63,33 +65,41 @@ At least the following variations of PET exist:
     These are the "2001" machines. `2001.rom` is the appropriate ROM for this, although you probably want to use `2001+ieee.rom` instead. It adds a ROM patch, taken from [VICE](https://vice-emu.sourceforge.io/), to make loading from disk drives work. For the correct character set, you need `PET2001-chars.rom`.
 
 -   Basic 2.0
-    The character generator ROM has changed: in upper/lowercase mode, the unshifted characters are now lower case.
+    The character generator ROM has changed: in upper/lowercase mode, the unshifted letters are now lower case.
     *   with N keyboard (Normal, or Graphic) (use `3032.rom`)
     *   with B keyboard (Business, without graphic symbols)	(use `3032b.rom`)
 
 -   Basic 4.0
     *   with N keyboard (Normal, or Graphic) (`4032n.rom`) or
     *   with B keyboard (Business, without graphic symbols), (`4032b.rom`)
+
     and
-    *   as upgrade for machines without CRT controller (`-nocrtc` rom files), or
+
+    *   as upgrade for machines without CRT controller (`*-nocrtc.rom` files), or
     *   for new machines with CRT controller (default),
+
     and
+
     *   40 columns (`4032*.rom`), or
     *   80 columns (`8032b.rom`),
+
     and
+
     *   50 Hz screen refresh (and IRQ), or
     *   60 Hz screen refresh (and IRQ).
 
 Fortunately not all combinations exist, but there are still a lot.
 
--   no CRTC implies 60 Hz and 40 columns.
--   80 columns implies CRTC and B keyboard, although N versions have been made
-by 3rd parties.
+-   if there is no CRTC, this implies a screen refresh of 60 Hz and 40 columns.
+-   80 columns implies a CRTC must be present, and a B keyboard; although N versions have been made by 3rd parties.
 
 All the differences in display and keyboard manifest in the "editor" ROM. The Basic and Kernal ROMs only come in versions 1, 2 and 4 (apart from 2 cases of bug fixes which I will further ignore).
 
 Later models are all variants of the 8032 model. These include a 64 KB memory expansion (making a 8096) and the 8296 which has 128 KB of memory (essentially the 64 KB memory expansion built-in and using 2 banks of 64 Kbit RAM chips).
-A different and incompatible expansion is the SuperPET a.k.a. MicroMainFrame 9000 (an 8032 with an additional 6809 CPU and a *different* 64 KB memory expansion).
+
+A different and incompatible expansion is the SuperPET a.k.a. MicroMainFrame 9000: an 8032 with an additional 6809 CPU and ROMs, and a *different* 64 KB memory expansion.
+
+This document cannot be a complete technical overview of everything PET-related, but this crash-course in the various models hopefully helps you to make sense of the available information on the Internet.
 
 Programming Info
 ----------------
@@ -112,10 +122,10 @@ goes to the submenu for model options (see below).
 This chooses if you want the disk drive and if so which type.
 If you switch from one drive type to the other, the drive is reset so that its tiny little minds can adjust to the changed hardware around them.
 
-You can use disk images of type `.D64` (174 848 bytes) with the 4040.
-You can use disk images of types `.D80` (1-sided, 533 248 bytes) in the 8050. Reading double-sided `.D82` images might also work sometimes, but you have the risk of corruption and losing data on the second side (just the same as if you put a real double sided floppy in a real single sided drive).
-You can use disk images of types `.D80` and `.D82` (2-sided, 1 066 496 bytes) with the 8250.
-When using a D80 disk image (single sided, for 8050 drives), the first disk access will result in an error.  This is normal behaviour of the 8250 drive.
+- You can use disk images of type `.D64` (174 848 bytes) with the 4040.
+- You can use disk images of types `.D80` (1-sided, 533 248 bytes) in the 8050. Reading double-sided `.D82` images might also work sometimes, but you have the risk of corruption and losing data on the second side (just the same as if you put a real double sided floppy in a real single sided drive).
+- You can use disk images of types `.D80` and `.D82` (2-sided, 1 066 496 bytes) with the 8250.
+When using a `.D80` disk image (single sided, for 8050 drives), the first disk access will result in an error.  This is normal behaviour of the 8250 drive.
 
 #### 0:\<Mount Drive>, 1:\<Mount Drive>
 
@@ -146,7 +156,7 @@ This option enables the "2001 quirks":
   - the screen blanks when EOI is sent on the IEEE-488 bus. This is used by the ROM to mask the previous effect when scrolling (only the non-CRTC ROMs do this).
   - the 1 KB of screen memory $8000-$83FF is repeated 3 more times, up to $8FFF. Later models go only up to $87FF.
 
-For the full "2001 experience", enable this option, "2001 white" and "8 KB". Also load "2001+ieee.rom" (which allows you to use the disk drive, so this is cheating a bit).
+For the full "2001 experience", enable this option, "2001 white" and "8 KB". Disable "B Keyboard", "80 columns" and "CRT Controller". Further, load "2001+ieee.rom" (which allows you to use the disk drive, so this is cheating a bit).
 
 ### 2001 white
 
@@ -213,6 +223,7 @@ The SuperPET has its own stype of memory expansion: RAM is mapped in blocks of 4
 
 The SuperPET has an extra cpu of type 6809 from Motorola. Only one can run at a time. Here you can choose which one.
 (There is also "program control" in the original hardware but this is not implemented.)
+The ROM contents for this are pre-loaded into the core.
 
 The Super-OS/9 MMU from TPUG is built-in and always enabled if the 6809 is active. It is meant for running OS-9 as adapted by TPUG.
 
@@ -220,14 +231,14 @@ There is [software and documentation](https://www.zimmers.net/anonftp/pub/cbm/pe
 
 ### PET ROM: \<Load>
 
-Load a ROM file. You need to reset the MegaPET after loading a different ROM (press the reset button on the left side of the case).
+Load a ROM file that corresponds to the hardware options you have chosen. The file browser starts looking in the sdcard's /PET directory. You need to reset the MegaPET after loading a different ROM (press the reset button on the left side of the case).
 
-See below in the ROMMAKER section for how these are put together.
+See below in the Rommaker section for how these are put together.
 Unfortunately the MiSTer2MEGA65-framework does not save the name of the loaded ROM to the petcfg file.
 
 ### Charset: \<Load>
 
-Load a character generator ROM. These can be 2 KB or 4 KB. Only the non-reversed characters are present. Inverting them is done in hardware.
+Load a character generator ROM appropriate to the selected PET model. These can be 2 KB or 4 KB. Only the non-reversed characters are present. Inverting them is done in hardware.
 
 The optional second half of the 4 KB character ROM can be used by setting MA13 (`poke 59520,12: poke 59521,3*16`). The MegaPET comes loaded with the character ROM from the SuperPET, which has ASCII and APL characters in the extra part.
 Similarly the screen as a whole can be inverted by unsetting MA12 (use `poke 59521,0*16` or `2*16`).
@@ -244,8 +255,7 @@ The layout of these ROMs is as follows:
 * `4000`-`47FF` Controller ROM *(2 KiB)*
 The DOS ROM can be up to 16 KiB, however the standard 4040 DOS ROM is only 12 KiB.
 In that case, the first 4 KiB of the ROM should be padded with `FF` bytes to align the ROM properly.
-When the Controller ROM is only 1 KiB, the first 1 KiB should be padded with `FF` bytes to align the
-ROM properly.
+When the Controller ROM is only 1 KiB, the first 1 KiB should be padded with `FF` bytes to align the ROM properly.
 
 Unfortunately the MiSTer2MEGA65-framework does not save the name of the loaded ROM to the petcfg file.
 
@@ -346,6 +356,10 @@ This project is based on, and would have been impossible without, the following 
 
 Release Notes
 -------------
+
+### v1.0
+
+- Just minor changes to the README.md, and the version number of course.
 
 ### v0.00016
 
