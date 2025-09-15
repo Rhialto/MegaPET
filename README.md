@@ -357,6 +357,10 @@ This project is based on, and would have been impossible without, the following 
 Release Notes
 -------------
 
+### v1.0.1, v1.0.1-no8050
+
+- In this version it has been made easy to disable the 8x50 disk drives, together with their use of HyperRAM. At least some R3 boards freeze with a barcode pattern when the disk drive is accessed (see https://github.com/Rhialto/MegaPET/issues/1)
+
 ### v1.0
 
 - Just minor changes to the README.md, and the version number of course.

@@ -233,5 +233,8 @@ constant C_MENU_SVGA_800_60      : natural := 49;
 constant C_MENU_CRT_EMULATION    : natural := 52;
 constant C_MENU_HDMI_ZOOM        : natural := 53;
 
+constant CFG_OMIT_SUPERPET       : boolean := false;
+constant CFG_OMIT_8x50_DISK      : boolean := false;
+
 end package globals;
 

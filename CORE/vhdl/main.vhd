@@ -41,6 +41,9 @@ use work.globals.C_MENU_UNIT_8_8250;
 
 use work.globals.C_VD_SUBDRIVES;
 
+use work.globals.CFG_OMIT_SUPERPET;
+use work.globals.CFG_OMIT_8x50_DISK;
+
 
 entity main is
    generic (
@@ -258,15 +261,13 @@ architecture synthesis of main is
    --signal hard_reset_n_d       : std_logic := '1';
    --signal cold_start_done      : std_logic := '0';
    signal drive_is_4040        : std_logic := '0';
-   signal drive_is_8050        : std_logic := '0';
-   signal drive_is_8250        : std_logic := '0';
+   signal drive_is_8050        : std_logic := '0';	-- This can never be true if CFG_OMIT_8x50_DISK is true
+   signal drive_is_8250        : std_logic := '0';	-- This can never be true if CFG_OMIT_8x50_DISK is true
    signal sd_drive_is_4040     : std_logic := '0';
 
    signal sound_sample         : signed(15 downto 0);	-- low-passed sound
 
    signal ce_pixel             : std_logic;
-
-   constant OMIT_SUPERPET      : boolean := false;
    
    -- -- --
    -- -- --
@@ -409,7 +410,7 @@ begin
 -- CPU or SuperPET board with CPU(s)
 ----------------------------------------------------
 
-Choose_SuperPET: if (OMIT_SUPERPET) generate
+Choose_SuperPET: if (CFG_OMIT_SUPERPET) generate
    cpu_inst : entity work.T65
        port map (
            Mode => "00", -- Assuming Mode is a 2-bit signal
@@ -630,8 +631,8 @@ end generate;
 ------------------------------------------
 
    drive_is_4040 <= osm_i(C_MENU_UNIT_8_4040);
-   drive_is_8050 <= osm_i(C_MENU_UNIT_8_8050);
-   drive_is_8250 <= osm_i(C_MENU_UNIT_8_8250);
+   drive_is_8050 <= osm_i(C_MENU_UNIT_8_8050) when not CFG_OMIT_8x50_DISK else '0';
+   drive_is_8250 <= osm_i(C_MENU_UNIT_8_8250) when not CFG_OMIT_8x50_DISK else '0';
 
    -- We need some wires to cross clock domain for the drive.
 

@@ -10,6 +10,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+library work;
+use work.globals.CFG_OMIT_8x50_DISK;
+
 entity config is
 port (
    clk_i       : in std_logic;
@@ -76,8 +79,10 @@ type WHS_RECORD_ARRAY_TYPE is array (0 to WHS_RECORDS - 1) of WHS_RECORD_TYPE;
 -- Within a selector's address range, address 0 is the beginning of the string itself, while address 0xFFF of the 4k
 -- window contains the amount of pages, so each zero-terminated string can be up to 4095 bytes = 4094 characters long.
 
-constant VERSION_STRING : string := "v1.0";
-constant VERSION_UNDERL : string := CHR_LINE_1 & CHR_LINE_1 & CHR_LINE_1 & CHR_LINE_1;
+constant SUBVER1_STRING : string := "-no8050" when CFG_OMIT_8x50_DISK else "";
+
+constant VERSION_STRING : string := "v1.0.1" & SUBVER1_STRING;
+constant VERSION_UNDERL : string := CHR_LINE_5 & CHR_LINE_1;
 
 constant SCR_WELCOME : string := "";
 
@@ -308,6 +313,9 @@ constant OPTM_SIZE         : natural := 58;  -- amount of items including empty 
 constant OPTM_DX           : natural := 23;
 constant OPTM_DY           : natural := 24;
 
+constant STR_8050          : string := "\n" when CFG_OMIT_8x50_DISK else " 8050 (.d80)\n";
+constant STR_8250          : string := "\n" when CFG_OMIT_8x50_DISK else " 8250 (.d80,.d82)\n";
+
 constant OPTM_ITEMS        : string :=
 
    " MegaPET for Mega-65\n"  & -- 0
@@ -342,8 +350,8 @@ constant OPTM_ITEMS        : string :=
    "\n"                      &      
    " disabled\n"             & -- 30
    " 4040 (.d64)\n"          & 
-   " 8050 (.d80)\n"          &      
-   " 8250 (.d80,.d82)\n"     &      
+   STR_8050                  &      -- 8050 (.d80)\n
+   STR_8250                  &      -- 8250 (.d80,.d82)\n
    "\n"                      &      
    " 0:%s\n"                 & -- 35
    " 1:%s\n"                 &
@@ -402,6 +410,8 @@ constant OPTM_G_AboutHelp  : integer := 24;
 -- !!! DO NOT TOUCH !!!
 type OPTM_GTYPE is array (0 to OPTM_SIZE - 1) of integer range 0 to 2**OPTM_GTC- 1;
 
+constant Unit8Type_8x50 : integer := OPTM_G_TEXT when CFG_OMIT_8x50_DISK else OPTM_G_Unit8Type;
+
 -- define your menu groups: which menu items are belonging together to form a group?
 -- where are separator lines? which items should be selected by default?
 -- make sure that you have exactly the same amount of entries here than in OPTM_ITEMS and defined by OPTM_SIZE
@@ -438,8 +448,8 @@ constant OPTM_GROUPS       : OPTM_GTYPE := (
 	 OPTM_G_LINE,                              -- Line
 	 OPTM_G_Unit8Type,                         -- Disabled
 	 OPTM_G_Unit8Type + OPTM_G_STDSEL,         -- 4040
-	 OPTM_G_Unit8Type,                         -- 8050
-	 OPTM_G_Unit8Type,                         -- 8250
+	 Unit8Type_8x50,                           -- 8050
+	 Unit8Type_8x50,                           -- 8250
 	 OPTM_G_LINE,                              -- Line
 	 OPTM_G_Drive_0 + OPTM_G_MOUNT_DRV,        -- Drive 0:
 	 OPTM_G_Drive_1 + OPTM_G_MOUNT_DRV,        -- Drive 1:

@@ -15,6 +15,8 @@ use work.globals.all;
 use work.types_pkg.all;
 use work.video_modes_pkg.all;
 
+use work.globals.CFG_OMIT_8x50_DISK;
+
 library xpm;
 use xpm.vcomponents.all;
 
@@ -235,6 +237,7 @@ signal main_rst               : std_logic;
 -- hr_clk
 ---------------------------------------------------------------------------------------------
 
+-- These are not used if CFG_OMIT_8x50_DISK is true.
 signal hr_disk0_write               : std_logic;
 signal hr_disk0_read                : std_logic;
 signal hr_disk0_address             : std_logic_vector(31 downto 0);
@@ -270,12 +273,12 @@ signal qnice_pet_mount0_buf_addr     : std_logic_vector(20 downto 0);
 signal qnice_pet_mount0_buf_ram_wait : std_logic;
 signal qnice_pet_mount0_buf_ram_we   : std_logic;
 signal qnice_pet_mount0_buf_ram_ce   : std_logic;
-signal qnice_pet_mount0_buf_ram_data : std_logic_vector(15 downto 0);  -- Disk mount buffer
+signal qnice_pet_mount0_buf_ram_data : std_logic_vector(15 downto 0);  -- Disk mount buffer; 15 downto 8 unused
 signal qnice_pet_mount1_buf_addr     : std_logic_vector(20 downto 0);
 signal qnice_pet_mount1_buf_ram_wait : std_logic;
 signal qnice_pet_mount1_buf_ram_we   : std_logic;
 signal qnice_pet_mount1_buf_ram_ce   : std_logic;
-signal qnice_pet_mount1_buf_ram_data : std_logic_vector(15 downto 0);  -- Disk mount buffer
+signal qnice_pet_mount1_buf_ram_data : std_logic_vector(15 downto 0);  -- Disk mount buffer; 15 downto 8 unused
 
 signal main_drive_cache_dirty        : std_logic;
 
@@ -322,13 +325,6 @@ signal qnice_disk1_waitrequest        : std_logic;
 
 begin
 
-   --hr_core_write_o      <= '0';
-   --hr_core_read_o       <= '0';
-   --hr_core_address_o    <= (others => '0');
-   --hr_core_writedata_o  <= (others => '0');
-   --hr_core_byteenable_o <= (others => '0');
-   --hr_core_burstcount_o <= (others => '0');
-
    -- Tristate all expansion port drivers that we can directly control
    -- @TODO: As soon as we support modules that can act as busmaster, we need to become more flexible here
    cart_ctrl_oe_o       <= '0';
@@ -336,7 +332,7 @@ begin
    cart_data_oe_o       <= '0';
 
    -- Due to a bug in the R5/R6 boards, the cartridge port needs to be enabled for joystick port 2 to work 
-   cart_en_o            <= '1';
+   cart_en_o            <= '0'; -- '1'; since we don't do joysticks yet we can leave it disabled.
 
    cart_reset_oe_o      <= '0';
    cart_game_oe_o       <= '0';
@@ -392,43 +388,52 @@ begin
    ---------------------------------------------------------------------------------------------
    -- hr_clk (HyperRAM clock)
    ---------------------------------------------------------------------------------------------
-   i_avm_arbit : entity work.avm_arbit
-      generic map (
-         G_PREFER_SWAP  => true,
-         G_ADDRESS_SIZE => 32,
-         G_DATA_SIZE    => 16 
-      )
-      port map (
-         clk_i                  => hr_clk_i,
-         rst_i                  => hr_rst_i,
-         s0_avm_write_i         => hr_disk0_write,
-         s0_avm_read_i          => hr_disk0_read,
-         s0_avm_address_i       => hr_disk0_address,
-         s0_avm_writedata_i     => hr_disk0_writedata,
-         s0_avm_byteenable_i    => hr_disk0_byteenable,
-         s0_avm_burstcount_i    => hr_disk0_burstcount,
-         s0_avm_readdata_o      => hr_disk0_readdata,
-         s0_avm_readdatavalid_o => hr_disk0_readdatavalid,
-         s0_avm_waitrequest_o   => hr_disk0_waitrequest,
-         s1_avm_write_i         => hr_disk1_write,
-         s1_avm_read_i          => hr_disk1_read,
-         s1_avm_address_i       => hr_disk1_address,
-         s1_avm_writedata_i     => hr_disk1_writedata,
-         s1_avm_byteenable_i    => hr_disk1_byteenable,
-         s1_avm_burstcount_i    => hr_disk1_burstcount,
-         s1_avm_readdata_o      => hr_disk1_readdata,
-         s1_avm_readdatavalid_o => hr_disk1_readdatavalid,
-         s1_avm_waitrequest_o   => hr_disk1_waitrequest,
-         m_avm_write_o          => hr_core_write_o,
-         m_avm_read_o           => hr_core_read_o,
-         m_avm_address_o        => hr_core_address_o,
-         m_avm_writedata_o      => hr_core_writedata_o,
-         m_avm_byteenable_o     => hr_core_byteenable_o,
-         m_avm_burstcount_o     => hr_core_burstcount_o,
-         m_avm_readdata_i       => hr_core_readdata_i,
-         m_avm_readdatavalid_i  => hr_core_readdatavalid_i,
-         m_avm_waitrequest_i    => hr_core_waitrequest_i
-      ); -- i_avm_arbit
+   Choose_Arbiter: if (CFG_OMIT_8x50_DISK) generate
+      hr_core_write_o      <= '0';
+      hr_core_read_o       <= '0';
+      hr_core_address_o    <= (others => '0');
+      hr_core_writedata_o  <= (others => '0');
+      hr_core_byteenable_o <= (others => '0');
+      hr_core_burstcount_o <= (others => '0');
+   else generate
+      i_avm_arbit : entity work.avm_arbit
+         generic map (
+            G_PREFER_SWAP  => true,
+            G_ADDRESS_SIZE => 32,
+            G_DATA_SIZE    => 16 
+         )
+         port map (
+            clk_i                  => hr_clk_i,
+            rst_i                  => hr_rst_i,
+            s0_avm_write_i         => hr_disk0_write,
+            s0_avm_read_i          => hr_disk0_read,
+            s0_avm_address_i       => hr_disk0_address,
+            s0_avm_writedata_i     => hr_disk0_writedata,
+            s0_avm_byteenable_i    => hr_disk0_byteenable,
+            s0_avm_burstcount_i    => hr_disk0_burstcount,
+            s0_avm_readdata_o      => hr_disk0_readdata,
+            s0_avm_readdatavalid_o => hr_disk0_readdatavalid,
+            s0_avm_waitrequest_o   => hr_disk0_waitrequest,
+            s1_avm_write_i         => hr_disk1_write,
+            s1_avm_read_i          => hr_disk1_read,
+            s1_avm_address_i       => hr_disk1_address,
+            s1_avm_writedata_i     => hr_disk1_writedata,
+            s1_avm_byteenable_i    => hr_disk1_byteenable,
+            s1_avm_burstcount_i    => hr_disk1_burstcount,
+            s1_avm_readdata_o      => hr_disk1_readdata,
+            s1_avm_readdatavalid_o => hr_disk1_readdatavalid,
+            s1_avm_waitrequest_o   => hr_disk1_waitrequest,
+            m_avm_write_o          => hr_core_write_o,
+            m_avm_read_o           => hr_core_read_o,
+            m_avm_address_o        => hr_core_address_o,
+            m_avm_writedata_o      => hr_core_writedata_o,
+            m_avm_byteenable_o     => hr_core_byteenable_o,
+            m_avm_burstcount_o     => hr_core_burstcount_o,
+            m_avm_readdata_i       => hr_core_readdata_i,
+            m_avm_readdatavalid_i  => hr_core_readdatavalid_i,
+            m_avm_waitrequest_i    => hr_core_waitrequest_i
+         ); -- i_avm_arbit
+   end generate;
 
    ---------------------------------------------------------------------------------------------
    -- main_clk (MiSTer core's clock)
@@ -678,95 +683,6 @@ begin
       end case;
    end process core_specific_devices;
 
-   -- Disk images are stored in HyperRAM due to their size.
-   i_qnice2hyperram_d0 : entity work.qnice2hyperram
-      port map (
-         clk_i                 => qnice_clk_i,
-         rst_i                 => qnice_rst_i,
-         s_qnice_wait_o        => qnice_pet_mount0_buf_ram_wait,
--- for >1MB we need 21 address bits, 20 downto 0
-         s_qnice_address_i     => ( 24 downto 13 => std_logic_vector(unsigned(C_HMAP_BUF0(11 downto 0)) +
-                                                                     unsigned(qnice_dev_addr_i(24 downto 13))),
-                                    12 downto 0  => qnice_dev_addr_i(12 downto 0),
-                                    others => '0'),
-         s_qnice_cs_i          => qnice_pet_mount0_buf_ram_ce,
-         s_qnice_write_i       => qnice_pet_mount0_buf_ram_we,
-         s_qnice_writedata_i   => qnice_dev_data_i,
-         s_qnice_byteenable_i  => "01", -- TBD: Rewrite to make use of the entire HyperRAM word.
-         s_qnice_readdata_o    => qnice_pet_mount0_buf_ram_data,
-         m_avm_write_o         => qnice_disk0_write,
-         m_avm_read_o          => qnice_disk0_read,
-         m_avm_address_o       => qnice_disk0_address,
-         m_avm_writedata_o     => qnice_disk0_writedata,
-         m_avm_byteenable_o    => qnice_disk0_byteenable,
-         m_avm_burstcount_o    => qnice_disk0_burstcount,
-         m_avm_readdata_i      => qnice_disk0_readdata,
-         m_avm_readdatavalid_i => qnice_disk0_readdatavalid,
-         m_avm_waitrequest_i   => qnice_disk0_waitrequest
-      ); -- i_qnice2hyperram
-
-   -- And we even have two of them.
-   i_qnice2hyperram_d1 : entity work.qnice2hyperram
-      port map (
-         clk_i                 => qnice_clk_i,
-         rst_i                 => qnice_rst_i,
-         s_qnice_wait_o        => qnice_pet_mount1_buf_ram_wait,
--- for >1MB we need 21 address bits, 20 downto 0
-         s_qnice_address_i     => ( 24 downto 13 => std_logic_vector(unsigned(C_HMAP_BUF1(11 downto 0)) +
-                                                                     unsigned(qnice_dev_addr_i(24 downto 13))),
-                                    12 downto 0  => qnice_dev_addr_i(12 downto 0),
-                                    others => '0'),
-         s_qnice_cs_i          => qnice_pet_mount1_buf_ram_ce,
-         s_qnice_write_i       => qnice_pet_mount1_buf_ram_we,
-         s_qnice_writedata_i   => qnice_dev_data_i,
-         s_qnice_byteenable_i  => "01", -- TBD: Rewrite to make use of the entire HyperRAM word.
-         s_qnice_readdata_o    => qnice_pet_mount1_buf_ram_data,
-         m_avm_write_o         => qnice_disk1_write,
-         m_avm_read_o          => qnice_disk1_read,
-         m_avm_address_o       => qnice_disk1_address,
-         m_avm_writedata_o     => qnice_disk1_writedata,
-         m_avm_byteenable_o    => qnice_disk1_byteenable,
-         m_avm_burstcount_o    => qnice_disk1_burstcount,
-         m_avm_readdata_i      => qnice_disk1_readdata,
-         m_avm_readdatavalid_i => qnice_disk1_readdatavalid,
-         m_avm_waitrequest_i   => qnice_disk1_waitrequest
-      ); -- i_qnice2hyperram
-
---   -- For now: Let's use a simple BRAM (using only 1 port will make a BRAM) for buffering
---   -- the disks that we are mounting. This will work for D64 only.
---   -- @TODO: Switch to HyperRAM at a later stage
---   mount_buf_ram : entity work.dualport_2clk_ram
---      generic map (
---         ADDR_WIDTH        => 18,
---         DATA_WIDTH        => 8,
---         MAXIMUM_SIZE      => 197376,        -- maximum size of any D64 image: non-standard 40-track incl. 768 error bytes
---         FALLING_A         => true
---      )
---      port map (
---         -- QNICE only
---         clock_a           => qnice_clk_i,
---         address_a         => qnice_pet_mount1_buf_addr, --  qnice_dev_addr_i(17 downto 0),
---         data_a            => qnice_dev_data_i(7 downto 0),
---         wren_a            => qnice_pet_mount1_buf_ram_we,
---         q_a               => qnice_pet_mount1_buf_ram_data
---      ); -- mount_buf_ram
---
---   mount2_buf_ram : entity work.dualport_2clk_ram
---      generic map (
---         ADDR_WIDTH        => 18,
---         DATA_WIDTH        => 8,
---         MAXIMUM_SIZE      => 197376,        -- maximum size of any D64 image: non-standard 40-track incl. 768 error bytes
---         FALLING_A         => true
---      )
---      port map (
---         -- QNICE only
---         clock_a           => qnice_clk_i,
---         address_a         => qnice_pet_mount2_buf_addr, --  qnice_dev_addr_i(17 downto 0),
---         data_a            => qnice_dev_data_i(7 downto 0),
---         wren_a            => qnice_pet_mount2_buf_ram_we,
---         q_a               => qnice_pet_mount2_buf_ram_data
---      ); -- mount2_buf_ram
-
    ---------------------------------------------------------------------------------------------
    -- Dual Clocks
    ---------------------------------------------------------------------------------------------
@@ -777,71 +693,162 @@ begin
    -- and make sure that the you configure the port that works with QNICE as a falling edge
    -- by setting G_FALLING_A or G_FALLING_B (depending on which port you use) to true.
 
-   qnice2hr_d0_avm_fifo : entity work.avm_fifo
-      generic map (
-         G_WR_DEPTH     => 16,
-         G_RD_DEPTH     => 16,
-         G_FILL_SIZE    => 1,
-         G_ADDRESS_SIZE => 32,
-         G_DATA_SIZE    => 16
-      )
-      port map (
-         s_clk_i               => qnice_clk_i,	-- Does the fifo know it should work on the falling edge?
-         s_rst_i               => qnice_rst_i,
-         s_avm_waitrequest_o   => qnice_disk0_waitrequest,
-         s_avm_write_i         => qnice_disk0_write,
-         s_avm_read_i          => qnice_disk0_read,
-         s_avm_address_i       => qnice_disk0_address,
-         s_avm_writedata_i     => qnice_disk0_writedata,
-         s_avm_byteenable_i    => qnice_disk0_byteenable,
-         s_avm_burstcount_i    => qnice_disk0_burstcount,
-         s_avm_readdata_o      => qnice_disk0_readdata,
-         s_avm_readdatavalid_o => qnice_disk0_readdatavalid,
-         m_clk_i               => hr_clk_i,
-         m_rst_i               => hr_rst_i,
-         m_avm_waitrequest_i   => hr_disk0_waitrequest,
-         m_avm_write_o         => hr_disk0_write,
-         m_avm_read_o          => hr_disk0_read,
-         m_avm_address_o       => hr_disk0_address,
-         m_avm_writedata_o     => hr_disk0_writedata,
-         m_avm_byteenable_o    => hr_disk0_byteenable,
-         m_avm_burstcount_o    => hr_disk0_burstcount,
-         m_avm_readdata_i      => hr_disk0_readdata,
-         m_avm_readdatavalid_i => hr_disk0_readdatavalid
-      ); -- qnice2hr_d0_avm_fifo
+   -- And we even have two of them.
+   Choose_Disk: if (CFG_OMIT_8x50_DISK) generate
+      -- For now: Let's use a simple BRAM (using only 1 port will make a BRAM) for buffering
+      -- the disks that we are mounting. This will work for D64 only.
+      mount0_buf_ram : entity work.dualport_2clk_ram
+         generic map (
+            ADDR_WIDTH        => 18,
+            DATA_WIDTH        => 8,
+            MAXIMUM_SIZE      => 197376,        -- maximum size of any D64 image: non-standard 40-track incl. 768 error bytes
+            FALLING_A         => true
+         )
+         port map (
+            -- QNICE only
+            clock_a           => qnice_clk_i,
+            address_a         => qnice_pet_mount0_buf_addr(17 downto 0), --  qnice_dev_addr_i(17 downto 0),
+            data_a            => qnice_dev_data_i(7 downto 0),
+            wren_a            => qnice_pet_mount0_buf_ram_we,
+            q_a               => qnice_pet_mount0_buf_ram_data(7 downto 0)
+         ); -- mount0_buf_ram
 
-   qnice2hr_d1_avm_fifo : entity work.avm_fifo
-      generic map (
-         G_WR_DEPTH     => 16,
-         G_RD_DEPTH     => 16,
-         G_FILL_SIZE    => 1,
-         G_ADDRESS_SIZE => 32,
-         G_DATA_SIZE    => 16
-      )
-      port map (
-         s_clk_i               => qnice_clk_i,	-- Does the fifo know it should work on the falling edge?
-         s_rst_i               => qnice_rst_i,
-         s_avm_waitrequest_o   => qnice_disk1_waitrequest,
-         s_avm_write_i         => qnice_disk1_write,
-         s_avm_read_i          => qnice_disk1_read,
-         s_avm_address_i       => qnice_disk1_address,
-         s_avm_writedata_i     => qnice_disk1_writedata,
-         s_avm_byteenable_i    => qnice_disk1_byteenable,
-         s_avm_burstcount_i    => qnice_disk1_burstcount,
-         s_avm_readdata_o      => qnice_disk1_readdata,
-         s_avm_readdatavalid_o => qnice_disk1_readdatavalid,
-         m_clk_i               => hr_clk_i,
-         m_rst_i               => hr_rst_i,
-         m_avm_waitrequest_i   => hr_disk1_waitrequest,
-         m_avm_write_o         => hr_disk1_write,
-         m_avm_read_o          => hr_disk1_read,
-         m_avm_address_o       => hr_disk1_address,
-         m_avm_writedata_o     => hr_disk1_writedata,
-         m_avm_byteenable_o    => hr_disk1_byteenable,
-         m_avm_burstcount_o    => hr_disk1_burstcount,
-         m_avm_readdata_i      => hr_disk1_readdata,
-         m_avm_readdatavalid_i => hr_disk1_readdatavalid
-      ); -- qnice2hr_d1_avm_fifo
+      mount1_buf_ram : entity work.dualport_2clk_ram
+         generic map (
+            ADDR_WIDTH        => 18,
+            DATA_WIDTH        => 8,
+            MAXIMUM_SIZE      => 197376,        -- maximum size of any D64 image: non-standard 40-track incl. 768 error bytes
+            FALLING_A         => true
+         )
+         port map (
+            -- QNICE only
+            clock_a           => qnice_clk_i,
+            address_a         => qnice_pet_mount1_buf_addr(17 downto 0), --  qnice_dev_addr_i(17 downto 0),
+            data_a            => qnice_dev_data_i(7 downto 0),
+            wren_a            => qnice_pet_mount1_buf_ram_we,
+            q_a               => qnice_pet_mount1_buf_ram_data(7 downto 0)
+         ); -- mount1_buf_ram
+   else generate        -- CFG_OMIT_8x50_DISK
+      -- Disk images of 8050 and 8250 need to be stored in HyperRAM due to their size.
+      i_qnice2hyperram_d0 : entity work.qnice2hyperram
+         port map (
+            clk_i                 => qnice_clk_i,
+            rst_i                 => qnice_rst_i,
+            s_qnice_wait_o        => qnice_pet_mount0_buf_ram_wait,
+   -- for >1MB we need 21 address bits, 20 downto 0
+            s_qnice_address_i     => ( 24 downto 13 => std_logic_vector(unsigned(C_HMAP_BUF0(11 downto 0)) +
+                                                                        unsigned(qnice_dev_addr_i(24 downto 13))),
+                                       12 downto 0  => qnice_dev_addr_i(12 downto 0),
+                                       others => '0'),
+            s_qnice_cs_i          => qnice_pet_mount0_buf_ram_ce,
+            s_qnice_write_i       => qnice_pet_mount0_buf_ram_we,
+            s_qnice_writedata_i   => qnice_dev_data_i,
+            s_qnice_byteenable_i  => "01", -- TBD: Rewrite to make use of the entire HyperRAM word.
+            s_qnice_readdata_o    => qnice_pet_mount0_buf_ram_data,
+            m_avm_write_o         => qnice_disk0_write,
+            m_avm_read_o          => qnice_disk0_read,
+            m_avm_address_o       => qnice_disk0_address,
+            m_avm_writedata_o     => qnice_disk0_writedata,
+            m_avm_byteenable_o    => qnice_disk0_byteenable,
+            m_avm_burstcount_o    => qnice_disk0_burstcount,
+            m_avm_readdata_i      => qnice_disk0_readdata,
+            m_avm_readdatavalid_i => qnice_disk0_readdatavalid,
+            m_avm_waitrequest_i   => qnice_disk0_waitrequest
+         ); -- i_qnice2hyperram
+
+      i_qnice2hyperram_d1 : entity work.qnice2hyperram
+         port map (
+            clk_i                 => qnice_clk_i,
+            rst_i                 => qnice_rst_i,
+            s_qnice_wait_o        => qnice_pet_mount1_buf_ram_wait,
+   -- for >1MB we need 21 address bits, 20 downto 0
+            s_qnice_address_i     => ( 24 downto 13 => std_logic_vector(unsigned(C_HMAP_BUF1(11 downto 0)) +
+                                                                        unsigned(qnice_dev_addr_i(24 downto 13))),
+                                       12 downto 0  => qnice_dev_addr_i(12 downto 0),
+                                       others => '0'),
+            s_qnice_cs_i          => qnice_pet_mount1_buf_ram_ce,
+            s_qnice_write_i       => qnice_pet_mount1_buf_ram_we,
+            s_qnice_writedata_i   => qnice_dev_data_i,
+            s_qnice_byteenable_i  => "01", -- TBD: Rewrite to make use of the entire HyperRAM word.
+            s_qnice_readdata_o    => qnice_pet_mount1_buf_ram_data,
+            m_avm_write_o         => qnice_disk1_write,
+            m_avm_read_o          => qnice_disk1_read,
+            m_avm_address_o       => qnice_disk1_address,
+            m_avm_writedata_o     => qnice_disk1_writedata,
+            m_avm_byteenable_o    => qnice_disk1_byteenable,
+            m_avm_burstcount_o    => qnice_disk1_burstcount,
+            m_avm_readdata_i      => qnice_disk1_readdata,
+            m_avm_readdatavalid_i => qnice_disk1_readdatavalid,
+            m_avm_waitrequest_i   => qnice_disk1_waitrequest
+         ); -- i_qnice2hyperram
+
+      qnice2hr_d0_avm_fifo : entity work.avm_fifo
+         generic map (
+            G_WR_DEPTH     => 16,
+            G_RD_DEPTH     => 16,
+            G_FILL_SIZE    => 1,
+            G_ADDRESS_SIZE => 32,
+            G_DATA_SIZE    => 16
+         )
+         port map (
+            s_clk_i               => qnice_clk_i,	-- Does the fifo know it should work on the falling edge?
+            s_rst_i               => qnice_rst_i,
+            s_avm_waitrequest_o   => qnice_disk0_waitrequest,
+            s_avm_write_i         => qnice_disk0_write,
+            s_avm_read_i          => qnice_disk0_read,
+            s_avm_address_i       => qnice_disk0_address,
+            s_avm_writedata_i     => qnice_disk0_writedata,
+            s_avm_byteenable_i    => qnice_disk0_byteenable,
+            s_avm_burstcount_i    => qnice_disk0_burstcount,
+            s_avm_readdata_o      => qnice_disk0_readdata,
+            s_avm_readdatavalid_o => qnice_disk0_readdatavalid,
+            m_clk_i               => hr_clk_i,
+            m_rst_i               => hr_rst_i,
+            m_avm_waitrequest_i   => hr_disk0_waitrequest,
+            m_avm_write_o         => hr_disk0_write,
+            m_avm_read_o          => hr_disk0_read,
+            m_avm_address_o       => hr_disk0_address,
+            m_avm_writedata_o     => hr_disk0_writedata,
+            m_avm_byteenable_o    => hr_disk0_byteenable,
+            m_avm_burstcount_o    => hr_disk0_burstcount,
+            m_avm_readdata_i      => hr_disk0_readdata,
+            m_avm_readdatavalid_i => hr_disk0_readdatavalid
+         ); -- qnice2hr_d0_avm_fifo
+
+      qnice2hr_d1_avm_fifo : entity work.avm_fifo
+         generic map (
+            G_WR_DEPTH     => 16,
+            G_RD_DEPTH     => 16,
+            G_FILL_SIZE    => 1,
+            G_ADDRESS_SIZE => 32,
+            G_DATA_SIZE    => 16
+         )
+         port map (
+            s_clk_i               => qnice_clk_i,	-- Does the fifo know it should work on the falling edge?
+            s_rst_i               => qnice_rst_i,
+            s_avm_waitrequest_o   => qnice_disk1_waitrequest,
+            s_avm_write_i         => qnice_disk1_write,
+            s_avm_read_i          => qnice_disk1_read,
+            s_avm_address_i       => qnice_disk1_address,
+            s_avm_writedata_i     => qnice_disk1_writedata,
+            s_avm_byteenable_i    => qnice_disk1_byteenable,
+            s_avm_burstcount_i    => qnice_disk1_burstcount,
+            s_avm_readdata_o      => qnice_disk1_readdata,
+            s_avm_readdatavalid_o => qnice_disk1_readdatavalid,
+            m_clk_i               => hr_clk_i,
+            m_rst_i               => hr_rst_i,
+            m_avm_waitrequest_i   => hr_disk1_waitrequest,
+            m_avm_write_o         => hr_disk1_write,
+            m_avm_read_o          => hr_disk1_read,
+            m_avm_address_o       => hr_disk1_address,
+            m_avm_writedata_o     => hr_disk1_writedata,
+            m_avm_byteenable_o    => hr_disk1_byteenable,
+            m_avm_burstcount_o    => hr_disk1_burstcount,
+            m_avm_readdata_i      => hr_disk1_readdata,
+            m_avm_readdatavalid_i => hr_disk1_readdatavalid
+         ); -- qnice2hr_d1_avm_fifo
+
+   end generate Choose_Disk;        -- CFG_OMIT_8x50_DISK
 
 end architecture synthesis;
 
