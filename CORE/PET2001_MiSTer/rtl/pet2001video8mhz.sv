@@ -26,8 +26,6 @@ module pet2001video8mhz
 
         output reg     video_on,        // control sigs
 
-        input          video_blank,
-        input          video_gfx,
         input          reset,
         input          clk,
         input          ce_1m
