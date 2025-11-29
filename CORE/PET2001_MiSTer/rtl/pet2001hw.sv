@@ -437,7 +437,6 @@ wire    vram_we = we && vram_sel_w && vram_cpu_video;
 
 wire [11:0] vram_addr_cpu_0;
 wire [14:0] vram_addr_cpu, vram_addr_cpu_2;
-wire [11:0] vram_addr_vid_0;
 wire [12:0] vram_addr_vid_2;
 wire [14:0] vram_addr_vid;
 wire [14:0] vram_addr;
@@ -461,24 +460,22 @@ wire [14:0] vram_addr;
  * In 8296 configuration, it's much simpler: the whole $8xxx is RAM (and more
  * too). The CRTC has 2 MA bits more, up to MA11, to address memory.
  * (there is a jumper to use MA12 too but that makes it even more complicated
- * because it is otherwise used to invert the screen)
+ * because it is otherwise used to enable the HRE / invert the screen)
  */
 assign vram_addr_cpu_2 = addr[14:0];
 assign vram_addr_cpu_0 = { addr[11] & pref_have_colour, addr[10] & pref_have_80_cols, addr[9:0] };
 assign vram_addr_cpu = pref_have_8296 ? vram_addr_cpu_2
                                       : { 3'b0, vram_addr_cpu_0 };
 
-/* For 8296 we would be losing the vram_colour_bit at position 11. It's not so
- * compatible with increasing the base address of screen memory. So we just OR
- * it in. That it will do at least something useful as long as you don't
+/* For 8296 we have both the vram_colour_bit and an extra video_addr bit at position 11.
+ * Colour is not so compatible with increasing the base address of screen memory.
+ * So we just OR the bits. That it will do at least something useful as long as you don't
  * program something conflicting.  */
 assign vram_addr_vid_2 = pref_have_80_cols ? { video_addr[11], video_addr[10] | vram_colour_bit, video_addr[9:0], vram_odd_char }
-                                           : { 1'b0, video_addr[11] | vram_colour_bit, video_addr[10:0] }; // 40 cols 8296
-assign vram_addr_vid_0 = pref_have_80_cols ? { vram_colour_bit, video_addr[9:0], vram_odd_char }
-                                           : { vram_colour_bit, 1'b0, video_addr[9:0] };
-assign vram_addr_vid = hre_active     ? vram_addr_hre :
-                       pref_have_8296 ? { 2'b0, vram_addr_vid_2 }
-                                      : { 3'b0, vram_addr_vid_0 };
+                                           : { 1'b0,           video_addr[11] | vram_colour_bit, video_addr[10:              0] };
+
+assign vram_addr_vid = hre_active ? vram_addr_hre
+                                  : { 2'b0, vram_addr_vid_2 };
 
 assign vram_addr = vram_sel_w && (vram_cpu_video ||
                                   pref_video_snow) ? vram_addr_cpu
@@ -511,7 +508,10 @@ wire        video_gfx;   // Display graphic characters vs. lower-case.
 wire chr_option = crtc_ma[13];  // MA13, use high half of character ROM
 wire invert = !pref_have_8296 && !crtc_ma[12];     // MA12, invert the screen, but not on 8296
 
-assign video_addr = crtc_ma[11:0]; // =(pet2001vram)=> vram_data
+// 8296 has 2 more MA bits connected than earlier models.
+// video_addr =(pet2001vram)=> vram_data
+assign video_addr = { pref_have_8296 & crtc_ma[11], pref_have_8296 & crtc_ma[10], crtc_ma[ 9:0] };
+
 assign charaddr   = {chr_option, video_gfx, vram_data[6:0], crtc_ra[2:0]}; // =(pet2001chars)=> chardata
 
 reg [7:0] vdata;        // pixel shift register (video data)
