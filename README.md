@@ -1,7 +1,7 @@
 The Mega-65 MegaPET
 ====================
 
-This is the MegaPET, the PET implementation on the Mega-65 hardware.
+This is the MegaPET, the Commodore PET implementation on the MEGA-65 hardware.
 
 There have been many different versions of PET, and the MegaPET supports all those I am aware of. It comes preset as a 8032; no additional files are required for this model. Just flash the core into a core slot as usual. There are versions for R3 and R6 boards.
 
@@ -28,6 +28,7 @@ Included features
 - Not supported:
   - the C2N datasette.
   - VGA video output.
+  - the ACIA in the SuperPET (there isn't any output on the MEGA65 to connect it to anyway).
 - If some program doesn't work, the most common reason is that the MegaPET is not set to the correct model for which the program was made.
 
 See further down for details about all possible settings (there are many).
@@ -47,7 +48,7 @@ This project is organized in 2 git repositories. The main one contains a snapsho
 
 Releases
 --------
-Releases are publised on the Mega-65 filehost and on github.
+Releases are publised on the MEGA-65 filehost and on github.
 
 PET Models
 ----------
@@ -217,7 +218,7 @@ The HRE (HiRes Emulator) has a write-only memory mapping register at `$E888` whi
 
 This enables the SuperPET expansion board. This is another expansion based on the 8032. It is not compatible with 8096 or 8296 expansions. If they are selected in combination, all of them will be disabled instead.
 
-The SuperPET has its own stype of memory expansion: RAM is mapped in blocks of 4 KB at a time at $9xxx. Which bank is mapped is selected by a bank switch register at $EFFC. Bits 0-3 select the bank number.
+The SuperPET has its own type of memory expansion: RAM is mapped in blocks of 4 KB at a time at $9xxx. Which bank is mapped is selected by a bank switch register at $EFFC. Bits 0-3 select the bank number.
 
 #### Use 6502 / 6809 cpu
 
@@ -359,7 +360,7 @@ Release Notes
 
 ### v1.0.1, v1.0.1-no8050
 
-- In this version it has been made easy to disable the 8x50 disk drives, together with their use of HyperRAM. At least some R3 boards freeze with a barcode pattern when the disk drive is accessed (see https://github.com/Rhialto/MegaPET/issues/1)
+- In this version it has been made easy to disable (at build time) the 8x50 disk drives, together with their use of HyperRAM. At least some R3 boards freeze with a barcode pattern when the disk drive is accessed (see https://github.com/Rhialto/MegaPET/issues/1)
 
 ### v1.0
 

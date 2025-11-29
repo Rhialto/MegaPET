@@ -334,7 +334,7 @@ begin
 end;
 
 // In the 2nd half of the cpu cycle, fetch the odd char from 80 col video
-// memory.
+// memory. This is rather similar to the task of CLKVLA in original schematics.
 wire vram_odd_char = cnt31_i[4];
 
 //////////////////////////////////////
