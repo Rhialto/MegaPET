@@ -251,13 +251,22 @@ end
 wire Q = pref_use_6809 && (cnt31[4] ^ cnt31[3]);
 
 // Latch the Data towards the 6809 on the rising edge of "enable" since
-// the 6502 does it that way. The 6809 uses the bus inputs when Q falls.
+// the 6502 uses the data at that point.
+// The 6809 uses the bus inputs continuously (most of its logic is
+// combinatorial). So we make sure that D remains constant from one rising
+// edge of "enable" to the next.
+
+    (* dont_touch = "false", mark_debug = "false" *)
 reg [7:0] din_to_6809;
-always @(posedge clk) begin
-    if (cnt31 == 0 && pref_use_6809) begin
-        din_to_6809 <= din_to_cpu;
+
+// Transparent latch for din_to_6809:
+// when enable goes/is high, latch the value until the next time it goes high.
+always @(enable or din_to_cpu or pref_use_6809) begin
+    if (enable && pref_use_6809) begin
+        din_to_6809 = din_to_cpu;
     end
 end
+
 
 wire bs, ba;                    // for SuperOS9 MMU
 assign sync_happened = ba && !bs && !syncdis;
