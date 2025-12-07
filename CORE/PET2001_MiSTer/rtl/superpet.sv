@@ -261,12 +261,20 @@ reg [7:0] din_to_6809;
 
 // Transparent latch for din_to_6809:
 // when enable goes/is high, latch the value until the next time it goes high.
+/* Latches are apparently bad...
 always @(enable or din_to_cpu or pref_use_6809) begin
     if (enable && pref_use_6809) begin
         din_to_6809 = din_to_cpu;
     end
 end
-
+*/
+// so instead we use a flipflop and accept the 1-clock delay by
+// sampling one clock earlier.
+always @(posedge clk) begin
+    if (cnt31 == 0 && pref_use_6809) begin
+        din_to_6809 <= din_to_cpu;
+    end
+end
 
 wire bs, ba;                    // for SuperOS9 MMU
 assign sync_happened = ba && !bs && !syncdis;
