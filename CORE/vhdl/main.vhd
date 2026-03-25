@@ -159,6 +159,7 @@ architecture synthesis of main is
     signal keyb_row_select : std_logic_vector(3 downto 0);
     signal keyb_column_selected : std_logic_vector(7 downto 0);
     signal diag_sense : std_logic;
+    signal nmi_n : std_logic;
 
     -- PET's IEEE connector to the bus
     signal ieee488_pet_data_i  : std_logic_vector(7 downto 0);
@@ -420,7 +421,7 @@ Choose_SuperPET: if (CFG_OMIT_SUPERPET) generate
            Rdy => '1',
            Abort_n => '1',
            IRQ_n => not irq,
-           NMI_n => '1',
+           NMI_n => nmi_n,
            SO_n => '1',
            R_W_n => rnw,
            A(23 downto 17) => addr_unused,
@@ -449,7 +450,7 @@ else generate
             Rdy => '1',
             Abort_n => '1',
             IRQ_n => not irq,
-            NMI_n => '1',
+            NMI_n => nmi_n,
             SO_n => '1',
             R_W_n => rnw,
             A(23 downto 17) => addr_unused,
@@ -614,7 +615,8 @@ end generate;
          column_selected_o    => keyb_column_selected,
          business_layout_i    => osm_i(C_MENU_MODEL_B_KEYBOARD),
 
-         diag_sense_o         => diag_sense
+         diag_sense_o         => diag_sense,
+	 nmi_o                => nmi_n
       ); -- i_keyboard
 
    -- Drive is held to reset if the core is held to reset or if the drive is disabled.

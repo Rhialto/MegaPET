@@ -81,8 +81,8 @@ type WHS_RECORD_ARRAY_TYPE is array (0 to WHS_RECORDS - 1) of WHS_RECORD_TYPE;
 
 constant SUBVER1_STRING : string := "-no8050" when CFG_OMIT_8x50_DISK else "";
 
-constant VERSION_STRING : string := "v1.0.1" & SUBVER1_STRING;
-constant VERSION_UNDERL : string := CHR_LINE_5 & CHR_LINE_1;
+constant VERSION_STRING : string := "v1.0.1+xqkrxuzl" & SUBVER1_STRING;
+constant VERSION_UNDERL : string := CHR_LINE_10 & CHR_LINE_5;
 
 constant SCR_WELCOME : string := "";
 
@@ -92,7 +92,7 @@ constant HELP_1 : string :=
    CHR_LINE_10 & CHR_LINE_10 & CHR_LINE_1 & VERSION_UNDERL & "\n" &
    "\n" &
    "Created (starting from the  MiSTer core)\n" &
-   "by Olaf 'Rhialto' Seibert in 2024-2025.\n" &
+   "by Olaf 'Rhialto' Seibert in 2024-2026.\n" &
    "\n" &
    "\n" &
    -- We are not insisting. But it would be nice if you gave us credit for MiSTer2MEGA65 by leaving these lines in
@@ -116,7 +116,7 @@ constant HELP_1 : string :=
    "  CTRL               OFF/RVS\n" &
    "\n" &
    "CTRL+MEGA: diagnostic sense\n" &
-   "\n" &
+   "MEGA+RESTORE: NMI (Non Maskable Interrupt)\n" &
    "\n" &
    "Readme and source:\n" &
    "\n" &

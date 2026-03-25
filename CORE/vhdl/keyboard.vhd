@@ -76,7 +76,8 @@ entity keyboard is
 
       business_layout_i : in  std_logic;    -- 0=normal/graphic layout, 1=business layout
       
-      diag_sense_o      : out  std_logic
+      diag_sense_o      : out  std_logic;
+      nmi_o             : out  std_logic
    );
 end keyboard;
 
@@ -190,6 +191,9 @@ begin
     -- Instructions from https://mikenaberezny.com/hardware/pet-cbm/its-new-cursor/
     -- https://mikenaberezny.com/wp-content/uploads/2012/07/new-cursor-installation-instructions.pdf
     diag_sense_o <= key_pressed_n(m65_mega) or key_pressed_n(m65_ctrl);
+
+    -- Map MEGA + RESTORE to the NMI line (which is normally connected to a pull up)
+    nmi_o <= key_pressed_n(m65_mega) or key_pressed_n(m65_restore);
 
     -- Select which keyboard to use.
     column_selected_o <=      b_column_selected  when business_layout_i

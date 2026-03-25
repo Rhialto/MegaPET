@@ -299,6 +299,14 @@ There's more: you're not yet out of the woods. Type a semicolon followed by RETU
 
 Source: Jim Butterfield in [Compute! Magazine, issue #1, page 89](https://archive.org/details/compute_0001_fal79/page/88/mode/2up) I would recommend reading all early issues of Compute! for interesting information about your MegaPET.
 
+The Diagnostic Sense signal gets its name from its function in ROM version 1. It causes the PET to execute diagnostic test code. However this requires a test harness which is not emulated, so effectively it will do nothing useful.
+
+### NMI (Non-Maskable Interrupt)
+
+On actual PETs, the NMI input is not implemented, and it is always pulled up (inactive). However ROM versions 2 and 4 do include a working NMI vector. It jumps fairly directly to the READY prompt, so it may sometimes get you out of trouble. In the SuperPET's 6809 mode it also sometimes works (I did not explore this fully). The Basic 1 ROMs do not have an valid NMI vector, and asserting NMI will cause the PET to hang.
+
+In the MegaPET, the `MEGA`+`RESTORE` keys pressed together generate the NMI signal.
+
 ### The LEDs
 
 The LEDs are RGB-type LEDs and can take any colour. The colours are used to indicate some states of the PET.
