@@ -1,3 +1,15 @@
+# These files are rewritten by Vivado with a different layout.
+# We want to keep the original hand-made layout with comments.
+CORE/CORE-R3.xpr
+CORE/CORE-R6.xpr
+CORE/CORE.xdc
+M2M/MEGA65-R3.xdc
+M2M/MEGA65-R6.xdc
+M2M/common.xdc
+# end
+# Ignore the changed submodule?
+# M2M/QNICE
+# end
 CORE/*.cache
 CORE/*.hw
 CORE/*.runs
