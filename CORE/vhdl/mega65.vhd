@@ -332,7 +332,7 @@ begin
    cart_data_oe_o       <= '0';
 
    -- Due to a bug in the R5/R6 boards, the cartridge port needs to be enabled for joystick port 2 to work 
-   cart_en_o            <= '0'; -- '1'; since we don't do joysticks yet we can leave it disabled.
+   cart_en_o            <= '1';
 
    cart_reset_oe_o      <= '0';
    cart_game_oe_o       <= '0';

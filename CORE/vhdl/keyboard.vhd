@@ -71,13 +71,20 @@ entity keyboard is
         -- 2    Port A control: DDRA = 0, IORA = 1
         -- 1    CA1 control: Active High = 1, Low = 0
         -- 0    CA1 control: IRQ on=1, off = 0
-      row_select_i      : in  std_logic_vector(3 downto 0);
-      column_selected_o : out std_logic_vector(7 downto 0);
+      row_select_i         : in  std_logic_vector(3 downto 0);
+      column_selected_o    : out std_logic_vector(7 downto 0);
 
-      business_layout_i : in  std_logic;    -- 0=normal/graphic layout, 1=business layout
-      
-      diag_sense_o      : out  std_logic;
-      nmi_o             : out  std_logic
+      business_layout_i    : in  std_logic;    -- 0=normal/graphic layout, 1=business layout
+
+      diag_sense_o         : out  std_logic;
+      nmi_o                : out  std_logic;
+
+      -- MEGA65 joysticks and paddles/mouse/potentiometers
+      joy_1_up_n_i         : in  std_logic;
+      joy_1_down_n_i       : in  std_logic;
+      joy_1_left_n_i       : in  std_logic;
+      joy_1_right_n_i      : in  std_logic;
+      joy_1_fire_n_i       : in  std_logic
    );
 end keyboard;
 
@@ -174,6 +181,8 @@ signal b_unshift_n: std_logic;
 signal n_column_selected : std_logic_vector(7 downto 0);
 signal b_column_selected : std_logic_vector(7 downto 0);
 
+signal joy1_direction : std_logic_vector(9 downto 1);
+
 begin
 
     keyboard_state : process(clk_main_i)
@@ -200,8 +209,6 @@ begin
                          else n_column_selected;
 
     -- 4-to-10 decoder for keyboard row selection. Active low.
-    -- We should probaly use variables for these intermediate calulations,
-    -- but nobody would detect a clock of delay?!?
     row_n(0) <= '0' when to_integer(unsigned(row_select_i)) = 0 else '1';
     row_n(1) <= '0' when to_integer(unsigned(row_select_i)) = 1 else '1';
     row_n(2) <= '0' when to_integer(unsigned(row_select_i)) = 2 else '1';
@@ -216,6 +223,19 @@ begin
     -- Since we use "negative logic" we swap 'and' and 'or' too; De Morgan.
     shift_n <= key_pressed_n(m65_left_shift) and key_pressed_n(m65_right_shift);
     mega_n <= key_pressed_n(m65_mega);
+
+    -- Decode joystick direction (also with negative logic)
+    joy1_direction(7) <=     joy_1_up_n_i or  not joy_1_down_n_i or      joy_1_left_n_i or  not joy_1_right_n_i;
+    joy1_direction(8) <=     joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or  not joy_1_right_n_i;
+    joy1_direction(9) <=     joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
+
+    joy1_direction(4) <= not joy_1_up_n_i or  not joy_1_down_n_i or      joy_1_left_n_i or  not joy_1_right_n_i;
+    joy1_direction(6) <= not joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
+
+    joy1_direction(1) <= not joy_1_up_n_i or      joy_1_down_n_i or      joy_1_left_n_i or  not joy_1_right_n_i;
+    joy1_direction(2) <= not joy_1_up_n_i or      joy_1_down_n_i or  not joy_1_left_n_i or  not joy_1_right_n_i;
+    joy1_direction(3) <= not joy_1_up_n_i or      joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
+
 
     ---------------------------------------------------------------------
     --
@@ -252,7 +272,7 @@ begin
         (row_n(1) or key_pressed_n(m65_2)          or shift_n      ) and     -- "
         (row_n(2) or key_pressed_n(m65_q)                          ) and     -- q
         (row_n(3) or key_pressed_n(m65_w)                          ) and     -- w
-        (row_n(4) or key_pressed_n(m65_a)                          ) and     -- a
+        (row_n(4) or (key_pressed_n(m65_a) and joy_1_fire_n_i)     ) and     -- a or joy 1 fire
         (row_n(5) or key_pressed_n(m65_s)                          ) and     -- s
         (row_n(6) or key_pressed_n(m65_z)                          ) and     -- z
         (row_n(7) or key_pressed_n(m65_x)                          ) and     -- x
@@ -326,12 +346,17 @@ begin
         (row_n(0) or key_pressed_n(m65_clr_home)                   ) and     -- clr/home
         (row_n(1) or (key_pressed_n(m65_vert_crsr) and
                       key_pressed_n(m65_up_crsr))                  ) and     -- crsr down (or up)
-        (row_n(2) or key_pressed_n(m65_7)          or not shift_n  ) and     -- 7
-        (row_n(3) or key_pressed_n(m65_8)          or not shift_n  ) and     -- 8
-        (row_n(4) or key_pressed_n(m65_4)          or not shift_n  ) and     -- 4
+        (row_n(2) or ((key_pressed_n(m65_7)        or not shift_n)
+                       and joy1_direction(7)                      )) and     -- 7
+        (row_n(3) or ((key_pressed_n(m65_8)        or not shift_n)
+                       and joy1_direction(8)                      )) and     -- 8
+        (row_n(4) or ((key_pressed_n(m65_4)        or not shift_n)
+                       and joy1_direction(4)                      )) and     -- 4
         (row_n(5) or key_pressed_n(m65_5)          or not shift_n  ) and     -- 5
-        (row_n(6) or key_pressed_n(m65_1)          or not shift_n  ) and     -- 1
-        (row_n(7) or key_pressed_n(m65_2)          or not shift_n  ) and     -- 2
+        (row_n(6) or ((key_pressed_n(m65_1)        or not shift_n)
+                       and joy1_direction(1)                      )) and     -- 1
+        (row_n(7) or ((key_pressed_n(m65_2)        or not shift_n)
+                       and joy1_direction(2)                      )) and     -- 2
         (row_n(8) or key_pressed_n(m65_0)                          ) and     -- 0
         (row_n(9) or key_pressed_n(m65_dot)        or not shift_n  );        -- .
 
@@ -339,11 +364,14 @@ begin
         (row_n(0) or (key_pressed_n(m65_horz_crsr) and
                       key_pressed_n(m65_left_crsr))                ) and     -- crsr => (or <=)
         (row_n(1) or key_pressed_n(m65_ins_del)                    ) and     -- inst/del
-        (row_n(2) or key_pressed_n(m65_9)          or not shift_n  ) and     -- 9
+        (row_n(2) or ((key_pressed_n(m65_9)        or not shift_n)
+                       and joy1_direction(9)                      )) and     -- 9
         (row_n(3) or key_pressed_n(m65_slash)      or not shift_n  ) and     -- /
-        (row_n(4) or key_pressed_n(m65_6)          or not shift_n  ) and     -- 6
+        (row_n(4) or ((key_pressed_n(m65_6)        or not shift_n)
+                       and joy1_direction(6)                      )) and     -- 6
         (row_n(5) or key_pressed_n(m65_asterisk)                   ) and     -- *
-        (row_n(6) or key_pressed_n(m65_3)          or not shift_n  ) and     -- 3
+        (row_n(6) or ((key_pressed_n(m65_3)        or not shift_n)
+                       and joy1_direction(3)                      )) and     -- 3
         (row_n(7) or key_pressed_n(m65_plus)                       ) and     -- +
         (row_n(8) or key_pressed_n(m65_minus)                      ) and     -- -
         (row_n(9) or key_pressed_n(m65_equal)                      );        -- =

@@ -616,7 +616,14 @@ end generate;
          business_layout_i    => osm_i(C_MENU_MODEL_B_KEYBOARD),
 
          diag_sense_o         => diag_sense,
-	 nmi_o                => nmi_n
+	 nmi_o                => nmi_n,
+
+        -- MEGA65 joysticks and paddles/mouse/potentiometers
+         joy_1_up_n_i         => joy_1_up_n_i,
+         joy_1_down_n_i       => joy_1_down_n_i,
+         joy_1_left_n_i       => joy_1_left_n_i,
+         joy_1_right_n_i      => joy_1_right_n_i,
+         joy_1_fire_n_i       => joy_1_fire_n_i
       ); -- i_keyboard
 
    -- Drive is held to reset if the core is held to reset or if the drive is disabled.
