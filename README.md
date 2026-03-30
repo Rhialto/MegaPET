@@ -272,10 +272,12 @@ The fire button maps to the A key.
 #### 1 (Space Invaders)
 
 Support 1 joystick on the user port. The user port bits are 0=left, 1=right, 2=up, 3=down, 5=fire. This is "Space Invaders compatible".
+Don't use this option at the same time as "Userport controls RAM".
 
 #### 2 (Stupid PET Tricks)
 
-Support 2 joysticks on the user port, compatible with the Stupid PET Tricks joystick adapter. The user port bits are 0=joystick up, 1=down, 2=left, 3=right, 4=joystick 2 up, 5=down, 6=left, 7=right. The fire buttons are signalled as up and down simultaneously (which normally can't happen).
+Support 2 joysticks on the user port, compatible with the Stupid PET Tricks joystick adapter. The user port bits are 0=joystick 1 up, 1=down, 2=left, 3=right, 4=joystick 2 up, 5=down, 6=left, 7=right. The fire buttons are signalled as up and down simultaneously (which normally can't happen).
+Don't use this option at the same time as "Userport controls RAM".
 
 #### Flip Joysticks
 

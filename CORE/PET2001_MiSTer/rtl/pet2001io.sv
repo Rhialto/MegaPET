@@ -105,6 +105,22 @@ module pet2001io
         input        ieee488_ndac_i,
         output       ieee488_ndac_o,
 
+        // MEGA65 joysticks and paddles/mouse/potentiometers
+        input        joy_1_up_n_i,
+        input        joy_1_down_n_i,
+        input        joy_1_left_n_i,
+        input        joy_1_right_n_i,
+        input        joy_1_fire_n_i,
+
+        input        joy_2_up_n_i,
+        input        joy_2_down_n_i,
+        input        joy_2_left_n_i,
+        input        joy_2_right_n_i,
+        input        joy_2_fire_n_i,
+
+        input        pref_1_joystick,
+        input        pref_2_joysticks,
+
         input        ce,		// clock enable for cpu bus access
         input        ce_opp,		// clock enable for internal workings
         input        ce_8m,
@@ -203,7 +219,12 @@ pia6520 pia2
 wire [7:0] via_data_out;
 wire       via_irq;
 wire [7:0] via_port_a_o;
-wire [7:0] via_port_a_i = 8'hFF;        // Parallel User Port
+wire [7:0] via_port_a_i = // Parallel User Port
+          pref_1_joystick ? { 1'b1, 1'b1, joy_1_fire_n_i, 1'b1,
+                              joy_1_down_n_i, joy_1_up_n_i, joy_1_right_n_i, joy_1_left_n_i } :
+          pref_2_joysticks ? { joy_2_right_n_i, joy_2_left_n_i, joy_2_down_n_i & joy_2_fire_n_i, joy_2_up_n_i & joy_2_fire_n_i,
+                               joy_1_right_n_i, joy_1_left_n_i, joy_1_down_n_i & joy_1_fire_n_i, joy_1_up_n_i & joy_1_fire_n_i } :
+          8'hFF;
 wire [7:0] via_port_a_t;                // 1 = output, 0 = input
 wire [7:0] via_portb_out;
 wire [7:0] via_port_b_t;                // 1 = output, 0 = input

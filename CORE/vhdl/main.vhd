@@ -39,6 +39,8 @@ use work.globals.C_MENU_UNIT_8_4040;
 use work.globals.C_MENU_UNIT_8_8050;
 use work.globals.C_MENU_UNIT_8_8250;
 use work.globals.C_MENU_JOY_KB;
+use work.globals.C_MENU_JOY_SPT1;
+use work.globals.C_MENU_JOY_SPT2;
 
 use work.globals.C_VD_SUBDRIVES;
 
@@ -523,6 +525,22 @@ end generate;
         ieee488_nrfd_o  => ieee488_pet_nrfd_o,
         ieee488_ndac_i  => ieee488_pet_ndac_i,
         ieee488_ndac_o  => ieee488_pet_ndac_o,
+
+        -- MEGA65 joysticks and paddles/mouse/potentiometers
+        joy_1_up_n_i         => joy_1_up_n_i,
+        joy_1_down_n_i       => joy_1_down_n_i,
+        joy_1_left_n_i       => joy_1_left_n_i,
+        joy_1_right_n_i      => joy_1_right_n_i,
+        joy_1_fire_n_i       => joy_1_fire_n_i,
+
+        joy_2_up_n_i         => joy_2_up_n_i,
+        joy_2_down_n_i       => joy_2_down_n_i,
+        joy_2_left_n_i       => joy_2_left_n_i,
+        joy_2_right_n_i      => joy_2_right_n_i,
+        joy_2_fire_n_i       => joy_2_fire_n_i,
+
+        pref_1_joystick      => osm_i(C_MENU_JOY_SPT1),
+        pref_2_joysticks     => osm_i(C_MENU_JOY_SPT2),
 
         -- QNICE clock domain via pet_clk_sd_i
         dma_clk         => pet_clk_sd_i,

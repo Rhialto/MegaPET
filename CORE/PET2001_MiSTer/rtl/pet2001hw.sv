@@ -100,6 +100,22 @@ module pet2001hw
         input            ieee488_ndac_i,
         output           ieee488_ndac_o,
 
+        // MEGA65 joysticks and paddles/mouse/potentiometers
+        input            joy_1_up_n_i,
+        input            joy_1_down_n_i,
+        input            joy_1_left_n_i,
+        input            joy_1_right_n_i,
+        input            joy_1_fire_n_i,
+
+        input            joy_2_up_n_i,
+        input            joy_2_down_n_i,
+        input            joy_2_left_n_i,
+        input            joy_2_right_n_i,
+        input            joy_2_fire_n_i,
+
+        input            pref_1_joystick,
+        input            pref_2_joysticks,
+
         // QNICE clock domain via dma_clk
         input            dma_clk,
         input  [14:0]    dma_addr,
@@ -710,6 +726,21 @@ pet2001io io
         .ieee488_nrfd_o(ieee488_nrfd_o),
         .ieee488_ndac_i(ieee488_ndac_i),
         .ieee488_ndac_o(ieee488_ndac_o),
+
+        .joy_1_up_n_i(joy_1_up_n_i),
+        .joy_1_down_n_i(joy_1_down_n_i),
+        .joy_1_left_n_i(joy_1_left_n_i),
+        .joy_1_right_n_i(joy_1_right_n_i),
+        .joy_1_fire_n_i(joy_1_fire_n_i),
+
+        .joy_2_up_n_i(joy_2_up_n_i),
+        .joy_2_down_n_i(joy_2_down_n_i),
+        .joy_2_left_n_i(joy_2_left_n_i),
+        .joy_2_right_n_i(joy_2_right_n_i),
+        .joy_2_fire_n_i(joy_2_fire_n_i),
+
+        .pref_1_joystick(pref_1_joystick),
+        .pref_2_joysticks(pref_2_joysticks),
 
         .ce(ce_1m),
         .ce_opp(ce_1m_opp),
