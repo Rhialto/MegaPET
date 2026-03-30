@@ -211,7 +211,7 @@ END_OF_ROM      .DW 0
 ; You need to deduct MENU_HEAP_SIZE from the actual heap size below.
 ; Example: If your HEAP_SIZE would be 29696, then you write 29696-1024=28672
 ; instead, but when doing the sanity check calculations, you use 29696
-MENU_HEAP_SIZE  .EQU 1200
+MENU_HEAP_SIZE  .EQU 1300
 
 #ifndef RELEASE
 
@@ -226,7 +226,7 @@ HEAP            .BLOCK 1
 ; it comes to folders with a lot of files
 #else
 
-HEAP_SIZE       .EQU 28496                      ; 29696 - 1200 = 28496
+HEAP_SIZE       .EQU 28396                      ; 29696 - 1300 = 28396
 HEAP            .BLOCK 1
 
 ; The monitor variables use 22 words, round to 32 for being safe and subtract

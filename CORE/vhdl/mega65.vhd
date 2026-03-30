@@ -582,7 +582,7 @@ begin
    qnice_ascal_triplebuf_o    <= '0';
 
    -- Flip joystick ports (i.e. the joystick in port 2 is used as joystick 1 and vice versa)
-   qnice_flip_joyports_o      <= '0';
+   qnice_flip_joyports_o      <= qnice_osm_control_i(C_MENU_JOY_FLIP);
 
    ---------------------------------------------------------------------------------------------
    -- Core specific device handling (QNICE clock domain)

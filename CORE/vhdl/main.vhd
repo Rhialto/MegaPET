@@ -38,6 +38,7 @@ use work.globals.C_MENU_UNIT_8_DISABLED;
 use work.globals.C_MENU_UNIT_8_4040;
 use work.globals.C_MENU_UNIT_8_8050;
 use work.globals.C_MENU_UNIT_8_8250;
+use work.globals.C_MENU_JOY_KB;
 
 use work.globals.C_VD_SUBDRIVES;
 
@@ -619,11 +620,11 @@ end generate;
 	 nmi_o                => nmi_n,
 
         -- MEGA65 joysticks and paddles/mouse/potentiometers
-         joy_1_up_n_i         => joy_1_up_n_i,
-         joy_1_down_n_i       => joy_1_down_n_i,
-         joy_1_left_n_i       => joy_1_left_n_i,
-         joy_1_right_n_i      => joy_1_right_n_i,
-         joy_1_fire_n_i       => joy_1_fire_n_i
+         joy_1_up_n_i         => joy_1_up_n_i    when osm_i(C_MENU_JOY_KB) else '1',
+         joy_1_down_n_i       => joy_1_down_n_i  when osm_i(C_MENU_JOY_KB) else '1',
+         joy_1_left_n_i       => joy_1_left_n_i  when osm_i(C_MENU_JOY_KB) else '1',
+         joy_1_right_n_i      => joy_1_right_n_i when osm_i(C_MENU_JOY_KB) else '1',
+         joy_1_fire_n_i       => joy_1_fire_n_i  when osm_i(C_MENU_JOY_KB) else '1'
       ); -- i_keyboard
 
    -- Drive is held to reset if the core is held to reset or if the drive is disabled.

@@ -81,7 +81,7 @@ type WHS_RECORD_ARRAY_TYPE is array (0 to WHS_RECORDS - 1) of WHS_RECORD_TYPE;
 
 constant SUBVER1_STRING : string := "-no8050" when CFG_OMIT_8x50_DISK else "";
 
-constant VERSION_STRING : string := "v1.0.1+vwrqyxxl" & SUBVER1_STRING;
+constant VERSION_STRING : string := "v1.0.1+wpvkpvvs" & SUBVER1_STRING;
 constant VERSION_UNDERL : string := CHR_LINE_10 & CHR_LINE_5;
 
 constant SCR_WELCOME : string := "";
@@ -193,8 +193,8 @@ constant JOY_1_AT_RESET    : boolean := false;
 constant JOY_2_AT_RESET    : boolean := false;
 
 constant KEYBOARD_AT_OSD   : boolean := false;
-constant JOY_1_AT_OSD      : boolean := false;
-constant JOY_2_AT_OSD      : boolean := false;
+constant JOY_1_AT_OSD      : boolean := true;
+constant JOY_2_AT_OSD      : boolean := true;
 
 -- Avalon Scaler settings (see ascal.vhd, used for HDMI output only)
 -- 0=set ascal mode (via QNICE's ascal_mode_o) to the value of the config.vhd constant ASCAL_MODE
@@ -303,7 +303,7 @@ constant OPTM_S_SAVING     : string := "<Saving>";          -- the internal writ
 --             Do use a lower case \n. If you forget one of them or if you use upper case, you will run into undefined behavior.
 --          2. Start each line that contains an actual menu item (multi- or single-select) with a Space character,
 --             otherwise you will experience visual glitches.
-constant OPTM_SIZE         : natural := 58;  -- amount of items including empty lines:
+constant OPTM_SIZE         : natural := 65;  -- amount of items including empty lines:
                                              -- needs to be equal to the number of lines in OPTM_ITEMS and amount of items in OPTM_GROUPS
                                              -- IMPORTANT: If SAVE_SETTINGS is true and OPTM_SIZE changes: Make sure to re-generate and
                                              -- and re-distribute the config file. You can make a new one using M2M/tools/make_config.sh
@@ -311,7 +311,7 @@ constant OPTM_SIZE         : natural := 58;  -- amount of items including empty 
 -- Net size of the Options menu on the screen in characters (excluding the frame, which is hardcoded to two characters)
 -- Without submenus: Use OPTM_SIZE as height, otherwise count how large the actually visible main menu is.
 constant OPTM_DX           : natural := 23;
-constant OPTM_DY           : natural := 24;
+constant OPTM_DY           : natural := 30;
 
 constant STR_8050          : string := "\n" when CFG_OMIT_8x50_DISK else " 8050 (.d80)\n";
 constant STR_8250          : string := "\n" when CFG_OMIT_8x50_DISK else " 8250 (.d80,.d82)\n";
@@ -373,9 +373,16 @@ constant OPTM_ITEMS        : string :=
    " HDMI: CRT emulation\n"  &
    " HDMI: Zoom-in\n"        &
    "\n"                      &
-   " About & Help\n"         & -- 55
+   " Joystick(s)\n"          & -- 55
    "\n"                      &
-   " Close Menu\n";            -- 57
+   " Keyboard\n"             &
+   " 1 (Space Invaders)\n"   &
+   " 2 (Stupid PET Tricks)\n"&
+   " Flip Joysticks\n"       & -- 60
+   "\n"                      &
+   " About & Help\n"         &
+   "\n"                      &
+   " Close Menu\n";            -- 64
 
 -- define your own constants here and choose meaningful names
 -- make sure that your first group uses the value 1 (0 means "no menu item", such as text and line),
@@ -406,6 +413,8 @@ constant OPTM_G_Drive_1    : integer := 21;
 constant OPTM_G_CRT        : integer := 22;
 constant OPTM_G_Zoom       : integer := 23;
 constant OPTM_G_AboutHelp  : integer := 24;
+constant OPTM_G_Joystick   : integer := 25;
+constant OPTM_G_FlipJoystick : integer := 26;
 
 -- !!! DO NOT TOUCH !!!
 type OPTM_GTYPE is array (0 to OPTM_SIZE - 1) of integer range 0 to 2**OPTM_GTC- 1;
@@ -471,6 +480,13 @@ constant OPTM_GROUPS       : OPTM_GTYPE := (
 						   -- HDMI submenu block: END
 	 OPTM_G_CRT +OPTM_G_SINGLESEL+OPTM_G_STDSEL, -- On/Off toggle ("Single Select")
 	 OPTM_G_Zoom  + OPTM_G_SINGLESEL,          -- On/Off toggle ("Single Select")
+	 OPTM_G_LINE,                              -- Line
+	 OPTM_G_TEXT + OPTM_G_HEADLINE,            -- Joystick
+	 OPTM_G_LINE,                              -- Line
+	 OPTM_G_Joystick + OPTM_G_STDSEL,          -- Joystick: Keyboard
+	 OPTM_G_Joystick,                          -- Joystick: SPT 1 (Space Invaders)
+	 OPTM_G_Joystick,                          -- Joystick: SPT 2
+	 OPTM_G_FlipJoystick + OPTM_G_SINGLESEL,   -- Joystick: Flip Joysticks
 	 OPTM_G_LINE,                              -- Line
 	 OPTM_G_AboutHelp + OPTM_G_HELP,           -- About & Help
 	 OPTM_G_LINE,                              -- Line

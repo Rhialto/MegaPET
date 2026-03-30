@@ -260,6 +260,27 @@ When the Controller ROM is only 1 KiB, the first 1 KiB should be padded with `FF
 
 Unfortunately the MiSTer2MEGA65-framework does not save the name of the loaded ROM to the petcfg file.
 
+### Joystick(s)
+
+You can choose from 3 joystick emulation modes (one at a time).
+
+#### Keyboard
+
+The first (front) joystick controls some keys on the numeric part of the keyboard, which is how most games are controlled.
+The fire button maps to the A key.
+
+#### 1 (Space Invaders)
+
+Support 1 joystick on the user port. The user port bits are 0=left, 1=right, 2=up, 3=down, 5=fire. This is "Space Invaders compatible".
+
+#### 2 (Stupid PET Tricks)
+
+Support 2 joysticks on the user port, compatible with the Stupid PET Tricks joystick adapter. The user port bits are 0=joystick up, 1=down, 2=left, 3=right, 4=joystick 2 up, 5=down, 6=left, 7=right. The fire buttons are signalled as up and down simultaneously (which normally can't happen).
+
+#### Flip Joysticks
+
+With this option you can flip (or swap) both joysticks, for the case that they are plugged in the wrong port.
+
 Keyboard Mapping
 ----------------
 MegaPET can be set to both keyboard layouts. Use the submenu item `B keyboard` to choose the B layout. The N version is default.
@@ -365,6 +386,10 @@ This project is based on, and would have been impossible without, the following 
 
 Release Notes
 -------------
+
+### v1.0.1+... work in progress versions.
+
+- Add some proof-of-concept joystick support.
 
 ### v1.0.1, v1.0.1-no8050
 

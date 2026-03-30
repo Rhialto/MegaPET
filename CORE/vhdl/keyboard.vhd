@@ -230,6 +230,7 @@ begin
     joy1_direction(9) <=     joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
 
     joy1_direction(4) <= not joy_1_up_n_i or  not joy_1_down_n_i or      joy_1_left_n_i or  not joy_1_right_n_i;
+--  joy1_direction(5) <= not joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or  not joy_1_right_n_i;
     joy1_direction(6) <= not joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
 
     joy1_direction(1) <= not joy_1_up_n_i or      joy_1_down_n_i or      joy_1_left_n_i or  not joy_1_right_n_i;
