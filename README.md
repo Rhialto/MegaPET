@@ -266,7 +266,7 @@ You can choose from 3 joystick emulation modes (one at a time).
 
 #### Keyboard
 
-The first (front) joystick controls some keys on the numeric part of the keyboard, which is how most games are controlled.
+The first (front) joystick controls the digit keys on the numeric part of the keyboard (`12346789`), which is how most games are controlled.
 The fire button maps to the A key.
 
 #### 1 (Space Invaders)

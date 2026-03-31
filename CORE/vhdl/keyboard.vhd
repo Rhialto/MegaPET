@@ -395,7 +395,7 @@ begin
         (row_n(0) or key_pressed_n(m65_2)   or not mega_n          ) and     -- 2
         (row_n(1) or key_pressed_n(m65_1)   or not mega_n          ) and     -- 1
         (row_n(2) or key_pressed_n(m65_esc)                        ) and     -- ESC*
-        (row_n(3) or key_pressed_n(m65_a)                          ) and     -- a
+        (row_n(3) or (key_pressed_n(m65_a) and joy_1_fire_n_i)     ) and     -- a or joystick FIRE
         (row_n(4) or key_pressed_n(m65_tab)                        ) and     -- TAB
         (row_n(5) or key_pressed_n(m65_q)                          ) and     -- q
         (row_n(6) or ((key_pressed_n(m65_left_shift) or not b_unshift_n) and   -- left shift unless ...
@@ -447,8 +447,10 @@ begin
         (row_n(9) or key_pressed_n(m65_9)    or not mega_n         );        -- 9
 
     b_column_selected(4) <=
-        (row_n(0) or key_pressed_n(m65_8)    or     mega_n         ) and     -- 8*
-        (row_n(1) or key_pressed_n(m65_7)    or     mega_n         ) and     -- 7*
+        (row_n(0) or ((key_pressed_n(m65_8)  or     mega_n)
+                       and joy1_direction(8)                      )) and     -- 8*
+        (row_n(1) or ((key_pressed_n(m65_7)  or     mega_n)
+                       and joy1_direction(7)                      )) and     -- 7*
         (row_n(2) or key_pressed_n(m65_semicolon) or     shift_n   ) and     -- ]*
         (row_n(3) or key_pressed_n(m65_return)                     ) and     -- RETURN
         (row_n(4) or key_pressed_n(m65_gbp)                        ) and     -- \*
@@ -489,14 +491,20 @@ begin
 
     b_column_selected(7) <=
         (row_n(0) or '1'                                           ) and     -- [5]
-        (row_n(1) or key_pressed_n(m65_9)    or     mega_n         ) and     -- 9*
+        (row_n(1) or ((key_pressed_n(m65_9)  or     mega_n)
+                       and joy1_direction(9)                      )) and     -- 9*
         (row_n(2) or key_pressed_n(m65_5)    or     mega_n         ) and     -- 5*
-        (row_n(3) or key_pressed_n(m65_6)    or     mega_n         ) and     -- 6*
+        (row_n(3) or ((key_pressed_n(m65_6)  or     mega_n)
+                       and joy1_direction(6)                      )) and     -- 6*
         (row_n(4) or key_pressed_n(m65_ins_del)                    ) and     -- INST/DEL
-        (row_n(5) or key_pressed_n(m65_4)    or     mega_n         ) and     -- 4*
-        (row_n(6) or key_pressed_n(m65_3)    or     mega_n         ) and     -- 3*
-        (row_n(7) or key_pressed_n(m65_2)    or     mega_n         ) and     -- 2*
-        (row_n(8) or key_pressed_n(m65_1)    or     mega_n         ) and     -- 1*
+        (row_n(5) or ((key_pressed_n(m65_4)  or     mega_n)
+                       and joy1_direction(4)                      )) and     -- 4*
+        (row_n(6) or ((key_pressed_n(m65_3)  or     mega_n)
+                       and joy1_direction(3)                      )) and     -- 3*
+        (row_n(7) or ((key_pressed_n(m65_2)  or     mega_n)
+                       and joy1_direction(2)                      )) and     -- 2*
+        (row_n(8) or ((key_pressed_n(m65_1)  or     mega_n)
+                       and joy1_direction(1)                      )) and     -- 1*
         (row_n(9) or '1'                                           );        -- [20]
 
 end beh;
