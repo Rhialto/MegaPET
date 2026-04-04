@@ -35,6 +35,44 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
 
+-- Keyboard matrix.
+---
+-- Row selectors range from 0..9. Detected columns from 0..7.
+-- The ROM starts with row 0, col 0, and calls that scancode 80.
+-- It checks increasing column numbers next (while decrementing the scan code),
+-- then increases the row number. The last key detected (lowest scan code) wins.
+-- The -1 brings the vector indices in the range 0..79.
+
+entity matrix is
+    port (
+       key_n_i       : in std_logic_vector(79 downto 0); -- key switches by scan code (0...79)
+       row_n_i       : in std_logic_vector(9 downto 0);  -- row selector (active low)
+       col_n_o       : out std_logic_vector(7 downto 0)  -- column output (active low)
+    );
+end matrix;
+
+architecture beh of matrix is
+begin
+    matrix: for c in 0 to 7 generate
+        col_n_o(c) <=                                   -- c=  0,  1,  2,       7
+            (row_n_i(0) or key_n_i(9*8 + (8-c) -1)) and --    80, 79, 78, ..., 73
+            (row_n_i(1) or key_n_i(8*8 + (8-c) -1)) and --    72, 71, ...
+            (row_n_i(2) or key_n_i(7*8 + (8-c) -1)) and --    64, ...
+            (row_n_i(3) or key_n_i(6*8 + (8-c) -1)) and --    56
+            (row_n_i(4) or key_n_i(5*8 + (8-c) -1)) and --    48
+            (row_n_i(5) or key_n_i(4*8 + (8-c) -1)) and --    40
+            (row_n_i(6) or key_n_i(3*8 + (8-c) -1)) and --    32
+            (row_n_i(7) or key_n_i(2*8 + (8-c) -1)) and --    24
+            (row_n_i(8) or key_n_i(1*8 + (8-c) -1)) and --    16
+            (row_n_i(9) or key_n_i(0*8 + (8-c) -1));    --     8,  7,  6, ..., 1
+    end generate;
+
+end beh;
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+use IEEE.NUMERIC_STD.ALL;
+
 entity keyboard is
    port (
       clk_main_i           : in std_logic;               -- core clock
@@ -182,6 +220,10 @@ signal n_column_selected : std_logic_vector(7 downto 0);
 signal b_column_selected : std_logic_vector(7 downto 0);
 
 signal joy1_direction : std_logic_vector(9 downto 1);
+-- Which PET N-keyboard switches are pressed
+signal pet_n_n : std_logic_vector(79 downto 0);
+-- Which PET B-keyboard switches are pressed
+signal pet_b_n : std_logic_vector(79 downto 0);
 
 begin
 
@@ -209,16 +251,9 @@ begin
                          else n_column_selected;
 
     -- 4-to-10 decoder for keyboard row selection. Active low.
-    row_n(0) <= '0' when to_integer(unsigned(row_select_i)) = 0 else '1';
-    row_n(1) <= '0' when to_integer(unsigned(row_select_i)) = 1 else '1';
-    row_n(2) <= '0' when to_integer(unsigned(row_select_i)) = 2 else '1';
-    row_n(3) <= '0' when to_integer(unsigned(row_select_i)) = 3 else '1';
-    row_n(4) <= '0' when to_integer(unsigned(row_select_i)) = 4 else '1';
-    row_n(5) <= '0' when to_integer(unsigned(row_select_i)) = 5 else '1';
-    row_n(6) <= '0' when to_integer(unsigned(row_select_i)) = 6 else '1';
-    row_n(7) <= '0' when to_integer(unsigned(row_select_i)) = 7 else '1';
-    row_n(8) <= '0' when to_integer(unsigned(row_select_i)) = 8 else '1';
-    row_n(9) <= '0' when to_integer(unsigned(row_select_i)) = 9 else '1';
+    decoder: for sel in 0 to 9 generate
+        row_n(sel) <= '0' when to_integer(unsigned(row_select_i)) = sel else '1';
+    end generate;
 
     -- Since we use "negative logic" we swap 'and' and 'or' too; De Morgan.
     shift_n <= key_pressed_n(m65_left_shift) and key_pressed_n(m65_right_shift);
@@ -264,118 +299,129 @@ begin
                              key_pressed_n(m65_semicolon)       -- ]
                             );
 
-    -- TODO: @ * + - \ are a special cases: they have different characters when
-    -- shifted on both keyboards.
-    -- TODO: everything with MEGA pressed.
+    n_matrix: entity work.matrix
+        port map (
+            key_n_i => pet_n_n,
+            row_n_i => row_n,
+            col_n_o => n_column_selected
+        );
 
-    n_column_selected(0) <=
-        (row_n(0) or key_pressed_n(m65_1)          or shift_n      ) and     -- !
-        (row_n(1) or key_pressed_n(m65_2)          or shift_n      ) and     -- "
-        (row_n(2) or key_pressed_n(m65_q)                          ) and     -- q
-        (row_n(3) or key_pressed_n(m65_w)                          ) and     -- w
-        (row_n(4) or (key_pressed_n(m65_a) and joy_1_fire_n_i)     ) and     -- a or joy 1 fire
-        (row_n(5) or key_pressed_n(m65_s)                          ) and     -- s
-        (row_n(6) or key_pressed_n(m65_z)                          ) and     -- z
-        (row_n(7) or key_pressed_n(m65_x)                          ) and     -- x
-        (row_n(8) or (mega_n and                                             -- mega is *always* shift
-                      (key_pressed_n(m65_left_shift) or not unshift_n) and   -- left shift unless !"<> etc
-                      key_pressed_n(m65_up_crsr) and                         --   or up
-                      key_pressed_n(m65_left_crsr))                ) and     --   or left
-        (row_n(9) or key_pressed_n(m65_ctrl)                       );        -- off/rvs
+    -- Set the individual key switches for every possible key (10 * 8).
+    -- This is separate from the actual keyboard matrix (where these swiches connect
+    -- rows to columns) because inlining them in the matrix expression is
+    -- pretty unreadable. Now we could present the keys in scancode order
+    -- if we whish. Also, in the future we may want to manipulate the
+    -- switches before going into the matrix (for example for run-time changeable
+    -- joystick control).
 
-    n_column_selected(1) <=
-        (row_n(0) or key_pressed_n(m65_3)          or shift_n      ) and     -- #
-        (row_n(1) or key_pressed_n(m65_4)          or shift_n      ) and     -- $
-        (row_n(2) or key_pressed_n(m65_e)                          ) and     -- e
-        (row_n(3) or key_pressed_n(m65_r)                          ) and     -- r
-        (row_n(4) or key_pressed_n(m65_d)                          ) and     -- d
-        (row_n(5) or key_pressed_n(m65_f)                          ) and     -- f
-        (row_n(6) or key_pressed_n(m65_c)                          ) and     -- c
-        (row_n(7) or key_pressed_n(m65_v)                          ) and     -- v
-        (row_n(8) or key_pressed_n(m65_at)                         ) and     -- @
-        (row_n(9) or key_pressed_n(m65_colon)      or shift_n      );        -- [
+    -- column 0
+    pet_n_n(9*8+8 -1) <= key_pressed_n(m65_1)          or shift_n; -- !
+    pet_n_n(8*8+8 -1) <= key_pressed_n(m65_2)          or shift_n; -- "
+    pet_n_n(7*8+8 -1) <= key_pressed_n(m65_q);                     -- q
+    pet_n_n(6*8+8 -1) <= key_pressed_n(m65_w);                     -- w
+    pet_n_n(5*8+8 -1) <= key_pressed_n(m65_a) and joy_1_fire_n_i;  -- a or joy 1 fire
+    pet_n_n(4*8+8 -1) <= key_pressed_n(m65_s);                     -- s
+    pet_n_n(3*8+8 -1) <= key_pressed_n(m65_z);                     -- z
+    pet_n_n(2*8+8 -1) <= key_pressed_n(m65_x);                     -- x
+    pet_n_n(1*8+8 -1) <= mega_n and                                -- mega is *always* shift
+                          (key_pressed_n(m65_left_shift) or not unshift_n) and -- left shift unless !"<> etc
+                           key_pressed_n(m65_up_crsr) and          --   or up
+                           key_pressed_n(m65_left_crsr);           --   or left
+    pet_n_n(0*8+8 -1) <= key_pressed_n(m65_ctrl);                  -- off/rvs
 
-    n_column_selected(2) <=
-        (row_n(0) or key_pressed_n(m65_5)          or shift_n      ) and     -- %
-        (row_n(1) or key_pressed_n(m65_7)          or shift_n      ) and     -- '
-        (row_n(2) or key_pressed_n(m65_t)                          ) and     -- t
-        (row_n(3) or key_pressed_n(m65_y)                          ) and     -- y
-        (row_n(4) or key_pressed_n(m65_g)                          ) and     -- g
-        (row_n(5) or key_pressed_n(m65_h)                          ) and     -- h
-        (row_n(6) or key_pressed_n(m65_b)                          ) and     -- b
-        (row_n(7) or key_pressed_n(m65_n)                          ) and     -- n
-        (row_n(8) or key_pressed_n(m65_semicolon)  or shift_n      ) and     -- ]
-        (row_n(9) or key_pressed_n(m65_space)                      );        -- space
+    -- column 1
+    pet_n_n(9*8+7 -1) <= key_pressed_n(m65_3)          or shift_n; -- #
+    pet_n_n(8*8+7 -1) <= key_pressed_n(m65_4)          or shift_n; -- $
+    pet_n_n(7*8+7 -1) <= key_pressed_n(m65_e);                     -- e
+    pet_n_n(6*8+7 -1) <= key_pressed_n(m65_r);                     -- r
+    pet_n_n(5*8+7 -1) <= key_pressed_n(m65_d);                     -- d
+    pet_n_n(4*8+7 -1) <= key_pressed_n(m65_f);                     -- f
+    pet_n_n(3*8+7 -1) <= key_pressed_n(m65_c);                     -- c
+    pet_n_n(2*8+7 -1) <= key_pressed_n(m65_v);                     -- v
+    pet_n_n(1*8+7 -1) <= key_pressed_n(m65_at);                    -- @
+    pet_n_n(0*8+7 -1) <= key_pressed_n(m65_colon)      or shift_n; -- [
 
-    n_column_selected(3) <=
-        (row_n(0) or key_pressed_n(m65_6)          or shift_n      ) and     -- &
-        (row_n(1) or key_pressed_n(m65_gbp)                        ) and     -- \ or pound
-        (row_n(2) or key_pressed_n(m65_u)                          ) and     -- u
-        (row_n(3) or key_pressed_n(m65_i)                          ) and     -- i
-        (row_n(4) or key_pressed_n(m65_j)                          ) and     -- j
-        (row_n(5) or key_pressed_n(m65_k)                          ) and     -- k
-        (row_n(6) or key_pressed_n(m65_m)                          ) and     -- m
-        (row_n(7) or key_pressed_n(m65_comma)      or not shift_n  ) and     -- ,
-        (row_n(8) or '1'                                           ) and     -- n/c
-        (row_n(9) or key_pressed_n(m65_comma)      or shift_n      );        -- <
+    -- column 2
+    pet_n_n(9*8+6 -1) <= key_pressed_n(m65_5)          or shift_n; -- %
+    pet_n_n(8*8+6 -1) <= key_pressed_n(m65_7)          or shift_n; -- '
+    pet_n_n(7*8+6 -1) <= key_pressed_n(m65_t);                     -- t
+    pet_n_n(6*8+6 -1) <= key_pressed_n(m65_y);                     -- y
+    pet_n_n(5*8+6 -1) <= key_pressed_n(m65_g);                     -- g
+    pet_n_n(4*8+6 -1) <= key_pressed_n(m65_h);                     -- h
+    pet_n_n(3*8+6 -1) <= key_pressed_n(m65_b);                     -- b
+    pet_n_n(2*8+6 -1) <= key_pressed_n(m65_n);                     -- n
+    pet_n_n(1*8+6 -1) <= key_pressed_n(m65_semicolon)  or shift_n; -- ]
+    pet_n_n(0*8+6 -1) <= key_pressed_n(m65_space);                 -- space
 
-    n_column_selected(4) <=
-        (row_n(0) or key_pressed_n(m65_8)          or shift_n      ) and     -- (
-        (row_n(1) or key_pressed_n(m65_9)          or shift_n      ) and     -- )
-        (row_n(2) or key_pressed_n(m65_o)                          ) and     -- o
-        (row_n(3) or key_pressed_n(m65_p)                          ) and     -- p
-        (row_n(4) or key_pressed_n(m65_l)                          ) and     -- l
-        (row_n(5) or key_pressed_n(m65_colon)      or not shift_n  ) and     -- :
-        (row_n(6) or key_pressed_n(m65_semicolon)  or not shift_n  ) and     -- ;
-        (row_n(7) or key_pressed_n(m65_slash)      or     shift_n  ) and     -- ?
-        (row_n(8) or key_pressed_n(m65_dot)        or     shift_n  ) and     -- >
-        (row_n(9) or key_pressed_n(m65_run_stop)                   );        -- run/stop
+    -- column 3
+    pet_n_n(9*8+5 -1) <= key_pressed_n(m65_6)      or     shift_n; -- &
+    pet_n_n(8*8+5 -1) <= key_pressed_n(m65_gbp);                   -- \ or pound
+    pet_n_n(7*8+5 -1) <= key_pressed_n(m65_u);                     -- u
+    pet_n_n(6*8+5 -1) <= key_pressed_n(m65_i);                     -- i
+    pet_n_n(5*8+5 -1) <= key_pressed_n(m65_j);                     -- j
+    pet_n_n(4*8+5 -1) <= key_pressed_n(m65_k);                     -- k
+    pet_n_n(3*8+5 -1) <= key_pressed_n(m65_m);                     -- m
+    pet_n_n(2*8+5 -1) <= key_pressed_n(m65_comma)  or not shift_n; -- ,
+    pet_n_n(1*8+5 -1) <= '1';                                      -- n/c
+    pet_n_n(0*8+5 -1) <= key_pressed_n(m65_comma)  or     shift_n; -- <
 
-    n_column_selected(5) <=
-        (row_n(0) or key_pressed_n(m65_arrow_left)                 ) and     -- <-
-        (row_n(1) or '1'                                           ) and     -- n/c
-        (row_n(2) or key_pressed_n(m65_arrow_up)                   ) and     -- ^
-        (row_n(3) or '1'                                           ) and     -- n/c
-        (row_n(4) or '1'                                           ) and     -- n/c
-        (row_n(5) or '1'                                           ) and     -- n/c
-        (row_n(6) or key_pressed_n(m65_return)                     ) and     -- return
-        (row_n(7) or '1'                                           ) and     -- n/c
-        (row_n(8) or key_pressed_n(m65_right_shift) or not unshift_n) and    -- right shift
-        (row_n(9) or '1'                                           );        -- n/c
+    -- column 4
+    pet_n_n(9*8+4 -1) <= key_pressed_n(m65_8)          or     shift_n; -- (
+    pet_n_n(8*8+4 -1) <= key_pressed_n(m65_9)          or     shift_n; -- )
+    pet_n_n(7*8+4 -1) <= key_pressed_n(m65_o);                         -- o
+    pet_n_n(6*8+4 -1) <= key_pressed_n(m65_p);                         -- p
+    pet_n_n(5*8+4 -1) <= key_pressed_n(m65_l);                         -- l
+    pet_n_n(4*8+4 -1) <= key_pressed_n(m65_colon)      or not shift_n; -- :
+    pet_n_n(3*8+4 -1) <= key_pressed_n(m65_semicolon)  or not shift_n; -- ;
+    pet_n_n(2*8+4 -1) <= key_pressed_n(m65_slash)      or     shift_n; -- ?
+    pet_n_n(1*8+4 -1) <= key_pressed_n(m65_dot)        or     shift_n; -- >
+    pet_n_n(0*8+4 -1) <= key_pressed_n(m65_run_stop);                  -- run/stop
 
-    n_column_selected(6) <=
-        (row_n(0) or key_pressed_n(m65_clr_home)                   ) and     -- clr/home
-        (row_n(1) or (key_pressed_n(m65_vert_crsr) and
-                      key_pressed_n(m65_up_crsr))                  ) and     -- crsr down (or up)
-        (row_n(2) or ((key_pressed_n(m65_7)        or not shift_n)
-                       and joy1_direction(7)                      )) and     -- 7
-        (row_n(3) or ((key_pressed_n(m65_8)        or not shift_n)
-                       and joy1_direction(8)                      )) and     -- 8
-        (row_n(4) or ((key_pressed_n(m65_4)        or not shift_n)
-                       and joy1_direction(4)                      )) and     -- 4
-        (row_n(5) or key_pressed_n(m65_5)          or not shift_n  ) and     -- 5
-        (row_n(6) or ((key_pressed_n(m65_1)        or not shift_n)
-                       and joy1_direction(1)                      )) and     -- 1
-        (row_n(7) or ((key_pressed_n(m65_2)        or not shift_n)
-                       and joy1_direction(2)                      )) and     -- 2
-        (row_n(8) or key_pressed_n(m65_0)                          ) and     -- 0
-        (row_n(9) or key_pressed_n(m65_dot)        or not shift_n  );        -- .
+    -- column 5
+    pet_n_n(9*8+3 -1) <= key_pressed_n(m65_arrow_left);                   -- <-
+    pet_n_n(8*8+3 -1) <= '1';                                             -- n/c
+    pet_n_n(7*8+3 -1) <= key_pressed_n(m65_arrow_up);                     -- ^
+    pet_n_n(6*8+3 -1) <= '1';                                             -- n/c
+    pet_n_n(5*8+3 -1) <= '1';                                             -- n/c
+    pet_n_n(4*8+3 -1) <= '1';                                             -- n/c
+    pet_n_n(3*8+3 -1) <= key_pressed_n(m65_return);                       -- return
+    pet_n_n(2*8+3 -1) <= '1';                                             -- n/c
+    pet_n_n(1*8+3 -1) <= key_pressed_n(m65_right_shift) or not unshift_n; -- right shift, unless !"#$ etc
+    pet_n_n(0*8+3 -1) <= '1';                                             -- n/c
 
-    n_column_selected(7) <=
-        (row_n(0) or (key_pressed_n(m65_horz_crsr) and
-                      key_pressed_n(m65_left_crsr))                ) and     -- crsr => (or <=)
-        (row_n(1) or key_pressed_n(m65_ins_del)                    ) and     -- inst/del
-        (row_n(2) or ((key_pressed_n(m65_9)        or not shift_n)
-                       and joy1_direction(9)                      )) and     -- 9
-        (row_n(3) or key_pressed_n(m65_slash)      or not shift_n  ) and     -- /
-        (row_n(4) or ((key_pressed_n(m65_6)        or not shift_n)
-                       and joy1_direction(6)                      )) and     -- 6
-        (row_n(5) or key_pressed_n(m65_asterisk)                   ) and     -- *
-        (row_n(6) or ((key_pressed_n(m65_3)        or not shift_n)
-                       and joy1_direction(3)                      )) and     -- 3
-        (row_n(7) or key_pressed_n(m65_plus)                       ) and     -- +
-        (row_n(8) or key_pressed_n(m65_minus)                      ) and     -- -
-        (row_n(9) or key_pressed_n(m65_equal)                      );        -- =
+    -- column 6
+    pet_n_n(9*8+2 -1) <= key_pressed_n(m65_clr_home);                  -- clr/home
+    pet_n_n(8*8+2 -1) <= key_pressed_n(m65_vert_crsr) and
+                         key_pressed_n(m65_up_crsr);                   -- crsr down (or up)
+    pet_n_n(7*8+2 -1) <= (key_pressed_n(m65_7)      or not shift_n)
+                          and joy1_direction(7);                       -- 7
+    pet_n_n(6*8+2 -1) <= (key_pressed_n(m65_8)      or not shift_n)
+                          and joy1_direction(8);                       -- 8
+    pet_n_n(5*8+2 -1) <= (key_pressed_n(m65_4)      or not shift_n)
+                          and joy1_direction(4);                       -- 4
+    pet_n_n(4*8+2 -1) <= key_pressed_n(m65_5)       or not shift_n;    -- 5
+    pet_n_n(3*8+2 -1) <= (key_pressed_n(m65_1)      or not shift_n)
+                          and joy1_direction(1);                       -- 1
+    pet_n_n(2*8+2 -1) <= (key_pressed_n(m65_2)      or not shift_n)
+                          and joy1_direction(2);                       -- 2
+    pet_n_n(1*8+2 -1) <= key_pressed_n(m65_0);                         -- 0
+    pet_n_n(0*8+2 -1) <= key_pressed_n(m65_dot)      or not shift_n;   -- .
+
+    -- column 7
+    pet_n_n(9*8+1 -1) <= key_pressed_n(m65_horz_crsr) and
+                         key_pressed_n(m65_left_crsr);                 -- crsr => (or <=)
+    pet_n_n(8*8+1 -1) <= key_pressed_n(m65_ins_del);                   -- inst/del
+    pet_n_n(7*8+1 -1) <= (key_pressed_n(m65_9)        or not shift_n)
+                          and joy1_direction(9);                       -- 9
+    pet_n_n(6*8+1 -1) <= key_pressed_n(m65_slash)     or not shift_n;  -- /
+    pet_n_n(5*8+1 -1) <= (key_pressed_n(m65_6)        or not shift_n)
+                          and joy1_direction(6);                       -- 6
+    pet_n_n(4*8+1 -1) <= key_pressed_n(m65_asterisk);                  -- *
+    pet_n_n(3*8+1 -1) <= (key_pressed_n(m65_3)        or not shift_n)
+                          and joy1_direction(3);                       -- 3
+    pet_n_n(2*8+1 -1) <= key_pressed_n(m65_plus);                      -- +
+    pet_n_n(1*8+1 -1) <= key_pressed_n(m65_minus);                     -- -
+    pet_n_n(0*8+1 -1) <= key_pressed_n(m65_equal);                     -- =
 
     ---------------------------------------------------------------------
     --
@@ -391,120 +437,129 @@ begin
     b_unshift_n <= shift_n or (key_pressed_n(m65_colon) and       -- [
                                key_pressed_n(m65_semicolon)       -- ]
                             );
-    b_column_selected(0) <=
-        (row_n(0) or key_pressed_n(m65_2)   or not mega_n          ) and     -- 2
-        (row_n(1) or key_pressed_n(m65_1)   or not mega_n          ) and     -- 1
-        (row_n(2) or key_pressed_n(m65_esc)                        ) and     -- ESC*
-        (row_n(3) or (key_pressed_n(m65_a) and joy_1_fire_n_i)     ) and     -- a or joystick FIRE
-        (row_n(4) or key_pressed_n(m65_tab)                        ) and     -- TAB
-        (row_n(5) or key_pressed_n(m65_q)                          ) and     -- q
-        (row_n(6) or ((key_pressed_n(m65_left_shift) or not b_unshift_n) and   -- left shift unless ...
-                      (b_unshift_n or mega_n) and                            --   or mega+[] 
-                      key_pressed_n(m65_asterisk) and                        --   or *
-                      key_pressed_n(m65_equal) and                           --   or =
-                      key_pressed_n(m65_plus) and                            --   or +
-                      key_pressed_n(m65_up_crsr) and                         --   or up
-                      key_pressed_n(m65_left_crsr))                ) and     --   or left
-        (row_n(7) or key_pressed_n(m65_z)                          ) and     -- z
-        (row_n(8) or key_pressed_n(m65_ctrl)                       ) and     -- off/rvs
-        (row_n(9) or key_pressed_n(m65_arrow_left)                 );        -- <- left arrow*
 
-    b_column_selected(1) <=
-        (row_n(0) or key_pressed_n(m65_5)    or not mega_n         ) and     -- 5
-        (row_n(1) or key_pressed_n(m65_4)    or not mega_n         ) and     -- 4
-        (row_n(2) or key_pressed_n(m65_s)                          ) and     -- s
-        (row_n(3) or key_pressed_n(m65_d)                          ) and     -- d
-        (row_n(4) or key_pressed_n(m65_w)                          ) and     -- w
-        (row_n(5) or key_pressed_n(m65_e)                          ) and     -- e
-        (row_n(6) or key_pressed_n(m65_c)                          ) and     -- c
-        (row_n(7) or key_pressed_n(m65_v)                          ) and     -- v
-        (row_n(8) or key_pressed_n(m65_x)                          ) and     -- x
-        (row_n(9) or key_pressed_n(m65_3)    or not mega_n         );        -- 3
+    b_matrix: entity work.matrix
+        port map (
+            key_n_i => pet_b_n,
+            row_n_i => row_n,
+            col_n_o => b_column_selected
+        );
 
-    b_column_selected(2) <=
-        (row_n(0) or key_pressed_n(m65_8)    or not mega_n         ) and     -- 8
-        (row_n(1) or key_pressed_n(m65_7)    or not mega_n         ) and     -- 7
-        (row_n(2) or key_pressed_n(m65_f)                          ) and     -- f
-        (row_n(3) or key_pressed_n(m65_g)                          ) and     -- g
-        (row_n(4) or key_pressed_n(m65_r)                          ) and     -- r
-        (row_n(5) or key_pressed_n(m65_t)                          ) and     -- t
-        (row_n(6) or key_pressed_n(m65_b)                          ) and     -- b
-        (row_n(7) or key_pressed_n(m65_n)                          ) and     -- n
-        (row_n(8) or key_pressed_n(m65_space)                      ) and     -- SPACE
-        (row_n(9) or key_pressed_n(m65_6)    or not mega_n         );        -- 6
+    -- The indexes below correspond to the keyboard scan codes from RAM location 151
+    -- (except that later ROM versions don't expose the value and translate to PETSCII)
+    -- column 0
+    pet_b_n(9*8+8 -1) <= key_pressed_n(m65_2)   or not mega_n;      -- 2
+    pet_b_n(8*8+8 -1) <= key_pressed_n(m65_1)   or not mega_n;      -- 1
+    pet_b_n(7*8+8 -1) <= key_pressed_n(m65_esc);                    -- ESC*
+    pet_b_n(6*8+8 -1) <= (key_pressed_n(m65_a) and joy_1_fire_n_i); -- a or joystick FIRE
+    pet_b_n(5*8+8 -1) <= key_pressed_n(m65_tab);                    -- TAB
+    pet_b_n(4*8+8 -1) <= key_pressed_n(m65_q);                      -- q
+    pet_b_n(3*8+8 -1) <= ((key_pressed_n(m65_left_shift) or not b_unshift_n) and   -- left shift unless ...
+                          (b_unshift_n or mega_n) and               --   or mega+[]
+                          key_pressed_n(m65_asterisk) and           --   or *
+                          key_pressed_n(m65_equal) and              --   or =
+                          key_pressed_n(m65_plus) and               --   or +
+                          key_pressed_n(m65_up_crsr) and            --   or up
+                          key_pressed_n(m65_left_crsr));            --   or left
+    pet_b_n(2*8+8 -1) <= key_pressed_n(m65_z);                      -- z
+    pet_b_n(1*8+8 -1) <= key_pressed_n(m65_ctrl);                   -- off/rvs
+    pet_b_n(0*8+8 -1) <= key_pressed_n(m65_arrow_left);             -- <- left arrow*
 
-    b_column_selected(3) <=
-        (row_n(0) or (key_pressed_n(m65_minus) and
-                      key_pressed_n(m65_equal))                    ) and     -- - and =
-        (row_n(1) or key_pressed_n(m65_0)                          ) and     -- 0* (top row)
-        (row_n(2) or key_pressed_n(m65_h)                          ) and     -- h
-        (row_n(3) or key_pressed_n(m65_j)                          ) and     -- j
-        (row_n(4) or key_pressed_n(m65_y)                          ) and     -- y
-        (row_n(5) or key_pressed_n(m65_u)                          ) and     -- u
-        (row_n(6) or key_pressed_n(m65_dot)  or not mega_n         ) and     -- . and <
-        (row_n(7) or key_pressed_n(m65_comma)                      ) and     -- , and >
-        (row_n(8) or key_pressed_n(m65_m)                          ) and     -- m
-        (row_n(9) or key_pressed_n(m65_9)    or not mega_n         );        -- 9
+    -- column 1
+    pet_b_n(9*8+7 -1) <= key_pressed_n(m65_5)    or not mega_n;     -- 5
+    pet_b_n(8*8+7 -1) <= key_pressed_n(m65_4)    or not mega_n;     -- 4
+    pet_b_n(7*8+7 -1) <= key_pressed_n(m65_s);                      -- s
+    pet_b_n(6*8+7 -1) <= key_pressed_n(m65_d);                      -- d
+    pet_b_n(5*8+7 -1) <= key_pressed_n(m65_w);                      -- w
+    pet_b_n(4*8+7 -1) <= key_pressed_n(m65_e);                      -- e
+    pet_b_n(3*8+7 -1) <= key_pressed_n(m65_c);                      -- c
+    pet_b_n(2*8+7 -1) <= key_pressed_n(m65_v);                      -- v
+    pet_b_n(1*8+7 -1) <= key_pressed_n(m65_x);                      -- x
+    pet_b_n(0*8+7 -1) <= key_pressed_n(m65_3)    or not mega_n;     -- 3
 
-    b_column_selected(4) <=
-        (row_n(0) or ((key_pressed_n(m65_8)  or     mega_n)
-                       and joy1_direction(8)                      )) and     -- 8*
-        (row_n(1) or ((key_pressed_n(m65_7)  or     mega_n)
-                       and joy1_direction(7)                      )) and     -- 7*
-        (row_n(2) or key_pressed_n(m65_semicolon) or     shift_n   ) and     -- ]*
-        (row_n(3) or key_pressed_n(m65_return)                     ) and     -- RETURN
-        (row_n(4) or key_pressed_n(m65_gbp)                        ) and     -- \*
-        (row_n(5) or (key_pressed_n(m65_vert_crsr) and
-                      key_pressed_n(m65_up_crsr))                  ) and     -- crsr down (or up)
-        (row_n(6) or key_pressed_n(m65_dot)  or     mega_n         ) and     -- .*
-        (row_n(7) or key_pressed_n(m65_0)    or     mega_n         ) and     -- 0* (keypad)
-        (row_n(8) or key_pressed_n(m65_clr_home)                   ) and     -- HOME
-        (row_n(9) or key_pressed_n(m65_run_stop)                   );        -- STOP
+    -- column 2
+    pet_b_n(9*8+6 -1) <= key_pressed_n(m65_8)    or not mega_n;     -- 8
+    pet_b_n(8*8+6 -1) <= key_pressed_n(m65_7)    or not mega_n;     -- 7
+    pet_b_n(7*8+6 -1) <= key_pressed_n(m65_f);                      -- f
+    pet_b_n(6*8+6 -1) <= key_pressed_n(m65_g);                      -- g
+    pet_b_n(5*8+6 -1) <= key_pressed_n(m65_r);                      -- r
+    pet_b_n(4*8+6 -1) <= key_pressed_n(m65_t);                      -- t
+    pet_b_n(3*8+6 -1) <= key_pressed_n(m65_b);                      -- b
+    pet_b_n(2*8+6 -1) <= key_pressed_n(m65_n);                      -- n
+    pet_b_n(1*8+6 -1) <= key_pressed_n(m65_space);                  -- SPACE
+    pet_b_n(0*8+6 -1) <= key_pressed_n(m65_6)    or not mega_n;     -- 6
 
-    -- TODO: find out which 3-key combinations trigger the unused entries.
-    b_column_selected(5) <=
-        (row_n(0) or (key_pressed_n(m65_horz_crsr) and
-                      key_pressed_n(m65_left_crsr))                ) and     -- crsr => (or <=)
-        (row_n(1) or key_pressed_n(m65_arrow_up)                   ) and     -- ^*
-        (row_n(2) or key_pressed_n(m65_k)                          ) and     -- k
-        (row_n(3) or key_pressed_n(m65_l)                          ) and     -- l
-        (row_n(4) or key_pressed_n(m65_i)                          ) and     -- i
-        (row_n(5) or key_pressed_n(m65_o)                          ) and     -- o
-        (row_n(6) or '1'                                           ) and     -- [25]
-        (row_n(7) or '1'                                           ) and     -- [15]
-        (row_n(8) or '1'                                           ) and     -- [21]
-        (row_n(9) or ((key_pressed_n(m65_colon) or not shift_n) and
-                       key_pressed_n(m65_asterisk))                );        -- : and *
+    -- column 3
+    pet_b_n(9*8+5 -1) <= (key_pressed_n(m65_minus) and
+                          key_pressed_n(m65_equal));                -- - and =
+    pet_b_n(8*8+5 -1) <= key_pressed_n(m65_0);                      -- 0* (top row)
+    pet_b_n(7*8+5 -1) <= key_pressed_n(m65_h);                      -- h
+    pet_b_n(6*8+5 -1) <= key_pressed_n(m65_j);                      -- j
+    pet_b_n(5*8+5 -1) <= key_pressed_n(m65_y);                      -- y
+    pet_b_n(4*8+5 -1) <= key_pressed_n(m65_u);                      -- u
+    pet_b_n(3*8+5 -1) <= key_pressed_n(m65_dot)  or not mega_n;     -- . and <
+    pet_b_n(2*8+5 -1) <= key_pressed_n(m65_comma);                  -- , and >
+    pet_b_n(1*8+5 -1) <= key_pressed_n(m65_m);                      -- m
+    pet_b_n(0*8+5 -1) <= key_pressed_n(m65_9)    or not mega_n;     -- 9
 
-    b_column_selected(6) <=
-        (row_n(0) or '1'                                           ) and     -- [14]
-        (row_n(1) or '1'                                           ) and     -- [6]
-        (row_n(2) or ((key_pressed_n(m65_semicolon) or not shift_n) and
-                       key_pressed_n(m65_plus))                    ) and     -- ; and +
-        (row_n(3) or key_pressed_n(m65_at)                         ) and     -- @
-        (row_n(4) or key_pressed_n(m65_p)                          ) and     -- p
-        (row_n(5) or (key_pressed_n(m65_colon) or     shift_n)     ) and     -- [*
-        (row_n(6) or key_pressed_n(m65_right_shift)                ) and     -- RIGHT SHIFT
-        (row_n(7) or key_pressed_n(m65_alt)                        ) and     -- [16] REPEAT
-        (row_n(8) or key_pressed_n(m65_slash)                      ) and     -- / and ?
-        (row_n(9) or '1'                                           );        -- [4]
+    -- column 4
+    pet_b_n(9*8+4 -1) <= ((key_pressed_n(m65_8)  or     mega_n)
+                           and joy1_direction(8));                  -- 8*
+    pet_b_n(8*8+4 -1) <= ((key_pressed_n(m65_7)  or     mega_n)
+                           and joy1_direction(7));                  -- 7*
+    pet_b_n(7*8+4 -1) <= key_pressed_n(m65_semicolon) or shift_n;   -- ]*
+    pet_b_n(6*8+4 -1) <= key_pressed_n(m65_return);                 -- RETURN
+    pet_b_n(5*8+4 -1) <= key_pressed_n(m65_gbp);                    -- \*
+    pet_b_n(4*8+4 -1) <= (key_pressed_n(m65_vert_crsr) and
+                          key_pressed_n(m65_up_crsr));              -- crsr down (or up)
+    pet_b_n(3*8+4 -1) <= key_pressed_n(m65_dot)  or     mega_n;     -- .*
+    pet_b_n(2*8+4 -1) <= key_pressed_n(m65_0)    or     mega_n;     -- 0* (keypad)
+    pet_b_n(1*8+4 -1) <= key_pressed_n(m65_clr_home);               -- HOME
+    pet_b_n(0*8+4 -1) <= key_pressed_n(m65_run_stop);               -- STOP
 
-    b_column_selected(7) <=
-        (row_n(0) or '1'                                           ) and     -- [5]
-        (row_n(1) or ((key_pressed_n(m65_9)  or     mega_n)
-                       and joy1_direction(9)                      )) and     -- 9*
-        (row_n(2) or key_pressed_n(m65_5)    or     mega_n         ) and     -- 5*
-        (row_n(3) or ((key_pressed_n(m65_6)  or     mega_n)
-                       and joy1_direction(6)                      )) and     -- 6*
-        (row_n(4) or key_pressed_n(m65_ins_del)                    ) and     -- INST/DEL
-        (row_n(5) or ((key_pressed_n(m65_4)  or     mega_n)
-                       and joy1_direction(4)                      )) and     -- 4*
-        (row_n(6) or ((key_pressed_n(m65_3)  or     mega_n)
-                       and joy1_direction(3)                      )) and     -- 3*
-        (row_n(7) or ((key_pressed_n(m65_2)  or     mega_n)
-                       and joy1_direction(2)                      )) and     -- 2*
-        (row_n(8) or ((key_pressed_n(m65_1)  or     mega_n)
-                       and joy1_direction(1)                      )) and     -- 1*
-        (row_n(9) or '1'                                           );        -- [20]
+    -- column 5
+    pet_b_n(9*8+3 -1) <= (key_pressed_n(m65_horz_crsr) and
+                          key_pressed_n(m65_left_crsr));            -- crsr => (or <=)
+    pet_b_n(8*8+3 -1) <= key_pressed_n(m65_arrow_up);               -- ^*
+    pet_b_n(7*8+3 -1) <= key_pressed_n(m65_k);                      -- k
+    pet_b_n(6*8+3 -1) <= key_pressed_n(m65_l);                      -- l
+    pet_b_n(5*8+3 -1) <= key_pressed_n(m65_i);                      -- i
+    pet_b_n(4*8+3 -1) <= key_pressed_n(m65_o);                      -- o
+    pet_b_n(3*8+3 -1) <= '1';                                       -- [25]
+    pet_b_n(2*8+3 -1) <= '1';                                       -- [15]
+    pet_b_n(1*8+3 -1) <= '1';                                       -- [21]
+    pet_b_n(0*8+3 -1) <= ((key_pressed_n(m65_colon) or not shift_n) and
+                          key_pressed_n(m65_asterisk));             -- : and *
+
+    -- column 6
+    pet_b_n(9*8+2 -1) <= '1';                                       -- [14]
+    pet_b_n(8*8+2 -1) <= '1';                                       -- [6]
+    pet_b_n(7*8+2 -1) <= ((key_pressed_n(m65_semicolon) or not shift_n) and
+                           key_pressed_n(m65_plus));                -- ; and +
+    pet_b_n(6*8+2 -1) <= key_pressed_n(m65_at);                     -- @
+    pet_b_n(5*8+2 -1) <= key_pressed_n(m65_p);                      -- p
+    pet_b_n(4*8+2 -1) <= (key_pressed_n(m65_colon) or     shift_n); -- [*
+    pet_b_n(3*8+2 -1) <= key_pressed_n(m65_right_shift) or not b_unshift_n;  -- RIGHT SHIFT
+    pet_b_n(2*8+2 -1) <= key_pressed_n(m65_alt);                    -- [16] REPEAT
+    pet_b_n(1*8+2 -1) <= key_pressed_n(m65_slash);                  -- / and ?
+    pet_b_n(0*8+2 -1) <= '1';                                       -- [4]
+
+    -- column 7
+    pet_b_n(9*8+1 -1) <= '1';                                       -- [5]
+    pet_b_n(8*8+1 -1) <= ((key_pressed_n(m65_9)  or     mega_n)
+                           and joy1_direction(9));                  -- 9*
+    pet_b_n(7*8+1 -1) <= key_pressed_n(m65_5)    or     mega_n;     -- 5*
+    pet_b_n(6*8+1 -1) <= ((key_pressed_n(m65_6)  or     mega_n)
+                           and joy1_direction(6));                  -- 6*
+    pet_b_n(5*8+1 -1) <= key_pressed_n(m65_ins_del);                -- INST/DEL
+    pet_b_n(4*8+1 -1) <= ((key_pressed_n(m65_4)  or     mega_n)
+                           and joy1_direction(4));                  -- 4*
+    pet_b_n(3*8+1 -1) <= ((key_pressed_n(m65_3)  or     mega_n)
+                           and joy1_direction(3));                  -- 3*
+    pet_b_n(2*8+1 -1) <= ((key_pressed_n(m65_2)  or     mega_n)
+                           and joy1_direction(2));                  -- 2*
+    pet_b_n(1*8+1 -1) <= ((key_pressed_n(m65_1)  or     mega_n)
+                           and joy1_direction(1));                  -- 1*
+    pet_b_n(0*8+1 -1) <= '1';                                       -- [20]
 
 end beh;
