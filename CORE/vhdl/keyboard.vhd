@@ -207,6 +207,8 @@ constant m65_up_crsr       : integer := 73;  -- cursor up
 constant m65_left_crsr     : integer := 74;  -- cursor left
 constant m65_restore       : integer := 75;
 
+constant pet_none          : integer := 80;  -- no key pressed
+
 signal key_pressed_n : std_logic_vector(79 downto 0);
 
 -- 4-to-10 decoder for keyboard row selection.
@@ -216,14 +218,34 @@ signal mega_n : std_logic;
 signal unshift_n: std_logic;
 signal b_unshift_n: std_logic;
 
-signal n_column_selected : std_logic_vector(7 downto 0);
-signal b_column_selected : std_logic_vector(7 downto 0);
-
 signal joy1_direction : std_logic_vector(9 downto 1);
 -- Which PET N-keyboard switches are pressed
 signal pet_n_n : std_logic_vector(79 downto 0);
 -- Which PET B-keyboard switches are pressed
 signal pet_b_n : std_logic_vector(79 downto 0);
+-- Unified N/B, including joystick keys
+signal pet_nb_n : std_logic_vector(79 downto 0);
+
+--signal key_num_pressed : integer range 0 to 79;
+signal pet_key_num_pressed : integer range 0 to 80;
+signal fire_pet_key_num : integer range 0 to 80 := 56 -1; -- scan code for A on B keyboard (W on N keyboard)
+
+signal counter : integer range 0 to 79; -- used in process pet_keyboard_state
+
+type enum_config_state is (sIDLE, sWAITJS1, sWAITJS2, sWAITKEY);
+
+signal config_state : enum_config_state := sIDLE;
+signal prev_business_layout : std_logic;
+
+attribute mark_debug : string;
+attribute mark_debug of key_pressed_n           : signal is "true";
+attribute mark_debug of pet_b_n                 : signal is "true";
+attribute mark_debug of pet_nb_n                : signal is "true";
+attribute mark_debug of config_state            : signal is "true";
+attribute mark_debug of pet_key_num_pressed     : signal is "true";
+attribute mark_debug of fire_pet_key_num        : signal is "true";
+attribute mark_debug of joy_1_fire_n_i          : signal is "true";
+attribute mark_debug of counter                 : signal is "true";
 
 begin
 
@@ -231,6 +253,38 @@ begin
     begin
         if rising_edge(clk_main_i) then
             key_pressed_n(key_num_i) <= key_pressed_n_i;
+        end if;
+    end process;
+
+    pet_keyboard_state : process(clk_main_i, business_layout_i, pet_n_n, pet_b_n) is
+        variable pressed_n : std_logic;
+    begin
+        if rising_edge(clk_main_i) then
+            if counter = 0 then
+                counter <= 79;
+            else
+                counter <= counter - 1;
+            end if;
+
+            -- Keep track of which (single) PET key is pressed.
+            -- Select which keyboard to use.
+            pressed_n := pet_b_n(counter) when business_layout_i else
+                         pet_n_n(counter);
+
+            if pressed_n = '0' then
+                -- If this key is pressed, record it.
+                pet_key_num_pressed <= counter;
+            elsif counter = pet_key_num_pressed then
+                -- This key is not pressed; if it was the recorded key, forget it.
+                pet_key_num_pressed <= pet_none;
+            end if;
+
+            -- Press the "fire" key if the joystick's fire button is pressed.
+            if (counter = fire_pet_key_num) and (joy_1_fire_n_i = '0') then
+                pet_nb_n(counter) <= '0';
+            else
+                pet_nb_n(counter) <= pressed_n;
+            end if;
         end if;
     end process;
 
@@ -245,10 +299,6 @@ begin
 
     -- Map MEGA + RESTORE to the NMI line (which is normally connected to a pull up)
     nmi_o <= key_pressed_n(m65_mega) or key_pressed_n(m65_restore);
-
-    -- Select which keyboard to use.
-    column_selected_o <=      b_column_selected  when business_layout_i
-                         else n_column_selected;
 
     -- 4-to-10 decoder for keyboard row selection. Active low.
     decoder: for sel in 0 to 9 generate
@@ -272,6 +322,13 @@ begin
     joy1_direction(2) <= not joy_1_up_n_i or      joy_1_down_n_i or  not joy_1_left_n_i or  not joy_1_right_n_i;
     joy1_direction(3) <= not joy_1_up_n_i or      joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
 
+
+    matrix: entity work.matrix
+        port map (
+            key_n_i => pet_nb_n,    -- multiplexed either from N or B keyboard (pet_n_n or pet_b_n)
+            row_n_i => row_n,
+            col_n_o => column_selected_o
+        );
 
     ---------------------------------------------------------------------
     --
@@ -299,13 +356,6 @@ begin
                              key_pressed_n(m65_semicolon)       -- ]
                             );
 
-    n_matrix: entity work.matrix
-        port map (
-            key_n_i => pet_n_n,
-            row_n_i => row_n,
-            col_n_o => n_column_selected
-        );
-
     -- Set the individual key switches for every possible key (10 * 8).
     -- This is separate from the actual keyboard matrix (where these swiches connect
     -- rows to columns) because inlining them in the matrix expression is
@@ -319,7 +369,7 @@ begin
     pet_n_n(8*8+8 -1) <= key_pressed_n(m65_2)          or shift_n; -- "
     pet_n_n(7*8+8 -1) <= key_pressed_n(m65_q);                     -- q
     pet_n_n(6*8+8 -1) <= key_pressed_n(m65_w);                     -- w
-    pet_n_n(5*8+8 -1) <= key_pressed_n(m65_a) and joy_1_fire_n_i;  -- a or joy 1 fire
+    pet_n_n(5*8+8 -1) <= key_pressed_n(m65_a);                     -- a
     pet_n_n(4*8+8 -1) <= key_pressed_n(m65_s);                     -- s
     pet_n_n(3*8+8 -1) <= key_pressed_n(m65_z);                     -- z
     pet_n_n(2*8+8 -1) <= key_pressed_n(m65_x);                     -- x
@@ -438,20 +488,13 @@ begin
                                key_pressed_n(m65_semicolon)       -- ]
                             );
 
-    b_matrix: entity work.matrix
-        port map (
-            key_n_i => pet_b_n,
-            row_n_i => row_n,
-            col_n_o => b_column_selected
-        );
-
     -- The indexes below correspond to the keyboard scan codes from RAM location 151
     -- (except that later ROM versions don't expose the value and translate to PETSCII)
     -- column 0
     pet_b_n(9*8+8 -1) <= key_pressed_n(m65_2)   or not mega_n;      -- 2
     pet_b_n(8*8+8 -1) <= key_pressed_n(m65_1)   or not mega_n;      -- 1
     pet_b_n(7*8+8 -1) <= key_pressed_n(m65_esc);                    -- ESC*
-    pet_b_n(6*8+8 -1) <= (key_pressed_n(m65_a) and joy_1_fire_n_i); -- a or joystick FIRE
+    pet_b_n(6*8+8 -1) <= key_pressed_n(m65_a);                      -- a
     pet_b_n(5*8+8 -1) <= key_pressed_n(m65_tab);                    -- TAB
     pet_b_n(4*8+8 -1) <= key_pressed_n(m65_q);                      -- q
     pet_b_n(3*8+8 -1) <= ((key_pressed_n(m65_left_shift) or not b_unshift_n) and   -- left shift unless ...
@@ -562,4 +605,52 @@ begin
                            and joy1_direction(1));                  -- 1*
     pet_b_n(0*8+1 -1) <= '1';                                       -- [20]
 
+    -- The state machine for the run-time joystick configuration.
+    -- For now we only can configure which key is pressed by the fire button.
+    config : process(clk_main_i) is
+    begin
+        if rising_edge(clk_main_i) then
+            -- Detect keyboard layout change.
+            -- When this happens, set the fire button to the A key again.
+            prev_business_layout <= business_layout_i;
+
+            if prev_business_layout /= business_layout_i then
+                config_state <= sIDLE;
+
+                if business_layout_i then
+                    fire_pet_key_num <= 56 -1;
+                else
+                    fire_pet_key_num <= 48 -1;
+                end if;
+            end if;
+
+            case config_state is
+                when sIDLE =>
+                    -- If F1 is pressed, proceed.
+		    if (key_pressed_n(m65_f1) or not shift_n or not mega_n) = '0' then
+                        config_state <= sWAITJS1;
+                    end if;
+                when sWAITJS1 =>
+                    -- If F1 is released, proceed.
+                    if key_pressed_n(m65_f1) = '1' then
+                        config_state <= sWAITJS2;
+                    end if;
+                when sWAITJS2 =>
+                    -- If fire is pressed, proceed.
+                    if joy_1_fire_n_i = '0' then
+                        config_state <= sWAITKEY;
+                    end if;
+                when sWAITKEY =>
+                    -- If fire is released, go back and wait for it again.
+                    if joy_1_fire_n_i = '1' then
+                        config_state <= sWAITJS2;
+                    -- If fire is still pressed and also some other key, proceed and finalize.
+                    elsif joy_1_fire_n_i = '0' and (pet_key_num_pressed /= pet_none)
+                    then
+                        config_state <= sIDLE;
+                        fire_pet_key_num <= pet_key_num_pressed;
+                    end if;
+            end case;
+        end if;
+    end process;
 end beh;

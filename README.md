@@ -267,7 +267,7 @@ You can choose from 3 joystick emulation modes (one at a time).
 #### Keyboard
 
 The first (front) joystick controls the digit keys on the numeric part of the keyboard (`12346789`), which is how most games are controlled.
-The fire button maps to the A key.
+The fire button maps to the A key by default.
 
 #### 1 (Space Invaders)
 
@@ -347,6 +347,26 @@ The Power LED can take 3 different colours:
 - yellow when the disk cache is dirty and/or is being written to the sdcard
 - green at other times when the Mega-65 is on.
 
+Joystick-to-keyboard Mapping
+----------------------------
+
+Most games use the numberpad to control directions. Therefore, the joystick directions map to the number keys. However, which key is the "fire" key differs widely between games. Therefore, this last detail can be configured.
+
+- Press and release the F1 key.
+- Press the fire button on the first joystick and keep it pressed.
+- Press the key you want to be the "fire" key. The very first key counts (even shift!)
+- Release all keys and buttons.
+
+This mapping is done with the PET keymap, based on the scancode that the kernal works with, so it differs between the 2 layouts. Therefore the default is reset back to "A" when you change between the layouts.
+If you want to use keys which need a shift key pressed on the Mega-65 keyboard, but which do not on the PET's keyboard (like `<`, `>`, `[` or `]`), you can use an alternative order.
+
+- Press and release the F1 key.
+- Press the key (combination) you want to be the "fire" key and keep them pressed.
+- Press the fire button on the first joystick.
+- Release all keys and buttons.
+
+(Side notes: This procedure may change in the future, if it needs to be extended. Joystick direction configuration is not included because it is very tedious to configure 8 directions every time. It is also often tricky to hit the diagonal directions perfectly, so the procedure would need to account for that.)
+
 Rommaker
 --------
 MegaPET ROM files are 32 KB which cover addresses $8000-$FFFF. The first 4 KB, $8000-$8FFF aren't actually used (this is screen memory area) but this is simpler for the implementation. The range $E800-$E8FF also isn't used since this is where the I/O chips are addressed.
@@ -391,7 +411,8 @@ Release Notes
 
 ### v1.0.1+... work in progress versions.
 
-- Add some proof-of-concept joystick support.
+- Add some joystick support.
+- Added a way to trigger an NMI (which didn't even exist on real PETs).
 
 ### v1.0.1, v1.0.1-no8050
 
