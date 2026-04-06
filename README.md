@@ -350,22 +350,39 @@ The Power LED can take 3 different colours:
 Joystick-to-keyboard Mapping
 ----------------------------
 
-Most games use the numberpad to control directions. Therefore, the joystick directions map to the number keys. However, which key is the "fire" key differs widely between games. Therefore, this last detail can be configured.
+Most games use the numberpad to control directions. Therefore, by default the joystick directions map to the number keys. However, which key is the "fire" key differs widely between games. By default it is set to the `A` key.
+The mapping is done with the PET keymap, based on the scancode that the kernal works with, so it differs between the 2 keyboard layouts. So, the defaults are restored when you change between the layouts.
+
+To configure which key is pressed when you click the "fire" button:
 
 - Press and release the F1 key.
 - Press the fire button on the first joystick and keep it pressed.
 - Press the key you want to be the "fire" key. The very first key counts (even shift!)
 - Release all keys and buttons.
 
-This mapping is done with the PET keymap, based on the scancode that the kernal works with, so it differs between the 2 layouts. Therefore the default is reset back to "A" when you change between the layouts.
-If you want to use keys which need a shift key pressed on the Mega-65 keyboard, but which do not on the PET's keyboard (like `<`, `>`, `[` or `]`), you can use an alternative order.
+If you want to use keys which need a shift key pressed on the Mega-65 keyboard, but which do not on the PET's keyboard (like `<`, `>`, `[` or `]`), you can use an alternative order:
 
 - Press and release the F1 key.
 - Press the key (combination) you want to be the "fire" key and keep them pressed.
 - Press the fire button on the first joystick.
 - Release all keys and buttons.
 
-(Side notes: This procedure may change in the future, if it needs to be extended. Joystick direction configuration is not included because it is very tedious to configure 8 directions every time. It is also often tricky to hit the diagonal directions perfectly, so the procedure would need to account for that.)
+You can also configure the keys that are pressed by the 8 directions of the joystick. To make this less tedious than repeating a procedure like the one above 8 times, it is streamlined into setting all 8 keys in a single procedure. You cannot set an individual direction.
+
+- Press and release the F1 key.
+- Pull the joystick in any direction, and let go.
+- Repeat 8 times for the 8 directions (in the order of the numeric keypad 1, 2, 3, 4, 6, 7, 8, 9 skipping 5):
+  - press the desired key
+  - release it
+
+Unfortunately there is no feedback about how far you progressed into this procedure.
+
+If you want to map to a key which requires pressing shift on the mega keyboard, make sure to press and keep shift first, then press the main key second. Then release all keys.
+For the rare case where you want to map to a shift key: this can also fit into this pattern. Press the *other* shift first, then the shift key you want (which is now the second key). Then release them in opposite order.
+
+The joystick mapping is not reset by a (short) PET reset, but it is by a (long) core reset, and by a keyboard layout change. This also resets the configuration sequence.
+
+(Side notes: This procedure may change in the future, if it needs to be extended.)
 
 Rommaker
 --------

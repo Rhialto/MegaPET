@@ -9,7 +9,7 @@
 --
 -- MiSTer2MEGA65 provides a very simple and generic interface to the MEGA65 keyboard:
 -- kb_key_num_i is running through the key numbers 0 to 79 with a frequency of 1 kHz, i.e. the whole
--- keyboard is scanned 1000 times per second. kb_key_pressed_n_i is already debounced and signals
+-- keyboard is scanned 1000 times per second. key_pressed_n_i is already debounced and signals
 -- low active, if a certain key is being pressed right now.
 --
 -- This PET keyboard offers a very symbolic mapping. A Mega-65 keyboard has all characters
@@ -24,8 +24,8 @@
 -- such as the shifted digits. This is handled by forcing the shift key to be un-pressed
 -- while the '!' key (etc) are pressed. The PET may see unneeded shift key presses and
 -- releases, though.
--- TODO: how to handle the graphics symbols we cannot get because of this.
--- for now I have a temporary version where the Mega key alwasy acts as a shift key for the PET:
+-- 
+-- The Mega key always acts as a shift key for the PET:
 -- 1 -> 1, shift+1 -> !, mega+1 -> petshift+1, mega+shift+1 -> petshift+! .
 --
 -- MiSTer2MEGA65 done by sy2002 and MJoergen in 2022 and licensed under GPL v3
@@ -130,7 +130,7 @@ end keyboard;
 architecture beh of keyboard is
 
 -- MEGA65 key codes that kb_key_num_i is using while
--- kb_key_pressed_n_i is signalling (low active) which key is pressed
+-- key_pressed_n_i is signalling (low active) which key is pressed
 constant m65_ins_del       : integer := 0;
 constant m65_return        : integer := 1;
 constant m65_horz_crsr     : integer := 2;   -- means cursor right in C64 terminology
@@ -239,7 +239,7 @@ signal mega_n : std_logic;
 signal unshift_n: std_logic;
 signal b_unshift_n: std_logic;
 
-signal joy1_direction : std_logic_vector(9 downto 1);
+signal joy1_dir : integer range 0 to 9;
 -- Which PET N-keyboard switches are pressed
 signal pet_n_n : std_logic_vector(79 downto 0);
 -- Which PET B-keyboard switches are pressed
@@ -261,12 +261,18 @@ signal direction_b_pet_key_num : joy_scan_codes := (
         pet_b_1_scancode -1, pet_b_2_scancode -1, pet_b_3_scancode -1,
         pet_b_4_scancode -1, 0,                   pet_b_6_scancode -1,
         pet_b_7_scancode -1, pet_b_8_scancode -1, pet_b_9_scancode -1);
-signal counter : scan_code; -- used in process pet_keyboard_state
 
-type enum_config_state is (sIDLE, sWAITJS1, sWAITJS2, sWAITKEY);
+signal counter : scan_code;               -- used in process pet_keyboard_state
+signal config_prev : scan_code;           -- used in process config
+signal config_dir : integer range 0 to 9; -- used in process config
+
+type enum_config_state is (sIDLE, sWAITJS1, sWAITJS2, sWAITKEY,
+                           sDIR1START, sDIR1SHIFT, sDIR1WAITFORIDLE);
 
 signal config_state : enum_config_state := sIDLE;
 signal prev_business_layout : std_logic;
+
+signal joydirs : std_logic_vector(3 downto 0);
 
 attribute mark_debug : string;
 attribute mark_debug of key_pressed_n           : signal is "true";
@@ -277,6 +283,7 @@ attribute mark_debug of pet_key_num_pressed     : signal is "true";
 attribute mark_debug of fire_pet_key_num        : signal is "true";
 attribute mark_debug of joy_1_fire_n_i          : signal is "true";
 attribute mark_debug of counter                 : signal is "true";
+attribute mark_debug of joy1_dir                : signal is "true";
 
 begin
 
@@ -318,31 +325,9 @@ begin
             end if;
 
             -- Press the directional key if the joystick is pointing in some direction.
-            if joy1_direction(1) = '0' then
-                pet_nb_n(direction_pet_key_num(1)) <= '0';
+            if joy1_dir /= 0 then
+                pet_nb_n(direction_pet_key_num(joy1_dir)) <= '0';
             end if;
-            if joy1_direction(2) = '0' then
-                pet_nb_n(direction_pet_key_num(2)) <= '0';
-            end if;
-            if joy1_direction(3) = '0' then
-                pet_nb_n(direction_pet_key_num(3)) <= '0';
-            end if;
-            if joy1_direction(4) = '0' then
-                pet_nb_n(direction_pet_key_num(4)) <= '0';
-            end if;
-            if joy1_direction(6) = '0' then
-                pet_nb_n(direction_pet_key_num(6)) <= '0';
-            end if;
-            if joy1_direction(7) = '0' then
-                pet_nb_n(direction_pet_key_num(7)) <= '0';
-            end if;
-            if joy1_direction(8) = '0' then
-                pet_nb_n(direction_pet_key_num(8)) <= '0';
-            end if;
-            if joy1_direction(9) = '0' then
-                pet_nb_n(direction_pet_key_num(9)) <= '0';
-            end if;
-
         end if;
     end process;
 
@@ -368,18 +353,27 @@ begin
     mega_n <= key_pressed_n(m65_mega);
 
     -- Decode joystick direction (also with negative logic)
-    joy1_direction(7) <=     joy_1_up_n_i or  not joy_1_down_n_i or      joy_1_left_n_i or  not joy_1_right_n_i;
-    joy1_direction(8) <=     joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or  not joy_1_right_n_i;
-    joy1_direction(9) <=     joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
+    -- Ignore it when opposite directions are selected and let them "cancel each other out".
+    joydirs <= (joy_1_up_n_i, joy_1_down_n_i, joy_1_left_n_i, joy_1_right_n_i);
 
-    joy1_direction(4) <= not joy_1_up_n_i or  not joy_1_down_n_i or      joy_1_left_n_i or  not joy_1_right_n_i;
---  joy1_direction(5) <= not joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or  not joy_1_right_n_i;
-    joy1_direction(6) <= not joy_1_up_n_i or  not joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
-
-    joy1_direction(1) <= not joy_1_up_n_i or      joy_1_down_n_i or      joy_1_left_n_i or  not joy_1_right_n_i;
-    joy1_direction(2) <= not joy_1_up_n_i or      joy_1_down_n_i or  not joy_1_left_n_i or  not joy_1_right_n_i;
-    joy1_direction(3) <= not joy_1_up_n_i or      joy_1_down_n_i or  not joy_1_left_n_i or      joy_1_right_n_i;
-
+    with joydirs select
+        joy1_dir <=
+            0 when "0000", -- udlr
+            4 when "0001", -- udL.
+            6 when "0010", -- ud.R
+            0 when "0011", -- ud..
+            8 when "0100", -- U.lr
+            7 when "0101", -- U.L.
+            9 when "0110", -- U..R
+            8 when "0111", -- U...
+            2 when "1000", -- .Dlr
+            1 when "1001", -- .DL
+            3 when "1010", -- .D.R
+            2 when "1011", -- .D..
+            0 when "1100", -- ..lr
+            4 when "1101", -- ..L.
+            6 when "1110", -- ...R
+            0 when "1111"; -- ....
 
     matrix: entity work.matrix
         port map (
@@ -648,7 +642,7 @@ begin
     pet_b_n(0*8+1 -1) <= '1';                                       -- [20]
 
     -- The state machine for the run-time joystick configuration.
-    -- For now we only can configure which key is pressed by the fire button.
+    -- The starting key F1 is kind of a placeholder.
     config : process(clk_main_i) is
     begin
         if rising_edge(clk_main_i) then
@@ -684,6 +678,7 @@ begin
                     if joy_1_fire_n_i = '0' then
                         config_state <= sWAITKEY;
                     end if;
+                -- set FIRE key
                 when sWAITKEY =>
                     -- If fire is released, go back and wait for it again.
                     if joy_1_fire_n_i = '1' then
@@ -693,6 +688,41 @@ begin
                     then
                         config_state <= sIDLE;
                         fire_pet_key_num <= pet_key_num_pressed;
+                    end if;
+
+                -- Set DIRECTION keys. This pattern is repeated 8 times.
+                when sDIR1START =>
+                    -- Wait for a key to be pressed.
+                    if pet_key_num_pressed /= pet_none then
+                        if shift_n = '0' then
+                            -- If it is (untranslated!) shift, don't register this key but use the next key.
+                            config_state <= sDIR1SHIFT;
+                            config_prev <= pet_key_num_pressed;
+                        else
+                            -- If it is not shift, use the pressed key.
+                            config_state <= sDIR1WAITFORIDLE;
+                            direction_pet_key_num(config_dir) <= pet_key_num_pressed;
+                        end if;
+                    end if;
+                when sDIR1SHIFT =>
+                    -- Shift is pressed. Use the next different key which is registered.
+                    if pet_key_num_pressed /= pet_none and pet_key_num_pressed /= config_prev then
+                        config_state <= sDIR1WAITFORIDLE;
+                        direction_pet_key_num(config_dir) <= pet_key_num_pressed;
+                    end if;
+                when sDIR1WAITFORIDLE =>
+                    -- Wait until shift and all other keys are released.
+                    if shift_n = '1' and pet_key_num_pressed = pet_none then
+                        case config_dir is
+                            when 4 => -- Skip 5.
+                                config_state <= sDIR1START;
+                                config_dir <= 6;
+                            when 9 => -- Done.
+                                config_state <= sIDLE;
+                            when others => -- Go to next direction.
+                                config_state <= sDIR1START;
+                                config_dir <= config_dir + 1;
+                        end case;
                     end if;
             end case;
         end if;
