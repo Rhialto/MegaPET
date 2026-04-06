@@ -625,6 +625,7 @@ end generate;
    i_keyboard : entity work.keyboard
       port map (
          clk_main_i           => clk_main_i,
+         reset_hard_i         => reset_hard_i,
 
          -- Interface to the MEGA65 keyboard
          key_num_i            => kb_key_num_i,

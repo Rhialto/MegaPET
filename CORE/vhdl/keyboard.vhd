@@ -76,6 +76,7 @@ use IEEE.NUMERIC_STD.ALL;
 entity keyboard is
    port (
       clk_main_i           : in std_logic;               -- core clock
+      reset_hard_i         : in std_logic;               -- not just (short) PET reset but a (long) framework reset.
 
       -- Interface to the MEGA65 keyboard
       key_num_i            : in integer range 0 to 79;   -- cycles through all MEGA65 keys
@@ -209,6 +210,26 @@ constant m65_restore       : integer := 75;
 
 constant pet_none          : integer := 80;  -- no key pressed
 
+constant pet_b_a_scancode  : integer := 56;
+constant pet_b_1_scancode  : integer :=  9;
+constant pet_b_2_scancode  : integer := 17;
+constant pet_b_3_scancode  : integer := 25;
+constant pet_b_4_scancode  : integer := 33;
+constant pet_b_6_scancode  : integer := 49;
+constant pet_b_7_scancode  : integer := 68;
+constant pet_b_8_scancode  : integer := 76;
+constant pet_b_9_scancode  : integer := 65;
+
+constant pet_n_a_scancode  : integer := 48;
+constant pet_n_1_scancode  : integer := 26;
+constant pet_n_2_scancode  : integer := 18;
+constant pet_n_3_scancode  : integer := 25;
+constant pet_n_4_scancode  : integer := 42;
+constant pet_n_6_scancode  : integer := 41;
+constant pet_n_7_scancode  : integer := 58;
+constant pet_n_8_scancode  : integer := 50;
+constant pet_n_9_scancode  : integer := 57;
+
 signal key_pressed_n : std_logic_vector(79 downto 0);
 
 -- 4-to-10 decoder for keyboard row selection.
@@ -226,11 +247,21 @@ signal pet_b_n : std_logic_vector(79 downto 0);
 -- Unified N/B, including joystick keys
 signal pet_nb_n : std_logic_vector(79 downto 0);
 
---signal key_num_pressed : integer range 0 to 79;
-signal pet_key_num_pressed : integer range 0 to 80;
-signal fire_pet_key_num : integer range 0 to 80 := 56 -1; -- scan code for A on B keyboard (W on N keyboard)
+subtype scan_code is integer range 0 to 80; -- includes 80 for "none"
+type joy_scan_codes is array(1 to 9) of scan_code;
 
-signal counter : integer range 0 to 79; -- used in process pet_keyboard_state
+signal pet_key_num_pressed : scan_code;
+signal fire_pet_key_num : scan_code;
+signal direction_pet_key_num : joy_scan_codes;
+signal direction_n_pet_key_num : joy_scan_codes := (
+        pet_n_1_scancode -1, pet_n_2_scancode -1, pet_n_3_scancode -1,
+        pet_n_4_scancode -1, 0,                   pet_n_6_scancode -1,
+        pet_n_7_scancode -1, pet_n_8_scancode -1, pet_n_9_scancode -1);
+signal direction_b_pet_key_num : joy_scan_codes := (
+        pet_b_1_scancode -1, pet_b_2_scancode -1, pet_b_3_scancode -1,
+        pet_b_4_scancode -1, 0,                   pet_b_6_scancode -1,
+        pet_b_7_scancode -1, pet_b_8_scancode -1, pet_b_9_scancode -1);
+signal counter : scan_code; -- used in process pet_keyboard_state
 
 type enum_config_state is (sIDLE, sWAITJS1, sWAITJS2, sWAITKEY);
 
@@ -279,12 +310,39 @@ begin
                 pet_key_num_pressed <= pet_none;
             end if;
 
+            pet_nb_n(counter) <= pressed_n;
+
             -- Press the "fire" key if the joystick's fire button is pressed.
-            if (counter = fire_pet_key_num) and (joy_1_fire_n_i = '0') then
-                pet_nb_n(counter) <= '0';
-            else
-                pet_nb_n(counter) <= pressed_n;
+            if joy_1_fire_n_i = '0' then
+                pet_nb_n(fire_pet_key_num) <= '0';
             end if;
+
+            -- Press the directional key if the joystick is pointing in some direction.
+            if joy1_direction(1) = '0' then
+                pet_nb_n(direction_pet_key_num(1)) <= '0';
+            end if;
+            if joy1_direction(2) = '0' then
+                pet_nb_n(direction_pet_key_num(2)) <= '0';
+            end if;
+            if joy1_direction(3) = '0' then
+                pet_nb_n(direction_pet_key_num(3)) <= '0';
+            end if;
+            if joy1_direction(4) = '0' then
+                pet_nb_n(direction_pet_key_num(4)) <= '0';
+            end if;
+            if joy1_direction(6) = '0' then
+                pet_nb_n(direction_pet_key_num(6)) <= '0';
+            end if;
+            if joy1_direction(7) = '0' then
+                pet_nb_n(direction_pet_key_num(7)) <= '0';
+            end if;
+            if joy1_direction(8) = '0' then
+                pet_nb_n(direction_pet_key_num(8)) <= '0';
+            end if;
+            if joy1_direction(9) = '0' then
+                pet_nb_n(direction_pet_key_num(9)) <= '0';
+            end if;
+
         end if;
     end process;
 
@@ -443,17 +501,12 @@ begin
     pet_n_n(9*8+2 -1) <= key_pressed_n(m65_clr_home);                  -- clr/home
     pet_n_n(8*8+2 -1) <= key_pressed_n(m65_vert_crsr) and
                          key_pressed_n(m65_up_crsr);                   -- crsr down (or up)
-    pet_n_n(7*8+2 -1) <= (key_pressed_n(m65_7)      or not shift_n)
-                          and joy1_direction(7);                       -- 7
-    pet_n_n(6*8+2 -1) <= (key_pressed_n(m65_8)      or not shift_n)
-                          and joy1_direction(8);                       -- 8
-    pet_n_n(5*8+2 -1) <= (key_pressed_n(m65_4)      or not shift_n)
-                          and joy1_direction(4);                       -- 4
-    pet_n_n(4*8+2 -1) <= key_pressed_n(m65_5)       or not shift_n;    -- 5
-    pet_n_n(3*8+2 -1) <= (key_pressed_n(m65_1)      or not shift_n)
-                          and joy1_direction(1);                       -- 1
-    pet_n_n(2*8+2 -1) <= (key_pressed_n(m65_2)      or not shift_n)
-                          and joy1_direction(2);                       -- 2
+    pet_n_n(7*8+2 -1) <= key_pressed_n(m65_7)        or not shift_n;   -- 7
+    pet_n_n(6*8+2 -1) <= key_pressed_n(m65_8)        or not shift_n;   -- 8
+    pet_n_n(5*8+2 -1) <= key_pressed_n(m65_4)        or not shift_n;   -- 4
+    pet_n_n(4*8+2 -1) <= key_pressed_n(m65_5)        or not shift_n;   -- 5
+    pet_n_n(3*8+2 -1) <= key_pressed_n(m65_1)        or not shift_n;   -- 1
+    pet_n_n(2*8+2 -1) <= key_pressed_n(m65_2)        or not shift_n;   -- 2
     pet_n_n(1*8+2 -1) <= key_pressed_n(m65_0);                         -- 0
     pet_n_n(0*8+2 -1) <= key_pressed_n(m65_dot)      or not shift_n;   -- .
 
@@ -461,14 +514,11 @@ begin
     pet_n_n(9*8+1 -1) <= key_pressed_n(m65_horz_crsr) and
                          key_pressed_n(m65_left_crsr);                 -- crsr => (or <=)
     pet_n_n(8*8+1 -1) <= key_pressed_n(m65_ins_del);                   -- inst/del
-    pet_n_n(7*8+1 -1) <= (key_pressed_n(m65_9)        or not shift_n)
-                          and joy1_direction(9);                       -- 9
+    pet_n_n(7*8+1 -1) <= key_pressed_n(m65_9)         or not shift_n;  -- 9
     pet_n_n(6*8+1 -1) <= key_pressed_n(m65_slash)     or not shift_n;  -- /
-    pet_n_n(5*8+1 -1) <= (key_pressed_n(m65_6)        or not shift_n)
-                          and joy1_direction(6);                       -- 6
+    pet_n_n(5*8+1 -1) <= key_pressed_n(m65_6)         or not shift_n;  -- 6
     pet_n_n(4*8+1 -1) <= key_pressed_n(m65_asterisk);                  -- *
-    pet_n_n(3*8+1 -1) <= (key_pressed_n(m65_3)        or not shift_n)
-                          and joy1_direction(3);                       -- 3
+    pet_n_n(3*8+1 -1) <= key_pressed_n(m65_3)         or not shift_n;  -- 3
     pet_n_n(2*8+1 -1) <= key_pressed_n(m65_plus);                      -- +
     pet_n_n(1*8+1 -1) <= key_pressed_n(m65_minus);                     -- -
     pet_n_n(0*8+1 -1) <= key_pressed_n(m65_equal);                     -- =
@@ -546,10 +596,8 @@ begin
     pet_b_n(0*8+5 -1) <= key_pressed_n(m65_9)    or not mega_n;     -- 9
 
     -- column 4
-    pet_b_n(9*8+4 -1) <= ((key_pressed_n(m65_8)  or     mega_n)
-                           and joy1_direction(8));                  -- 8*
-    pet_b_n(8*8+4 -1) <= ((key_pressed_n(m65_7)  or     mega_n)
-                           and joy1_direction(7));                  -- 7*
+    pet_b_n(9*8+4 -1) <= key_pressed_n(m65_8)  or     mega_n;       -- 8*
+    pet_b_n(8*8+4 -1) <= key_pressed_n(m65_7)  or     mega_n;       -- 7*
     pet_b_n(7*8+4 -1) <= key_pressed_n(m65_semicolon) or shift_n;   -- ]*
     pet_b_n(6*8+4 -1) <= key_pressed_n(m65_return);                 -- RETURN
     pet_b_n(5*8+4 -1) <= key_pressed_n(m65_gbp);                    -- \*
@@ -589,20 +637,14 @@ begin
 
     -- column 7
     pet_b_n(9*8+1 -1) <= '1';                                       -- [5]
-    pet_b_n(8*8+1 -1) <= ((key_pressed_n(m65_9)  or     mega_n)
-                           and joy1_direction(9));                  -- 9*
-    pet_b_n(7*8+1 -1) <= key_pressed_n(m65_5)    or     mega_n;     -- 5*
-    pet_b_n(6*8+1 -1) <= ((key_pressed_n(m65_6)  or     mega_n)
-                           and joy1_direction(6));                  -- 6*
+    pet_b_n(8*8+1 -1) <= key_pressed_n(m65_9)  or     mega_n;       -- 9*
+    pet_b_n(7*8+1 -1) <= key_pressed_n(m65_5)  or     mega_n;       -- 5*
+    pet_b_n(6*8+1 -1) <= key_pressed_n(m65_6)  or     mega_n;       -- 6*
     pet_b_n(5*8+1 -1) <= key_pressed_n(m65_ins_del);                -- INST/DEL
-    pet_b_n(4*8+1 -1) <= ((key_pressed_n(m65_4)  or     mega_n)
-                           and joy1_direction(4));                  -- 4*
-    pet_b_n(3*8+1 -1) <= ((key_pressed_n(m65_3)  or     mega_n)
-                           and joy1_direction(3));                  -- 3*
-    pet_b_n(2*8+1 -1) <= ((key_pressed_n(m65_2)  or     mega_n)
-                           and joy1_direction(2));                  -- 2*
-    pet_b_n(1*8+1 -1) <= ((key_pressed_n(m65_1)  or     mega_n)
-                           and joy1_direction(1));                  -- 1*
+    pet_b_n(4*8+1 -1) <= key_pressed_n(m65_4)  or     mega_n;       -- 4*
+    pet_b_n(3*8+1 -1) <= key_pressed_n(m65_3)  or     mega_n;       -- 3*
+    pet_b_n(2*8+1 -1) <= key_pressed_n(m65_2)  or     mega_n;       -- 2*
+    pet_b_n(1*8+1 -1) <= key_pressed_n(m65_1)  or     mega_n;       -- 1*
     pet_b_n(0*8+1 -1) <= '1';                                       -- [20]
 
     -- The state machine for the run-time joystick configuration.
@@ -614,13 +656,15 @@ begin
             -- When this happens, set the fire button to the A key again.
             prev_business_layout <= business_layout_i;
 
-            if prev_business_layout /= business_layout_i then
+            if (reset_hard_i = '1') or (prev_business_layout /= business_layout_i) then
                 config_state <= sIDLE;
 
                 if business_layout_i then
-                    fire_pet_key_num <= 56 -1;
+                    fire_pet_key_num <= pet_b_a_scancode -1;
+                    direction_pet_key_num <= direction_b_pet_key_num;
                 else
-                    fire_pet_key_num <= 48 -1;
+                    fire_pet_key_num <= pet_n_a_scancode -1;
+                    direction_pet_key_num <= direction_n_pet_key_num;
                 end if;
             end if;
 
