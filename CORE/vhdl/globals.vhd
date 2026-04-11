@@ -239,7 +239,7 @@ constant C_MENU_JOY_SPT2         : natural := 59;
 constant C_MENU_JOY_FLIP         : natural := 60;
 
 constant CFG_OMIT_SUPERPET       : boolean := false;
-constant CFG_OMIT_8x50_DISK      : boolean := false;
+constant CFG_OMIT_8x50_DISK      : boolean := true;
 
 end package globals;
 
