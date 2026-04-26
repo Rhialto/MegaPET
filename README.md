@@ -268,6 +268,7 @@ You can choose from 3 joystick emulation modes (one at a time).
 
 The first (front) joystick controls the digit keys on the numeric part of the keyboard (`12346789`), which is how most games are controlled.
 The fire button maps to the A key by default.
+See below for how you can change the mapping.
 
 #### 1 (Space Invaders)
 
@@ -351,33 +352,36 @@ Joystick-to-keyboard Mapping
 ----------------------------
 
 Most games use the numberpad to control directions. Therefore, by default the joystick directions map to the number keys. However, which key is the "fire" key differs widely between games. By default it is set to the `A` key.
-The mapping is done with the PET keymap, based on the scancode that the kernal works with, so it differs between the 2 keyboard layouts. So, the defaults are restored when you change between the layouts.
+The mapping is done with the PET keymap, based on the scancode that the kernal works with, so it differs between the 2 keyboard layouts. Therefore the defaults are restored when you change between the layouts.
 
 To configure which key is pressed when you click the "fire" button:
 
-- Press and release the F1 key.
-- Press the fire button on the first joystick and keep it pressed.
-- Press the key you want to be the "fire" key. The very first key counts (even shift!)
-- Release all keys and buttons.
+- Press and release the Mega + F keys (F for Fire).
+- If you need no shift key for your PET key:
+  - Press the key you want to be the "fire" key. The very first key counts.
+  - Release the key.
+- Otherwise, if you do need shift:
+  - Press shift first.
+  - Press the "main" key.
+  - Release the keys in opposite order (shift last).
 
-If you want to use keys which need a shift key pressed on the Mega-65 keyboard, but which do not on the PET's keyboard (like `<`, `>`, `[` or `]`), you can use an alternative order:
-
-- Press and release the F1 key.
-- Press the key (combination) you want to be the "fire" key and keep them pressed.
-- Press the fire button on the first joystick.
-- Release all keys and buttons.
+The "complicated" procedure with shift is because there are keys which need a shift key pressed on the Mega-65 keyboard, but which do not on the PET's keyboard (like `<`, `>`, `[` or `]`).
 
 You can also configure the keys that are pressed by the 8 directions of the joystick. To make this less tedious than repeating a procedure like the one above 8 times, it is streamlined into setting all 8 keys in a single procedure. You cannot set an individual direction.
 
-- Press and release the F1 key.
-- Pull the joystick in any direction, and let go.
+- Press and release the Mega + J keys (J for Joystick).
 - Repeat 8 times for the 8 directions (in the order of the numeric keypad 1, 2, 3, 4, 6, 7, 8, 9 skipping 5):
-  - press the desired key
-  - release it
+  (this is the same as for the fire button, each time)
+  - If you need no shift key for your PET key:
+    - Press the key you want for the direction. The very first key counts.
+    - Release the key.
+  - Otherwise, if you do need shift:
+    - Press shift first.
+    - Press the "main" key.
+    - Release the keys in opposite order (shift last).
 
 Unfortunately there is no feedback about how far you progressed into this procedure.
 
-If you want to map to a key which requires pressing shift on the mega keyboard, make sure to press and keep shift first, then press the main key second. Then release all keys.
 For the rare case where you want to map to a shift key: this can also fit into this pattern. Press the *other* shift first, then the shift key you want (which is now the second key). Then release them in opposite order.
 
 The joystick mapping is not reset by a (short) PET reset, but it is by a (long) core reset, and by a keyboard layout change. This also resets the configuration sequence.

@@ -266,8 +266,9 @@ signal counter : scan_code;               -- used in process pet_keyboard_state
 signal config_prev : scan_code;           -- used in process config
 signal config_dir : integer range 0 to 9; -- used in process config
 
-type enum_config_state is (sIDLE, sWAITJS1, sWAITJS2, sWAITKEY,
-                           sDIR1START, sDIR1SHIFT, sDIR1WAITFORIDLE);
+type enum_config_state is (sIDLE, sWAIT_FIRE, sWAIT_DIRECTIONS,
+                           sFIRE_START, sFIRE_SHIFT, sFIRE_WAIT_FOR_IDLE,
+                           sDIRECTIONS_START, sDIRECTIONS_SHIFT, sDIRECTIONS_WAIT_FOR_NEXT);
 
 signal config_state : enum_config_state := sIDLE;
 signal prev_business_layout : std_logic;
@@ -304,11 +305,11 @@ begin
                 counter <= counter - 1;
             end if;
 
-            -- Keep track of which (single) PET key is pressed.
             -- Select which keyboard to use.
             pressed_n := pet_b_n(counter) when business_layout_i else
                          pet_n_n(counter);
 
+            -- Keep track of which (single) PET key is pressed.
             if pressed_n = '0' then
                 -- If this key is pressed, record it.
                 pet_key_num_pressed <= counter;
@@ -664,67 +665,90 @@ begin
 
             case config_state is
                 when sIDLE =>
-                    -- If F1 is pressed, proceed.
-		    if (key_pressed_n(m65_f1) or not shift_n or not mega_n) = '0' then
-                        config_state <= sWAITJS1;
+                    -- If Mega+F is pressed, proceed to setting the fire button key
+		    if (key_pressed_n(m65_f) or not shift_n or mega_n) = '0' then
+                        config_state <= sWAIT_FIRE;
                     end if;
-                when sWAITJS1 =>
-                    -- If F1 is released, proceed.
-                    if key_pressed_n(m65_f1) = '1' then
-                        config_state <= sWAITJS2;
-                    end if;
-                when sWAITJS2 =>
-                    -- If fire is pressed, proceed.
-                    if joy_1_fire_n_i = '0' then
-                        config_state <= sWAITKEY;
-                    end if;
-                -- set FIRE key
-                when sWAITKEY =>
-                    -- If fire is released, go back and wait for it again.
-                    if joy_1_fire_n_i = '1' then
-                        config_state <= sWAITJS2;
-                    -- If fire is still pressed and also some other key, proceed and finalize.
-                    elsif joy_1_fire_n_i = '0' and (pet_key_num_pressed /= pet_none)
-                    then
-                        config_state <= sIDLE;
-                        fire_pet_key_num <= pet_key_num_pressed;
+                    -- If Mega+J is pressed, proceed to setting the directional keys
+		    if (key_pressed_n(m65_j) or not shift_n or mega_n) = '0' then
+                        config_state <= sWAIT_DIRECTIONS;
                     end if;
 
-                -- Set DIRECTION keys. This pattern is repeated 8 times.
-                when sDIR1START =>
+                when sWAIT_FIRE =>
+                    -- If Mega+F are all released, proceed.
+                    if key_pressed_n(m65_f) = '1' and mega_n = '1' then
+                        config_state <= sFIRE_START;
+                    end if;
+
+                -- set FIRE key
+                when sFIRE_START =>
                     -- Wait for a key to be pressed.
                     if pet_key_num_pressed /= pet_none then
                         if shift_n = '0' then
                             -- If it is (untranslated!) shift, don't register this key but use the next key.
-                            config_state <= sDIR1SHIFT;
+                            config_state <= sFIRE_SHIFT;
                             config_prev <= pet_key_num_pressed;
                         else
                             -- If it is not shift, use the pressed key.
-                            config_state <= sDIR1WAITFORIDLE;
+                            config_state <= sFIRE_WAIT_FOR_IDLE;
+                            fire_pet_key_num <= pet_key_num_pressed;
+                        end if;
+                    end if;
+                when sFIRE_SHIFT =>
+                    -- Shift is pressed. Use the next different key which is registered.
+                    if pet_key_num_pressed /= pet_none and pet_key_num_pressed /= config_prev then
+                        config_state <= sFIRE_WAIT_FOR_IDLE;
+			fire_pet_key_num <= pet_key_num_pressed;
+                    end if;
+                when sFIRE_WAIT_FOR_IDLE =>
+                    -- Wait until shift and all other keys are released.
+                    if shift_n = '1' and pet_key_num_pressed = pet_none then
+			config_state <= sIDLE;
+                    end if;
+
+                when sWAIT_DIRECTIONS =>
+                    -- If Mega+J are all released, proceed.
+                    if key_pressed_n(m65_j) = '1' and mega_n = '1' then
+                        config_state <= sDIRECTIONS_START;
+			config_dir <= 1;
+                    end if;
+
+                -- Set DIRECTION keys. This pattern is repeated 8 times.
+                when sDIRECTIONS_START =>
+                    -- Wait for a key to be pressed.
+                    if pet_key_num_pressed /= pet_none then
+                        if shift_n = '0' then
+                            -- If it is (untranslated!) shift, don't register this key but use the next key.
+                            config_state <= sDIRECTIONS_SHIFT;
+                            config_prev <= pet_key_num_pressed;
+                        else
+                            -- If it is not shift, use the pressed key.
+                            config_state <= sDIRECTIONS_WAIT_FOR_NEXT;
                             direction_pet_key_num(config_dir) <= pet_key_num_pressed;
                         end if;
                     end if;
-                when sDIR1SHIFT =>
+                when sDIRECTIONS_SHIFT =>
                     -- Shift is pressed. Use the next different key which is registered.
                     if pet_key_num_pressed /= pet_none and pet_key_num_pressed /= config_prev then
-                        config_state <= sDIR1WAITFORIDLE;
+                        config_state <= sDIRECTIONS_WAIT_FOR_NEXT;
                         direction_pet_key_num(config_dir) <= pet_key_num_pressed;
                     end if;
-                when sDIR1WAITFORIDLE =>
+                when sDIRECTIONS_WAIT_FOR_NEXT =>
                     -- Wait until shift and all other keys are released.
                     if shift_n = '1' and pet_key_num_pressed = pet_none then
                         case config_dir is
                             when 4 => -- Skip 5.
-                                config_state <= sDIR1START;
+                                config_state <= sDIRECTIONS_START;
                                 config_dir <= 6;
                             when 9 => -- Done.
                                 config_state <= sIDLE;
                             when others => -- Go to next direction.
-                                config_state <= sDIR1START;
+                                config_state <= sDIRECTIONS_START;
                                 config_dir <= config_dir + 1;
                         end case;
                     end if;
             end case;
+
         end if;
     end process;
 end beh;
