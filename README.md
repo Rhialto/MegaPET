@@ -380,7 +380,7 @@ You can also configure the keys that are pressed by the 8 directions of the joys
     - Press the "main" key.
     - Release the keys in opposite order (shift last).
 
-Unfortunately there is no feedback about how far you progressed into this procedure.
+Unfortunately there is no feedback about how far you progressed into this procedure. But since each change takes effect immediately, you can move the joystick and observe the keypress.
 
 For the rare case where you want to map to a shift key: this can also fit into this pattern. Press the *other* shift first, then the shift key you want (which is now the second key). Then release them in opposite order.
 
