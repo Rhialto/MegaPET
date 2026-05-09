@@ -273,16 +273,6 @@ signal prev_business_layout : std_logic;
 
 signal joydirs : std_logic_vector(3 downto 0);
 
-attribute mark_debug : string;
-attribute mark_debug of key_pressed_n           : signal is "true";
-attribute mark_debug of pet_b_n                 : signal is "true";
-attribute mark_debug of pet_nb_n                : signal is "true";
-attribute mark_debug of config_state            : signal is "true";
-attribute mark_debug of pet_key_num_pressed     : signal is "true";
-attribute mark_debug of joy_1_fire_n_i          : signal is "true";
-attribute mark_debug of counter                 : signal is "true";
-attribute mark_debug of joy1_dir                : signal is "true";
-
 begin
 
     keyboard_state : process(clk_main_i)

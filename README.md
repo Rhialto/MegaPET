@@ -9,7 +9,7 @@ Included features
 -----------------
 
 - The HELP key gets you to the options menu.
-- There is an "About & Help" item to remind you of the keyboard layout.
+- There is an "About & Help" item to remind you of the keyboard layout and joystick config procedure.
 - Copy the files from the "PET" directory in the release archive to the /PET directory on your sdcard.
 - You can choose all known PET models by setting options in the menu and loading the corresponding ROM set from the /PET directory.
 - Supported PET models and features are:
@@ -144,6 +144,35 @@ This option is enabled by default and creates the "scanline effect". When disabl
 
 This crops a lot of the screen border and uses the full HDMI wide-screen width. This affects the aspect ratio of the characters. It works out the best for the 8032 lower-case screen. For other cases, choosing a 4:3 or 5:4 screen output may work better.
 
+### Joystick(s)
+
+You can choose from 3 joystick emulation modes (one at a time).
+
+#### Keyboard
+
+The first (front) joystick controls the digit keys on the numeric part of the keyboard (`12346789`), which is how most games are controlled.
+The fire button maps to the A key by default.
+See below for how you can change the mapping.
+
+#### 1 (Space Invaders+)
+
+Support 1 joystick on the user port. The user port bits are 0=left, 1=right, 2=up, 3=down, 5=fire. This is "Space Invaders compatible".
+Don't use this option at the same time as "Userport controls RAM".
+
+#### 2 (Stupid PET Tricks)
+
+Support 2 joysticks on the user port, compatible with the Stupid PET Tricks joystick adapter. The user port bits are 0=joystick 1 up, 1=down, 2=left, 3=right, 4=joystick 2 up, 5=down, 6=left, 7=right. The fire buttons are signalled as up and down simultaneously (which normally can't happen).
+Don't use this option at the same time as "Userport controls RAM".
+
+#### Flip Joysticks
+
+With this option you can flip (or swap) both joysticks, for the case that they are plugged in the wrong port.
+
+### About & Help
+
+Here are 2 help screens to remind you of the keyboard mapping, and very briefly how to configure how the joystick maps to the keyboard (if you selected that mode for the joystick).
+You move between the pages with cursor-left and cursor-right, and exit with the space bar or the STOP key.
+
 Model Options
 -------------
 
@@ -260,30 +289,6 @@ When the Controller ROM is only 1 KiB, the first 1 KiB should be padded with `FF
 
 Unfortunately the MiSTer2MEGA65-framework does not save the name of the loaded ROM to the petcfg file.
 
-### Joystick(s)
-
-You can choose from 3 joystick emulation modes (one at a time).
-
-#### Keyboard
-
-The first (front) joystick controls the digit keys on the numeric part of the keyboard (`12346789`), which is how most games are controlled.
-The fire button maps to the A key by default.
-See below for how you can change the mapping.
-
-#### 1 (Space Invaders)
-
-Support 1 joystick on the user port. The user port bits are 0=left, 1=right, 2=up, 3=down, 5=fire. This is "Space Invaders compatible".
-Don't use this option at the same time as "Userport controls RAM".
-
-#### 2 (Stupid PET Tricks)
-
-Support 2 joysticks on the user port, compatible with the Stupid PET Tricks joystick adapter. The user port bits are 0=joystick 1 up, 1=down, 2=left, 3=right, 4=joystick 2 up, 5=down, 6=left, 7=right. The fire buttons are signalled as up and down simultaneously (which normally can't happen).
-Don't use this option at the same time as "Userport controls RAM".
-
-#### Flip Joysticks
-
-With this option you can flip (or swap) both joysticks, for the case that they are plugged in the wrong port.
-
 Keyboard Mapping
 ----------------
 MegaPET can be set to both keyboard layouts. Use the submenu item `B keyboard` to choose the B layout. The N version is default.
@@ -386,8 +391,6 @@ For the rare case where you want to map to a shift key: this can also fit into t
 
 The joystick mapping is not reset by a (short) PET reset, but it is by a (long) core reset, and by a keyboard layout change. This also resets the configuration sequence.
 
-(Side notes: This procedure may change in the future, if it needs to be extended.)
-
 Rommaker
 --------
 MegaPET ROM files are 32 KB which cover addresses $8000-$FFFF. The first 4 KB, $8000-$8FFF aren't actually used (this is screen memory area) but this is simpler for the implementation. The range $E800-$E8FF also isn't used since this is where the I/O chips are addressed.
@@ -432,7 +435,7 @@ Release Notes
 
 ### v1.0.1+... work in progress versions.
 
-- Add some joystick support.
+- Added joystick support.
 - Added a way to trigger an NMI (which didn't even exist on real PETs).
 
 ### v1.0.1, v1.0.1-no8050

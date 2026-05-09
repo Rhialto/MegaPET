@@ -81,7 +81,7 @@ type WHS_RECORD_ARRAY_TYPE is array (0 to WHS_RECORDS - 1) of WHS_RECORD_TYPE;
 
 constant SUBVER1_STRING : string := "-no8050" when CFG_OMIT_8x50_DISK else "";
 
-constant VERSION_STRING : string := "v1.0.1+txwwunkv" & SUBVER1_STRING;
+constant VERSION_STRING : string := "v1.0.1+xzylzvxu" & SUBVER1_STRING;
 constant VERSION_UNDERL : string := CHR_LINE_10 & CHR_LINE_5;
 
 constant SCR_WELCOME : string := "";
@@ -118,12 +118,26 @@ constant HELP_1 : string :=
    "CTRL+MEGA: diagnostic sense\n" &
    "MEGA+RESTORE: NMI (Non Maskable Interrupt)\n" &
    "MEGA+J/F: joystick/fire keys config\n" &
+   "          (see next page =>)\n" &
    "\n" &
    "Readme and source:\n" &
-   "\n" &
    "  https://github.com/Rhialto/MegaPET\n";
 
-constant HELP_2 : string := "";
+constant HELP_2 : string :=
+   "Configure key presses from joystick:\n" &
+   "\n" &
+   "Do these steps:\n" &
+   "- Press Mega-F for Fire button, or\n" &
+   "        Mega-J for Joystick directions.\n" &
+   "- Repeat 1 or 8 times:\n" &
+   "  - Press and release desired key.\n" &
+   "    If you need shift, press it first\n" &
+   "    and release it last.\n" &
+   "\n" &
+   "Directions are in keypad order 1-4 and 6-9.\n" &
+   "\n" &
+   "<= to go back, SPACE to exit help.\n" &
+   "";
 
 constant HELP_3 : string := "";
 
@@ -148,7 +162,7 @@ constant WHS : WHS_RECORD_ARRAY_TYPE := (
     page_length   => (SCR_WELCOME'length, 0, 0)),
 
    --- Help pages
-   (page_count    => 1,                                                   -- actual page count
+   (page_count    => 2,                                                   -- actual page count
     page_start    => (HELP_1_START, HELP_2_START, HELP_3_START),          -- WHS_MAX_PAGES of start position
     page_length   => (HELP_1'length, HELP_2'length, HELP_3'length))       -- WHS_MAX_PAGES of lenghts
 );
@@ -377,7 +391,7 @@ constant OPTM_ITEMS        : string :=
    " Joystick(s)\n"          & -- 55
    "\n"                      &
    " Keyboard\n"             &
-   " 1 (Space Invaders)\n"   &
+   " 1 (Space Invaders+)\n"  &
    " 2 (Stupid PET Tricks)\n"&
    " Flip Joysticks\n"       & -- 60
    "\n"                      &
