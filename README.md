@@ -433,7 +433,7 @@ This project is based on, and would have been impossible without, the following 
 Release Notes
 -------------
 
-### v1.0.1+... work in progress versions.
+### v1.1, v1.1-no8050
 
 - Added joystick support.
 - Added a way to trigger an NMI (which didn't even exist on real PETs).
