@@ -1091,6 +1091,8 @@ _OPTM_SET_1A    MOVE    OPTM_DATA, R8
                 ADD     OPTM_IR_STDSEL, R8
                 MOVE    @R8, R8
                 ADD     R0, R8                  ; R0 contains menu index
+                CMP     R1, @R8                 ; is it already in the requested state?
+                RBRA    _OPTM_SET_R, Z          ; if so, skip everything
                 MOVE    R1, @R8                 ; set new value
 
                 ; Step #2: How to unset the old value:
@@ -1129,7 +1131,7 @@ _OPTM_SET_1B    MOVE    OPTM_DATA, R4           ; R4: menu size
 _OPTM_SET_1C    CMP     R6, R0                  ; skip currently selected item
                 RBRA    _OPTM_SET_1D, Z
                 MOVE    @R5, R8
-                AND     0x00FF, R8              ; remove flags from men group
+                AND     0x00FF, R8              ; remove flags from menu group
                 CMP     R8, R3                  ; current item belongs to R3?
                 RBRA    _OPTM_SET_1D, !Z        ; no
                 CMP     1, @R7                  ; is it selected?

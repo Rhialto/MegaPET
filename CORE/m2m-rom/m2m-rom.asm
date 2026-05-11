@@ -19,6 +19,8 @@
 
 #define RELEASE
 
+#include "../../CORE/m2m-rom/osm_const.asm"
+
 ; ----------------------------------------------------------------------------
 ; Firmware: M2M system
 ; ----------------------------------------------------------------------------
@@ -154,12 +156,64 @@ OSM_SEL_POST    INCRB
 ; Identical to the OSM_SEL_POST callback function (see above) but it is being
 ; called before the functionality and semantics associated with a certain
 ; menu item has been handled by the framework.
+
+; We use this function to make sure that some combinations of menu options
+; do not happen.
+
 OSM_SEL_PRE     INCRB
+
+                MOVE    R8, R3                  ; R3: saved R8 (menu group)
+                MOVE    R9, R4                  ; R4: saved R9 (item in group)
+                MOVE    _SEL_ACTION_TAB, R0     ; R0: walks through the table
+                MOVE    R0, R1                  ; R1: address of next entry of 4 words
+
+_SEL_PRE_L      MOVE    @R0++, R2               ; R2: temp value, 1st entry in table
+                RBRA    _SEL_PRE_99, Z          ; if zero, we''re at the end
+                ADD     4, R1                   ; Precalculate offset to next entry
+
+                CMP     R2, R3                  ; Does the chosen menu group match?
+                RBRA    _SEL_PRE_1, !Z
+                CMP     @R0++, R4               ; Does the selection inside the group match?
+                RBRA    _SEL_PRE_1, !Z
+                MOVE    @R0++, R8               ; Change this other menu item
+                MOVE    @R0++, R9               ; Select or de-select it
+                RSUB    M2M$FORCE_MENU, 1       ; Change menu... does it cause further calls to here if there is a real change?
+                                                ; We can''t easily call OPTM_CB_SEL here since it takes the same type of args as us
+                                                ; and not the same as M2M$FORCE_MENU.
+                                                ; A solution could be to add 2 further words to each entry which can be used
+                                                ; to to replace our R8/R9 (R3/R4) while scanning the rest of the table.
+                                                ; Or smarter: an offset to a followup entry, and R8/R9 (R3/R4) are taken from its first 2 words.
+						; But we won''t need this unless we enable "6809 turns on SuperPET".
+_SEL_PRE_1      MOVE    R1, R0                  ; Continue with next entry
+                RBRA    _SEL_PRE_L, 1
+
+_SEL_PRE_99
                 XOR     R8, R8
                 XOR     R9, R9
                 DECRB
                 RET
 
+; Menu action table: if a particular value combination of R8/R9 occurs,
+; (de-) select some other item.
+; Unfortunately, the incoming data counts in group numbers (OPTM_G_*)
+; but the changes are done in terms of items in OPTM_GROUP (i.e. lines in the menu).
+_SEL_ACTION_TAB .DW     PET_OPTM_G_CRTC, 0,           PET_OSM_MODEL_80_COLUMNS, 0       ; No CRTC -> 40 columns
+                .DW     PET_OPTM_G_80_Cols, 1,        PET_OSM_MODEL_CRTC, 1             ; 80 columns -> CRTC on
+                .DW     PET_OPTM_G_Colour, 1,         PET_OSM_MODEL_CRTC, 1             ; Colour needs CRTC
+;               .DW     PET_OPTM_G_RAMSEL9, 1,        PET_OSM_MODEL_8296_MEM, 1         ; RAM at $9000 needs 8296
+;               .DW     PET_OPTM_G_RAMSELA, 1,        PET_OSM_MODEL_8296_MEM, 1         ; RAM at $A000 needs 8296
+;               .DW     PET_OPTM_G_RAMSELUSERPORT, 1, PET_OSM_MODEL_8296_MEM, 1         ; User Port Control needs 8296
+                .DW     PET_OPTM_G_RAMSELUSERPORT, 1, PET_OSM_JOY_KB, 1                 ;   and disables joystick on user port
+                .DW     PET_OPTM_G_8296, 1            PET_OSM_MODEL_8096_MEM, 1         ; 8296 suggests 8096
+                .DW     PET_OPTM_G_Joystick, 1,       PET_OSM_MODEL_RAMSELUSERPORT, 0   ; Disable User Port Control if joystick connected
+                .DW     PET_OPTM_G_Joystick, 2,       PET_OSM_MODEL_RAMSELUSERPORT, 0   ; Disable User Port Control if joystick connected
+                .DW     PET_OPTM_G_8096, 1,           PET_OSM_MODEL_SUPERPET, 0         ; 8096 turns off SuperPET
+                .DW     PET_OPTM_G_8296, 1,           PET_OSM_MODEL_SUPERPET, 0         ; 8296 turns off SuperPET
+;               .DW     PET_OPTM_G_6502_6809, 1,      PET_OSM_MODEL_SUPERPET, 1         ; 6809 turns on SuperPET (does it recurse?)
+                .DW     PET_OPTM_G_SuperPET, 1,       PET_OSM_MODEL_8096_MEM, 0         ; SuperPET turns off 8096
+                .DW     PET_OPTM_G_SuperPET, 1,       PET_OSM_MODEL_8296_MEM, 0         ;   and 8296
+
+                .DW     0 ; end-of-table marker; there is no group 0: PET_OPTM_G_* starts at 1
 ; ----------------------------------------------------------------------------
 ; Core specific callback functions: Custom messages
 ; ----------------------------------------------------------------------------

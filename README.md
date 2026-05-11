@@ -157,12 +157,12 @@ See below for how you can change the mapping.
 #### 1 (Space Invaders+)
 
 Support 1 joystick on the user port. The user port bits are 0=left, 1=right, 2=up, 3=down, 5=fire. This is "Space Invaders compatible".
-Don't use this option at the same time as "Userport controls RAM".
+Setting this option turns off "Userport controls RAM".
 
 #### 2 (Stupid PET Tricks)
 
 Support 2 joysticks on the user port, compatible with the Stupid PET Tricks joystick adapter. The user port bits are 0=joystick 1 up, 1=down, 2=left, 3=right, 4=joystick 2 up, 5=down, 6=left, 7=right. The fire buttons are signalled as up and down simultaneously (which normally can't happen).
-Don't use this option at the same time as "Userport controls RAM".
+Setting this option turns off "Userport controls RAM".
 
 #### Flip Joysticks
 
@@ -199,15 +199,15 @@ Normally an N (normal) keyboard is used, but with this option the Business mappi
 
 ### 6545 CRT Controller
 
-This option enables the CRT Controller, as present in the 40xx and 8xxx models. When enabled you need an Editor ROM that supports it. (You can mostly get away with using an Editor ROM that expects a CRTC when you have it disabled)
+This option enables the CRT Controller, as present in the 40xx and 8xxx models. When enabled you need an Editor ROM that supports it. (You can mostly get away with using an Editor ROM that expects a CRTC when you have it disabled). Disabling this option also disables the 80 columns option.
 
 ### 80 columns
 
-This enables 80 columns of text (rather than the default 40), making an 8xxx model. Again, needs an Editor ROM that supports it. Most of those also expect a B keyboard and all need a CRTC. Therefore enabling this option implicitly enables the CRTC.
+This enables 80 columns of text (rather than the default 40), making an 8xxx model. Again, needs an Editor ROM that supports it. Most of those also expect a B keyboard and all need a CRTC. Therefore enabling this option sets the CRTC option too.
 
 ### ColourPET rgbi
 
-This enables the [ColourPET extension](http://cbmsteve.ca/colourpet/index.html) from Steve Gray. It is made for 40 columns but in principle it could be made to work with 80 columns. Again, needs a supporting [Editor ROM](http://cbmsteve.ca/editrom/index.html) such as `4032n+colour.rom`. Enabling this option implicitly enables the CRTC.
+This enables the [ColourPET extension](http://cbmsteve.ca/colourpet/index.html) from Steve Gray. It is made for 40 columns but in principle it could be made to work with 80 columns. Again, needs a supporting [Editor ROM](http://cbmsteve.ca/editrom/index.html) such as `4032n+colour.rom`. Enabling this option sets the CRTC option too.
 
 Without a supporting Editor ROM, the colour memory ($8800...) will be initialized to all zero bytes and your text will be black on black: invisible. (On real PET hardware, screen memory is random on power-on). To help a bit with that, the "2001 white" option will partially override the Colour option and display in b/w, while keeping the colour RAM enabled so you can initialize it.
 
@@ -226,12 +226,12 @@ This enables the memory configuration of the 8296. This model simplified the mem
 If you select this option then normally you would also select the 8096 memory and its Control Register. In theory you could have an 8296 and remove the 8096 style extra 64 KB RAM chips (and the Control Register), so it's a separate option. But in practice I estimate that nobody would do such a silly thing.
 
 Selecting this option also includes the HRE (HiRes Emulator) with its memory control register at `$E888`.
-This option also disables "screen snow" because the current implementation would have way too much "snow", and the combination didn't exist in real hardware anyway.
+This option also disables "screen snow" because the current implementation would have way too much "snow", and the combination didn't exist in real hardware anyway. Setting this option also enables 8096 and disables SuperPET.
 
 #### $9000 RAM, $A000 RAM
 
 Activates (pulls down) the `/RAM SEL 9` respectively `/RAM SEL A` signals (see the Supplement section 2.4: JU1, JU2).
-This makes it for example possible to LOAD ROM images into the EPROM socket address spaces $9xxx and $Axxx, if you have them as PRG files (with start address) on a floppy disk image.
+This makes it for example possible to LOAD ROM images into the EPROM socket address spaces $9xxx and $Axxx, if you have them as PRG files (with start address) on a floppy disk image. These suboptions are only effective when 8296 is enabled.
 
 #### Userport controls RAM
 
@@ -243,15 +243,17 @@ This offers yet another way to replace the ROMs by RAM and run with dynamically 
 
 The HRE (HiRes Emulator) has a write-only memory mapping register at `$E888` which also controls these 3 signals. Bit 0 controls /ramSEL9, bit 1 /ramSELA, bit 2 /ramON, and bit 7 must be set to enable this. In the MegaPET, the Userport control preference overrides the `$E888` register. I don't know if this matches original hardware; if I have evidence that it does not then I will change it.
 
+Setting this option disables joystick emulation on the user port, and changes it to emulation via the keyboard. This suboption is only effective when 8296 is enabled.
+
 ### SuperPET
 
-This enables the SuperPET expansion board. This is another expansion based on the 8032. It is not compatible with 8096 or 8296 expansions. If they are selected in combination, all of them will be disabled instead.
+This enables the SuperPET expansion board. This is another expansion based on the 8032. It is not compatible with 8096 or 8296 expansions. Setting this option unsets the 8096 and 8296 options.
 
 The SuperPET has its own type of memory expansion: RAM is mapped in blocks of 4 KB at a time at $9xxx. Which bank is mapped is selected by a bank switch register at $EFFC. Bits 0-3 select the bank number.
 
 #### Use 6502 / 6809 cpu
 
-The SuperPET has an extra cpu of type 6809 from Motorola. Only one can run at a time. Here you can choose which one.
+The SuperPET has an extra cpu of type 6809 from Motorola. Only one can run at a time. Here you can choose which one, but these suboptions only have effect when the SuperPET is enabled. Otherwise the 6502 is active.
 (There is also "program control" in the original hardware but this is not implemented.)
 The ROM contents for this are pre-loaded into the core.
 
