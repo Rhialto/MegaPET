@@ -215,7 +215,9 @@ assign r_w_n_to_mainboard = spet_extram_sel ? r_w_n_from_cpu || !spet_ram_wp
 ///////////////////////////
 // The other cpu: 6809
 ///////////////////////////
+//`define USE_ASYNC_6809_CORE	// the more original variant from upstream https://github.com/cavnex/mc6809
 
+`ifdef USE_ASYNC_6809_CORE
 /*
  * Use cnt31 to generate E and Q. They must go like this:
  *
@@ -239,6 +241,7 @@ assign r_w_n_to_mainboard = spet_extram_sel ? r_w_n_from_cpu || !spet_ram_wp
  *
  * We don't care so much about the exact edges of Q.
  */
+
 reg E;
 always @(posedge clk) begin
     if (!pref_use_6809) begin
@@ -250,24 +253,24 @@ end
 
 wire Q = pref_use_6809 && (cnt31[4] ^ cnt31[3]);
 
+`else // not USE_ASYNC_6809_CORE
+
+wire fallE_en = enable && pref_use_6809;
+wire fallQ_en = (cnt31 == 24) && pref_use_6809;
+
+`endif // USE_ASYNC_6809_CORE
+
 // Latch the Data towards the 6809 on the rising edge of "enable" since
 // the 6502 uses the data at that point.
 // The 6809 uses the bus inputs continuously (most of its logic is
 // combinatorial). So we make sure that D remains constant from one rising
 // edge of "enable" to the next.
 
-    (* dont_touch = "false", mark_debug = "false" *)
 reg [7:0] din_to_6809;
 
-// Transparent latch for din_to_6809:
+// We would like to transparently latch din_to_6809:
 // when enable goes/is high, latch the value until the next time it goes high.
-/* Latches are apparently bad...
-always @(enable or din_to_cpu or pref_use_6809) begin
-    if (enable && pref_use_6809) begin
-        din_to_6809 = din_to_cpu;
-    end
-end
-*/
+// But latches are apparently bad...
 // so instead we use a flipflop and accept the 1-clock delay by
 // sampling one clock earlier.
 always @(posedge clk) begin
@@ -281,6 +284,7 @@ assign sync_happened = ba && !bs && !syncdis;
 wire nfirq = !sync_happened;    // for SuperOS9 MMU
 assign os9flat = pref_use_6809 && os9sel && !ba;
 
+`ifdef USE_ASYNC_6809_CORE
 mc6809e cpu6809e
 (
     .D(din_to_6809),            // input   [7:0] D,
@@ -300,6 +304,30 @@ mc6809e cpu6809e
     .nHALT(1'b1),               // input   nHALT,
     .nRESET(res_n)              // input   nRESET
 );
+`else // not USE_ASYNC_6809_CORE
+mc6809is cpu6809is
+(
+    .CLK(clk),                  // input   CLK,
+    .fallE_en(fallE_en),        // input   fallE_en,
+    .fallQ_en(fallQ_en),        // input   fallQ_en,
+    .D(din_to_6809),            // input   [7:0] D,
+    .DOut(dout_from_6809),      // output  [7:0] DOut,
+    .ADDR(a_from_6809),         // output  [15:0] ADDR,
+    .RnW(r_w_n_from_6809),      // output  RnW,
+    .BS(bs),                    // output  BS,
+    .BA(ba),                    // output  BA,
+    .nIRQ(irq_n || !pref_use_6809),// input   nIRQ,
+    .nFIRQ(nfirq),              // input   nFIRQ,
+    .nNMI(nmi_n || !pref_use_6809),// input   nNMI,
+    .AVMA(),                    // output  AVMA,
+    .BUSY(),                    // output  BUSY,
+    .LIC(),                     // output  LIC,
+    .nHALT(1'b1),               // input   nHALT,
+    .nRESET(res_n),             // input   nRESET,
+    .nDMABREQ(1'b1),            // input   nDMABREQ,
+    .RegData()                  // output  [111:0] RegData
+);
+`endif // USE_ASYNC_6809_CORE
 
 // 6809-specific ROMs. 3 x 8 KB.
 

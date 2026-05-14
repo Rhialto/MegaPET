@@ -104,6 +104,13 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
+      <File Path="$PPRDIR/PET2001_MiSTer/rtl/mc6809/mc6809is.v">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
       <File Path="$PPRDIR/PET2001_MiSTer/rtl/pet2001io.sv">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>

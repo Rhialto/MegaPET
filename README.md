@@ -255,6 +255,7 @@ The SuperPET has its own type of memory expansion: RAM is mapped in blocks of 4 
 
 The SuperPET has an extra cpu of type 6809 from Motorola. Only one can run at a time. Here you can choose which one, but these suboptions only have effect when the SuperPET is enabled. Otherwise the 6502 is active.
 (There is also "program control" in the original hardware but this is not implemented.)
+When you switch to the other CPU you may need to press the reset button (on the left side of the MEGA65).
 The ROM contents for this are pre-loaded into the core.
 
 The Super-OS/9 MMU from TPUG is built-in and always enabled if the 6809 is active. It is meant for running OS-9 as adapted by TPUG.

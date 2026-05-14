@@ -81,7 +81,7 @@ type WHS_RECORD_ARRAY_TYPE is array (0 to WHS_RECORDS - 1) of WHS_RECORD_TYPE;
 
 constant SUBVER1_STRING : string := "-no8050" when CFG_OMIT_8x50_DISK else "";
 
-constant VERSION_STRING : string := "v1.1+xolyztly" & SUBVER1_STRING;
+constant VERSION_STRING : string := "v1.1+srkskkxw" & SUBVER1_STRING;
 constant VERSION_UNDERL : string := CHR_LINE_10 & CHR_LINE_1 & CHR_LINE_1 & CHR_LINE_1;
 
 constant SCR_WELCOME : string := "";
