@@ -564,11 +564,19 @@ end
 // 
 always @(negedge Q)
 begin
-    NMISample <= nNMI;
-    
-    IRQSample <= nIRQ;
+    if (nRESET == 0) begin
+        NMISample <= 1'b1;
 
-    FIRQSample <= nFIRQ;
+        IRQSample <= 1'b1;
+
+        FIRQSample <= 1'b1;
+    end else begin
+        NMISample <= nNMI;
+
+        IRQSample <= nIRQ;
+
+        FIRQSample <= nFIRQ;
+    end
 
     HALTSample <= nHALT;
     
@@ -637,6 +645,10 @@ begin
     else
     begin
         CpuState <= CPUSTATE_RESET; 
+        IRQSample2 <= 1'b1; // Suppress IRQ pipeline
+        IRQLatched <= 1'b1;
+        FIRQSample2 <= 1'b1; // Suppress FIRQ pipeline
+        FIRQLatched <= 1'b1;
         NMIMask <= 1'b1; // Mask NMI until S is loaded.
         NMIClear <= 1'b0; // Mark us as not having serviced NMI
     end
