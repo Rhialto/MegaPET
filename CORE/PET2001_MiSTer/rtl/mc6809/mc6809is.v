@@ -113,8 +113,8 @@ assign BUSY = rBUSY;
 // Bus control
 // BS    BA
 //  0     0   normal (CPU running, CPU is master)
-//  0     1   Interrupt Ack
-//  1     0   Sync Ack
+//  0     1   Sync Ack       | was incorrectly: Interrupt Ack
+//  1     0   Interrupt Ack  | was incorrectly: Sync Ack
 //  1     1   CPU has gone high-Z on A, D, R/W
 //
 
@@ -3913,7 +3913,7 @@ begin
         CpuState_nxt = CPUSTATE_IRQ_DONTCARE;
         if (InstPage3)
             IntType_nxt = INTTYPE_SWI3;
-        if (InstPage2)
+        else if (InstPage2)
             IntType_nxt = INTTYPE_SWI2;
         else
             IntType_nxt = INTTYPE_SWI;        
