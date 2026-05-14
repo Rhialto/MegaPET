@@ -431,10 +431,16 @@ This project is based on, and would have been impossible without, the following 
 * Steve Gray's [ColourPET](http://cbmsteve.ca/colourpet/index.html) and [Edit ROM](http://cbmsteve.ca/editrom/index.html) projects. 
 * The [VIA 6522](https://github.com/GideonZ/1541ultimate) from Gideon Zweijtzer, commit 9be4339e19996249f33efed0fcd340b3fac0b2b3 dated Sun Jul 20 12:55:22 2025 +0200 ([cbf5d288](https://github.com/GideonZ/1541ultimate/blob/cbf5d2884d65a37c051e2d0c9a7a0ae41b9e2fb5/fpga/1541/vhdl_source/via6522.vhd) dated Fri Jun 25 07:23:20 2021 +0200 for the VIA itself).
 * The [6809 cpu core](https://github.com/cavnex/mc6809) from Greg Miller, commit [17e94a6e](https://github.com/cavnex/mc6809/tree/17e94a6ef163be8b79a9b15b2e814847b6062f0f) dated Thu Nov 26 13:54:48 2020 -0800.
+* The ["synchronous" version of the 6809](https://github.com/RndMnkIII/mc6809is) from Sorgelig and RndMnkIII.
 * The [MMU for Super-OS/9](https://mikenaberezny.com/hardware/superpet/super-os9-mmu/) from the [Toronto PET Users Group](https://www.tpug.ca/) (TPUG)
 
 Release Notes
 -------------
+
+### v1.2, v1.2-no8050
+
+- Unbreak the 6809 ("I didn't change anything!"). Use the 6809is core now which may or may not make a difference.
+- Menu items now get automatically (de)selected to avoid incompatible combinations.
 
 ### v1.1, v1.1-no8050
 
