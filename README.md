@@ -437,6 +437,10 @@ This project is based on, and would have been impossible without, the following 
 Release Notes
 -------------
 
+### wip v1.3, v1.3-no8050
+
+- Correct a calculation error in the use of HyperRAM for the disk images. This was found when using HyperRAM more efficiently (using both bytes of each word).
+
 ### v1.2, v1.2-no8050
 
 - Unbreak the 6809 ("I didn't change anything!"). Use the 6809is core now which may or may not make a difference.

@@ -273,17 +273,18 @@ signal qnice_pet_mount0_buf_addr     : std_logic_vector(20 downto 0);
 signal qnice_pet_mount0_buf_ram_wait : std_logic;
 signal qnice_pet_mount0_buf_ram_we   : std_logic;
 signal qnice_pet_mount0_buf_ram_ce   : std_logic;
-signal qnice_pet_mount0_buf_ram_data : std_logic_vector(15 downto 0);  -- Disk mount buffer; 15 downto 8 unused
+signal qnice_pet_mount0_buf_ram_data : std_logic_vector(7 downto 0);  -- Disk mount buffer; drive 0:
+signal qnice_pet_mount0_buf_dummy    : std_logic_vector(7 downto 0);
 signal qnice_pet_mount1_buf_addr     : std_logic_vector(20 downto 0);
 signal qnice_pet_mount1_buf_ram_wait : std_logic;
 signal qnice_pet_mount1_buf_ram_we   : std_logic;
 signal qnice_pet_mount1_buf_ram_ce   : std_logic;
-signal qnice_pet_mount1_buf_ram_data : std_logic_vector(15 downto 0);  -- Disk mount buffer; 15 downto 8 unused
+signal qnice_pet_mount1_buf_ram_data : std_logic_vector(7 downto 0);  -- Disk mount buffer; drive 1:
+signal qnice_pet_mount1_buf_dummy    : std_logic_vector(7 downto 0);
 
 signal main_drive_cache_dirty        : std_logic;
 
 attribute mark_debug : string;
-attribute mark_debug of qnice_pet_mount0_buf_ram_we       : signal is "false";
 
 -- Custom Kernal access: PET ROM or PET CHAR ROM (if qnice_petchars_ce)
 signal qnice_petrom_we              : std_logic;
@@ -322,6 +323,22 @@ signal qnice_disk1_burstcount         : std_logic_vector( 7 downto 0);
 signal qnice_disk1_readdata           : std_logic_vector(15 downto 0);
 signal qnice_disk1_readdatavalid      : std_logic;
 signal qnice_disk1_waitrequest        : std_logic;
+
+attribute mark_debug of qnice_disk0_write               : signal is "true";
+attribute mark_debug of qnice_disk0_read                : signal is "true";
+attribute mark_debug of qnice_disk0_address             : signal is "true";
+attribute mark_debug of qnice_disk0_writedata           : signal is "true";
+attribute mark_debug of qnice_disk0_byteenable          : signal is "true";
+attribute mark_debug of qnice_disk0_burstcount          : signal is "true";
+attribute mark_debug of qnice_disk0_readdata            : signal is "true";
+attribute mark_debug of qnice_disk0_readdatavalid       : signal is "true";
+attribute mark_debug of qnice_disk0_waitrequest         : signal is "true";
+attribute mark_debug of qnice_pet_mount0_buf_ram_ce     : signal is "true";
+attribute mark_debug of qnice_pet_mount0_buf_ram_we     : signal is "true";
+attribute mark_debug of qnice_pet_mount0_buf_ram_wait   : signal is "true";
+attribute mark_debug of qnice_dev_addr_i                : signal is "true";
+attribute mark_debug of qnice_pet_mount0_buf_dummy      : signal is "true";
+attribute mark_debug of qnice_pet_mount0_buf_ram_data   : signal is "true";
 
 begin
 
@@ -642,7 +659,7 @@ begin
             qnice_pet_mount0_buf_addr  <= qnice_dev_addr_i(20 downto 0);
             qnice_pet_mount0_buf_ram_ce <= qnice_dev_ce_i;
             qnice_pet_mount0_buf_ram_we <= qnice_dev_we_i and not qnice_csr_window;
-            qnice_dev_data_o           <= x"00" & qnice_pet_mount0_buf_ram_data(7 downto 0); -- TBD
+            qnice_dev_data_o           <= x"00" & qnice_pet_mount0_buf_ram_data;
             qnice_dev_wait_o           <= qnice_pet_mount0_buf_ram_wait;
 
          -- Disk mount buffer RAM 1 (drive 1:)
@@ -650,7 +667,7 @@ begin
             qnice_pet_mount1_buf_addr  <= qnice_dev_addr_i(20 downto 0);
             qnice_pet_mount1_buf_ram_ce <= qnice_dev_ce_i;
             qnice_pet_mount1_buf_ram_we <= qnice_dev_we_i and not qnice_csr_window;
-            qnice_dev_data_o           <= x"00" & qnice_pet_mount1_buf_ram_data(7 downto 0); -- TBD
+            qnice_dev_data_o           <= x"00" & qnice_pet_mount1_buf_ram_data;
             qnice_dev_wait_o           <= qnice_pet_mount1_buf_ram_wait;
 
          -- Custom Kernal Access: PET main ROMs
@@ -726,7 +743,7 @@ begin
             address_a         => qnice_pet_mount1_buf_addr(17 downto 0), --  qnice_dev_addr_i(17 downto 0),
             data_a            => qnice_dev_data_i(7 downto 0),
             wren_a            => qnice_pet_mount1_buf_ram_we,
-            q_a               => qnice_pet_mount1_buf_ram_data(7 downto 0)
+            q_a               => qnice_pet_mount1_buf_ram_data
          ); -- mount1_buf_ram
    else generate        -- CFG_OMIT_8x50_DISK
       -- Disk images of 8050 and 8250 need to be stored in HyperRAM due to their size.
@@ -735,16 +752,17 @@ begin
             clk_i                 => qnice_clk_i,
             rst_i                 => qnice_rst_i,
             s_qnice_wait_o        => qnice_pet_mount0_buf_ram_wait,
-   -- for >1MB we need 21 address bits, 20 downto 0
-            s_qnice_address_i     => ( 24 downto 13 => std_logic_vector(unsigned(C_HMAP_BUF0(11 downto 0)) +
-                                                                        unsigned(qnice_dev_addr_i(24 downto 13))),
-                                       12 downto 0  => qnice_dev_addr_i(12 downto 0),
+   -- for >1MW we need 21 address bits, 20 downto 0
+            s_qnice_address_i     => ( 24 downto 12 => std_logic_vector(unsigned(C_HMAP_BUF0(11 downto 0)) +
+                                                                        unsigned(qnice_dev_addr_i(24 downto 12))),
+                                       11 downto 0  => qnice_dev_addr_i(11 downto 0),
                                        others => '0'),
             s_qnice_cs_i          => qnice_pet_mount0_buf_ram_ce,
             s_qnice_write_i       => qnice_pet_mount0_buf_ram_we,
-            s_qnice_writedata_i   => qnice_dev_data_i,
-            s_qnice_byteenable_i  => "01", -- TBD: Rewrite to make use of the entire HyperRAM word.
-            s_qnice_readdata_o    => qnice_pet_mount0_buf_ram_data,
+            s_qnice_writedata_i   => ( 7 downto 0 => qnice_dev_data_i(7 downto 0), others => '0'),
+            s_qnice_byteenable_i  => "01", -- Use the lower byte of each word
+            s_qnice_readdata_o(15 downto 8) => qnice_pet_mount0_buf_dummy,	-- not used
+            s_qnice_readdata_o(7 downto 0) => qnice_pet_mount0_buf_ram_data,
             m_avm_write_o         => qnice_disk0_write,
             m_avm_read_o          => qnice_disk0_read,
             m_avm_address_o       => qnice_disk0_address,
@@ -761,16 +779,17 @@ begin
             clk_i                 => qnice_clk_i,
             rst_i                 => qnice_rst_i,
             s_qnice_wait_o        => qnice_pet_mount1_buf_ram_wait,
-   -- for >1MB we need 21 address bits, 20 downto 0
-            s_qnice_address_i     => ( 24 downto 13 => std_logic_vector(unsigned(C_HMAP_BUF1(11 downto 0)) +
-                                                                        unsigned(qnice_dev_addr_i(24 downto 13))),
-                                       12 downto 0  => qnice_dev_addr_i(12 downto 0),
+   -- for >1MW we need 21 address bits, 20 downto 0
+            s_qnice_address_i     => ( 24 downto 12 => std_logic_vector(unsigned(C_HMAP_BUF1(11 downto 0)) +
+                                                                        unsigned(qnice_dev_addr_i(24 downto 12))),
+                                       11 downto 0  => qnice_dev_addr_i(11 downto 0),
                                        others => '0'),
             s_qnice_cs_i          => qnice_pet_mount1_buf_ram_ce,
             s_qnice_write_i       => qnice_pet_mount1_buf_ram_we,
-            s_qnice_writedata_i   => qnice_dev_data_i,
-            s_qnice_byteenable_i  => "01", -- TBD: Rewrite to make use of the entire HyperRAM word.
-            s_qnice_readdata_o    => qnice_pet_mount1_buf_ram_data,
+            s_qnice_writedata_i   => ( 15 downto 8 => qnice_dev_data_i(7 downto 0), others => '0'),
+            s_qnice_byteenable_i  => "10", -- Use the upper byte of each word
+            s_qnice_readdata_o(15 downto 8) => qnice_pet_mount1_buf_ram_data,
+            s_qnice_readdata_o(7 downto 0) => qnice_pet_mount1_buf_dummy,	-- not used
             m_avm_write_o         => qnice_disk1_write,
             m_avm_read_o          => qnice_disk1_read,
             m_avm_address_o       => qnice_disk1_address,

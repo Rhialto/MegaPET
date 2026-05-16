@@ -90,12 +90,12 @@ constant C_DEV_PET_KERNAL_C2031  : std_logic_vector(15 downto 0) := x"0108";    
 
 constant C_HMAP_M2M           : std_logic_vector(15 downto 0) := x"0000";     -- Reserved for the M2M framework
 --constant C_HMAP_DEMO          : std_logic_vector(15 downto 0) := x"0200";     -- Start address reserved for core
-constant C_HMAP_BUF0          : std_logic_vector(15 downto 0) := x"0180";
-constant C_HMAP_BUF1          : std_logic_vector(15 downto 0) := x"0286";
-constant C_HMAP_BUF_NEXT      : std_logic_vector(15 downto 0) := x"038C";
--- 1 .d82 file is 1066496 bytes: 4166 blocks or 131 * 8KB or 0x83 * 4 KW
--- if we use double the memory then each disk image uses 0x106 units.
--- with 8 MB we have 1024 = 0x400 * 8 KB in total. With 0x200 reserved, we do not have enough space!
+constant C_HMAP_BUF0          : std_logic_vector(15 downto 0) := x"0200";     -- use the lower byte of each word
+constant C_HMAP_BUF1          : std_logic_vector(15 downto 0) := x"0200";     -- use the higher byte of each word
+constant C_HMAP_BUF_NEXT      : std_logic_vector(15 downto 0) := x"0306";
+-- 1 .d82 file is 1066496 bytes: 4166 blocks or 131 * 8KB or 0x83 * 4 KW.
+-- If we use double the memory then each pair of disk images uses 0x106 units.
+-- With 8 MB we have 1024 = 0x400 * 8 KB in total.
 
 
 ----------------------------------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ constant C_CRTROMTYPE_OPTIONAL   : std_logic_vector(15 downto 0) := x"0004";
 constant C_CRTROMS_MAN_NUM       : natural := 3;                                       -- amount of manually loadable ROMs and carts; maximum is 16
 constant C_CRTROMS_MAN           : crtrom_buf_array := ( C_CRTROMTYPE_DEVICE, C_DEV_PET_KERNAL_PET,
                                                          C_CRTROMTYPE_DEVICE, C_DEV_PET_CHARS_PET,
-							 C_CRTROMTYPE_DEVICE, C_DEV_PET_KERNAL_C2031,
+                                                         C_CRTROMTYPE_DEVICE, C_DEV_PET_KERNAL_C2031,
                                                          x"EEEE", x"EEEE", x"EEEE");   -- Always finish the array using x"EEEE"
 
 -- Automatically loaded ROMs: These ROMs are loaded before the core starts
