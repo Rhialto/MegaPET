@@ -348,17 +348,20 @@ begin
   -- starting its reset sequence (according to datasheet)
   process (Res_n, Clk)
   begin
+   if Clk'event and Clk = '1' then
     if Res_n = '0' then
       Res_n_i <= '0';
       Res_n_d <= '0';
-    elsif Clk'event and Clk = '1' then
+    else
       Res_n_i <= Res_n_d;
       Res_n_d <= '1';
     end if;
+   end if;
   end process;
 
   process (Res_n_i, Clk)
   begin
+   if Clk'event and Clk = '1' then
     if Res_n_i = '0' then
       PC <= (others => '0');  -- Program Counter
       IR <= "00000000";
@@ -380,7 +383,7 @@ begin
       NMICycle <= '0';
       IRQCycle <= '0';
 
-    elsif Clk'event and Clk = '1' then  
+    else
       if (Enable = '1') then
         -- some instructions behavior changed by the Rdy line. Detect this at the correct cycles.
         if MCycle  = "000" then
@@ -465,6 +468,7 @@ begin
         end if;
       end if;
     end if;
+   end if;
   end process;
 
   PCAdder <= resize(PC(7 downto 0),9) + resize(unsigned(DL(7) & DL),9) when PCAdd = '1'
@@ -473,9 +477,10 @@ begin
   process (Res_n_i, Clk)
     variable tmpP:std_logic_vector(7 downto 0);--Lets try to handle loading P at mcycle=0 and set/clk flags at same cycle
   begin
+   if Clk'event and Clk = '1' then
     if Res_n_i = '0' then
       P <= x"00"; -- ensure we have nothing set on reset
-    elsif Clk'event and Clk = '1' then
+    else
       tmpP:=P;
       if (Enable = '1') then
         if (really_rdy = '1') then
@@ -542,6 +547,7 @@ begin
       end if;
 
     end if;
+   end if;
   end process;
 
 ---------------------------------------------------------------------------
@@ -552,6 +558,7 @@ begin
 
   process (Res_n_i, Clk)
   begin
+   if Clk'event and Clk = '1' then
     if Res_n_i = '0' then
       BusA_r <= (others => '0');
       BusB <= (others => '0');
@@ -560,7 +567,7 @@ begin
       BAL <= (others => '0');
       BAH <= (others => '0');
       DL <= (others => '0');
-    elsif Clk'event and Clk = '1' then
+    else
       if (Enable = '1') then
         if (really_rdy = '1') then
           NMI_entered <= '0';
@@ -639,6 +646,7 @@ begin
         end if;
       end if;
     end if;
+   end if;
   end process;
 
   Break <= (BreakAtNA and not BAL(8)) or (PCAdd and not PCAdder(8));
@@ -694,13 +702,14 @@ begin
 
   process (Res_n_i, Clk)
   begin
+   if Clk'event and Clk = '1' then
     if Res_n_i = '0' then
       MCycle <= "001";
       RstCycle <= '1';
       NMIAct <= '0';
       IRQReq <= '0';
       NMIReq <= '0';
-    elsif Clk'event and Clk = '1' then
+    else
       if (Enable = '1') then
         if (really_rdy = '1') then
           if MCycle = LCycle or Break = '1' then
@@ -737,6 +746,7 @@ begin
         end if;
       end if;
     end if;
+   end if;
   end process;
 
 end;
