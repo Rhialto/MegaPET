@@ -437,7 +437,7 @@ This project is based on, and would have been impossible without, the following 
 Release Notes
 -------------
 
-### wip v1.3, v1.3-no8050
+### v1.3, v1.3-no8050
 
 - Correct a calculation error in the use of HyperRAM for the disk images. This was found when using HyperRAM more efficiently (using both bytes of each word).
 
