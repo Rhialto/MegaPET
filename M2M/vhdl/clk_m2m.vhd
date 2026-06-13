@@ -57,6 +57,11 @@ signal audio_locked         : std_logic;
 
 signal sys_counter          : natural range 0 to 99_999_999;
 
+signal not_qnice_clk_mmcm   : std_logic;
+signal not_qnice_clk        : std_logic;
+   attribute mark_debug : string;
+   attribute mark_debug of not_qnice_clk : signal is "true";
+
 begin
 
    -------------------------------------------------------------------------------------
@@ -84,6 +89,9 @@ begin
          CLKOUT3_DIVIDE       => 12,         -- HyperRAM @ 100 MHz phase delayed
          CLKOUT3_DUTY_CYCLE   => 0.500,
          CLKOUT3_PHASE        => 90.000,
+         CLKOUT4_DIVIDE       => 24,         -- QNICE @ 50 MHz, 0,5 phase late
+         CLKOUT4_DUTY_CYCLE   => 0.500,
+         CLKOUT4_PHASE        => 180.000,
          DIVCLK_DIVIDE        => 1,
          REF_JITTER1          => 0.010,
          STARTUP_WAIT         => "FALSE"
@@ -96,6 +104,7 @@ begin
          CLKOUT1             => hr_clk_mmcm,
          CLKOUT2             => hr_delay_refclk_mmcm,
          CLKOUT3             => hr_clk_del_mmcm,
+         CLKOUT4             => not_qnice_clk_mmcm,
          LOCKED              => qnice_locked,
          PWRDWN              => '0',
          RST                 => '0'
@@ -132,6 +141,12 @@ begin
       port map (
          I => qnice_clk_mmcm,
          O => qnice_clk_o
+      );
+
+   not_qnice_clk_bufg : BUFG
+      port map (
+         I => not_qnice_clk_mmcm,
+         O => not_qnice_clk
       );
 
    hr_clk_bufg : BUFG
