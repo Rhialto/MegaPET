@@ -90,11 +90,12 @@ constant C_DEV_PET_KERNAL_C2031  : std_logic_vector(15 downto 0) := x"0108";    
 
 constant C_HMAP_M2M           : std_logic_vector(15 downto 0) := x"0000";     -- Reserved for the M2M framework
 --constant C_HMAP_DEMO          : std_logic_vector(15 downto 0) := x"0200";     -- Start address reserved for core
-constant C_HMAP_BUF0          : std_logic_vector(15 downto 0) := x"0200";     -- use the lower byte of each word
-constant C_HMAP_BUF1          : std_logic_vector(15 downto 0) := x"0200";     -- use the higher byte of each word
-constant C_HMAP_BUF_NEXT      : std_logic_vector(15 downto 0) := x"0306";
+constant C_HMAP_BUF0          : std_logic_vector(15 downto 0) := x"0200";
+constant C_HMAP_BUF1          : std_logic_vector(15 downto 0) := x"0284";
+constant C_HMAP_BUF_NEXT      : std_logic_vector(15 downto 0) := x"0308";
 -- 1 .d82 file is 1066496 bytes: 4166 blocks or 131 * 8KB or 0x83 * 4 KW.
--- If we use double the memory then each pair of disk images uses 0x106 units.
+-- Round the size up a bit to 0x84 to make it easier on the adder circuit for C_HMAP_BUF1.
+-- If we use double the memory then each pair of disk images uses 0x108 units.
 -- With 8 MB we have 1024 = 0x400 * 8 KB in total.
 
 

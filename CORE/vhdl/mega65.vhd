@@ -304,46 +304,6 @@ signal qnice_pet_qnice_ce           : std_logic;
 signal qnice_pet_qnice_we           : std_logic;
 signal qnice_pet_qnice_data         : std_logic_vector(15 downto 0);
 
-signal qnice_disk0_write              : std_logic;
-signal qnice_disk0_read               : std_logic;
-signal qnice_disk0_address            : std_logic_vector(31 downto 0);
-signal qnice_disk0_writedata          : std_logic_vector(15 downto 0);
-signal qnice_disk0_byteenable         : std_logic_vector( 1 downto 0);
-signal qnice_disk0_burstcount         : std_logic_vector( 7 downto 0);
-signal qnice_disk0_readdata           : std_logic_vector(15 downto 0);
-signal qnice_disk0_readdatavalid      : std_logic;
-signal qnice_disk0_waitrequest        : std_logic;
-
-signal qnice_disk0_cached_write         : std_logic;
-signal qnice_disk0_cached_read          : std_logic;
-signal qnice_disk0_cached_address       : std_logic_vector(31 downto 0);
-signal qnice_disk0_cached_writedata     : std_logic_vector(15 downto 0);
-signal qnice_disk0_cached_byteenable    : std_logic_vector( 1 downto 0);
-signal qnice_disk0_cached_burstcount    : std_logic_vector( 7 downto 0);
-signal qnice_disk0_cached_readdata      : std_logic_vector(15 downto 0);
-signal qnice_disk0_cached_readdatavalid : std_logic;
-signal qnice_disk0_cached_waitrequest   : std_logic;
-
-signal qnice_disk1_write              : std_logic;
-signal qnice_disk1_read               : std_logic;
-signal qnice_disk1_address            : std_logic_vector(31 downto 0);
-signal qnice_disk1_writedata          : std_logic_vector(15 downto 0);
-signal qnice_disk1_byteenable         : std_logic_vector( 1 downto 0);
-signal qnice_disk1_burstcount         : std_logic_vector( 7 downto 0);
-signal qnice_disk1_readdata           : std_logic_vector(15 downto 0);
-signal qnice_disk1_readdatavalid      : std_logic;
-signal qnice_disk1_waitrequest        : std_logic;
-
-signal qnice_disk1_cached_write         : std_logic;
-signal qnice_disk1_cached_read          : std_logic;
-signal qnice_disk1_cached_address       : std_logic_vector(31 downto 0);
-signal qnice_disk1_cached_writedata     : std_logic_vector(15 downto 0);
-signal qnice_disk1_cached_byteenable    : std_logic_vector( 1 downto 0);
-signal qnice_disk1_cached_burstcount    : std_logic_vector( 7 downto 0);
-signal qnice_disk1_cached_readdata      : std_logic_vector(15 downto 0);
-signal qnice_disk1_cached_readdatavalid : std_logic;
-signal qnice_disk1_cached_waitrequest   : std_logic;
-
 begin
 
    -- Tristate all expansion port drivers that we can directly control
@@ -756,183 +716,62 @@ begin
       --                      2 x avm_cache      =(qnice_disk0_*)=>
       --                      2 x avm_fifo       =(hr_disk0_*)=> 
       -- (hyperram clock domain) 1 x avm_arbit   =(hr_core_*)=> outside to hyperram
-      i_qnice2hyperram_d0 : entity work.qnice2hyperram
-         port map (
-            clk_i                 => qnice_clk_i,
-            rst_i                 => qnice_rst_i,
-            s_qnice_wait_o        => qnice_pet_mount0_buf_ram_wait,
-   -- for >1MW we need 21 address bits, 20 downto 0
-            s_qnice_address_i     => ( 24 downto 12 => std_logic_vector(unsigned(C_HMAP_BUF0(11 downto 0)) +
-                                                                        unsigned(qnice_dev_addr_i(24 downto 12))),
-                                       11 downto 0  => qnice_dev_addr_i(11 downto 0),
-                                       others => '0'),
-            s_qnice_cs_i          => qnice_pet_mount0_buf_ram_ce,
-            s_qnice_write_i       => qnice_pet_mount0_buf_ram_we,
-            s_qnice_writedata_i   => ( 7 downto 0 => qnice_dev_data_i(7 downto 0), others => '0'),
-            s_qnice_byteenable_i  => "01", -- Use the lower byte of each word
-            s_qnice_readdata_o(15 downto 8) => qnice_pet_mount0_buf_dummy,	-- not used
-            s_qnice_readdata_o(7 downto 0) => qnice_pet_mount0_buf_ram_data,
-            m_avm_write_o         => qnice_disk0_cached_write,
-            m_avm_read_o          => qnice_disk0_cached_read,
-            m_avm_address_o       => qnice_disk0_cached_address,
-            m_avm_writedata_o     => qnice_disk0_cached_writedata,
-            m_avm_byteenable_o    => qnice_disk0_cached_byteenable,
-            m_avm_burstcount_o    => qnice_disk0_cached_burstcount,
-            m_avm_readdata_i      => qnice_disk0_cached_readdata,
-            m_avm_readdatavalid_i => qnice_disk0_cached_readdatavalid,
-            m_avm_waitrequest_i   => qnice_disk0_cached_waitrequest
-         ); -- i_qnice2hyperram
 
-      i_qnice2hyperram_d1 : entity work.qnice2hyperram
-         port map (
-            clk_i                 => qnice_clk_i,
-            rst_i                 => qnice_rst_i,
-            s_qnice_wait_o        => qnice_pet_mount1_buf_ram_wait,
-   -- for >1MW we need 21 address bits, 20 downto 0
-            s_qnice_address_i     => ( 24 downto 12 => std_logic_vector(unsigned(C_HMAP_BUF1(11 downto 0)) +
-                                                                        unsigned(qnice_dev_addr_i(24 downto 12))),
-                                       11 downto 0  => qnice_dev_addr_i(11 downto 0),
-                                       others => '0'),
-            s_qnice_cs_i          => qnice_pet_mount1_buf_ram_ce,
-            s_qnice_write_i       => qnice_pet_mount1_buf_ram_we,
-            s_qnice_writedata_i   => ( 15 downto 8 => qnice_dev_data_i(7 downto 0), others => '0'),
-            s_qnice_byteenable_i  => "10", -- Use the upper byte of each word
-            s_qnice_readdata_o(15 downto 8) => qnice_pet_mount1_buf_ram_data,
-            s_qnice_readdata_o(7 downto 0) => qnice_pet_mount1_buf_dummy,	-- not used
-            m_avm_write_o         => qnice_disk1_cached_write,
-            m_avm_read_o          => qnice_disk1_cached_read,
-            m_avm_address_o       => qnice_disk1_cached_address,
-            m_avm_writedata_o     => qnice_disk1_cached_writedata,
-            m_avm_byteenable_o    => qnice_disk1_cached_byteenable,
-            m_avm_burstcount_o    => qnice_disk1_cached_burstcount,
-            m_avm_readdata_i      => qnice_disk1_cached_readdata,
-            m_avm_readdatavalid_i => qnice_disk1_cached_readdatavalid,
-            m_avm_waitrequest_i   => qnice_disk1_cached_waitrequest
-         ); -- i_qnice2hyperram
-
-      qnice2hr_d0_avm_cache : entity work.avm_cache_rhi
-	generic map (
-	  G_CACHE_SIZE   => 8,
-	  G_ADDRESS_SIZE => 32,
-	  G_DATA_SIZE    => 16
-	)
-	port map (
-	  clk_i                 => qnice_clk_i,
-	  rst_i                 => qnice_rst_i,
-	  s_avm_waitrequest_o   => qnice_disk0_cached_waitrequest,
-	  s_avm_write_i         => qnice_disk0_cached_write,
-	  s_avm_read_i          => qnice_disk0_cached_read,
-	  s_avm_address_i       => qnice_disk0_cached_address,
-	  s_avm_writedata_i     => qnice_disk0_cached_writedata,
-	  s_avm_byteenable_i    => qnice_disk0_cached_byteenable,
-	  s_avm_burstcount_i    => qnice_disk0_cached_burstcount,
-	  s_avm_readdata_o      => qnice_disk0_cached_readdata,
-	  s_avm_readdatavalid_o => qnice_disk0_cached_readdatavalid,
-	  m_avm_waitrequest_i   => qnice_disk0_waitrequest,
-	  m_avm_write_o         => qnice_disk0_write,
-	  m_avm_read_o          => qnice_disk0_read,
-	  m_avm_address_o       => qnice_disk0_address,
-	  m_avm_writedata_o     => qnice_disk0_writedata,
-	  m_avm_byteenable_o    => qnice_disk0_byteenable,
-	  m_avm_burstcount_o    => qnice_disk0_burstcount,
-	  m_avm_readdata_i      => qnice_disk0_readdata,
-	  m_avm_readdatavalid_i => qnice_disk0_readdatavalid
-	); -- qnice2hr_d0_avm_cache
-
-      qnice2hr_d1_avm_cache : entity work.avm_cache_rhi
-	generic map (
-	  G_CACHE_SIZE   => 8,
-	  G_ADDRESS_SIZE => 32,
-	  G_DATA_SIZE    => 16
-	)
-	port map (
-	  clk_i                 => qnice_clk_i,
-	  rst_i                 => qnice_rst_i,
-	  s_avm_waitrequest_o   => qnice_disk1_cached_waitrequest,
-	  s_avm_write_i         => qnice_disk1_cached_write,
-	  s_avm_read_i          => qnice_disk1_cached_read,
-	  s_avm_address_i       => qnice_disk1_cached_address,
-	  s_avm_writedata_i     => qnice_disk1_cached_writedata,
-	  s_avm_byteenable_i    => qnice_disk1_cached_byteenable,
-	  s_avm_burstcount_i    => qnice_disk1_cached_burstcount,
-	  s_avm_readdata_o      => qnice_disk1_cached_readdata,
-	  s_avm_readdatavalid_o => qnice_disk1_cached_readdatavalid,
-	  m_avm_waitrequest_i   => qnice_disk1_waitrequest,
-	  m_avm_write_o         => qnice_disk1_write,
-	  m_avm_read_o          => qnice_disk1_read,
-	  m_avm_address_o       => qnice_disk1_address,
-	  m_avm_writedata_o     => qnice_disk1_writedata,
-	  m_avm_byteenable_o    => qnice_disk1_byteenable,
-	  m_avm_burstcount_o    => qnice_disk1_burstcount,
-	  m_avm_readdata_i      => qnice_disk1_readdata,
-	  m_avm_readdatavalid_i => qnice_disk1_readdatavalid
-	); -- qnice2hr_d1_avm_cache
-
-      qnice2hr_d0_avm_fifo : entity work.avm_fifo
+      i_mount_buf_wrapper0 : entity work.mount_buf_wrapper
          generic map (
-            G_WR_DEPTH     => 16,
-            G_RD_DEPTH     => 16,
-            G_FILL_SIZE    => 1,
-            G_ADDRESS_SIZE => 32,
-            G_DATA_SIZE    => 16
+            G_BASE_ADDRESS => C_HMAP_BUF0(9 downto 0) & X"000"
          )
          port map (
-            s_clk_i               => qnice_clk_i,	-- Does the fifo know it should work on the falling edge?
-            s_rst_i               => qnice_rst_i,
-            s_avm_waitrequest_o   => qnice_disk0_waitrequest,
-            s_avm_write_i         => qnice_disk0_write,
-            s_avm_read_i          => qnice_disk0_read,
-            s_avm_address_i       => qnice_disk0_address,
-            s_avm_writedata_i     => qnice_disk0_writedata,
-            s_avm_byteenable_i    => qnice_disk0_byteenable,
-            s_avm_burstcount_i    => qnice_disk0_burstcount,
-            s_avm_readdata_o      => qnice_disk0_readdata,
-            s_avm_readdatavalid_o => qnice_disk0_readdatavalid,
-            m_clk_i               => hr_clk_i,
-            m_rst_i               => hr_rst_i,
-            m_avm_waitrequest_i   => hr_disk0_waitrequest,
-            m_avm_write_o         => hr_disk0_write,
-            m_avm_read_o          => hr_disk0_read,
-            m_avm_address_o       => hr_disk0_address,
-            m_avm_writedata_o     => hr_disk0_writedata,
-            m_avm_byteenable_o    => hr_disk0_byteenable,
-            m_avm_burstcount_o    => hr_disk0_burstcount,
-            m_avm_readdata_i      => hr_disk0_readdata,
-            m_avm_readdatavalid_i => hr_disk0_readdatavalid
-         ); -- qnice2hr_d0_avm_fifo
+            qnice_clk_i               => qnice_clk_i,
+            qnice_rst_i               => qnice_rst_i,
+            qnice_addr_i              => qnice_dev_addr_i,
+            qnice_data_i              => qnice_dev_data_i,
+            qnice_ce_i                => qnice_pet_mount0_buf_ram_ce,
+            qnice_we_i                => qnice_pet_mount0_buf_ram_we,
+            qnice_data_o(15 downto 8) => qnice_pet_mount0_buf_dummy,  -- not used
+            qnice_data_o(7 downto 0)  => qnice_pet_mount0_buf_ram_data,
+            qnice_wait_o              => qnice_pet_mount0_buf_ram_wait,
 
-      qnice2hr_d1_avm_fifo : entity work.avm_fifo
+            hr_clk_i                  => hr_clk_i,
+            hr_rst_i                  => hr_rst_i,
+            hr_write_o                => hr_disk0_write,
+            hr_read_o                 => hr_disk0_read,
+            hr_address_o              => hr_disk0_address,
+            hr_writedata_o            => hr_disk0_writedata,
+            hr_byteenable_o           => hr_disk0_byteenable,
+            hr_burstcount_o           => hr_disk0_burstcount,
+            hr_readdata_i             => hr_disk0_readdata,
+            hr_readdatavalid_i        => hr_disk0_readdatavalid,
+            hr_waitrequest_i          => hr_disk0_waitrequest
+         ); -- i_mount_buf_wrapper0
+
+      i_mount_buf_wrapper1 : entity work.mount_buf_wrapper
          generic map (
-            G_WR_DEPTH     => 16,
-            G_RD_DEPTH     => 16,
-            G_FILL_SIZE    => 1,
-            G_ADDRESS_SIZE => 32,
-            G_DATA_SIZE    => 16
+            G_BASE_ADDRESS => C_HMAP_BUF1(9 downto 0) & X"000"
          )
          port map (
-            s_clk_i               => qnice_clk_i,	-- Does the fifo know it should work on the falling edge?
-            s_rst_i               => qnice_rst_i,
-            s_avm_waitrequest_o   => qnice_disk1_waitrequest,
-            s_avm_write_i         => qnice_disk1_write,
-            s_avm_read_i          => qnice_disk1_read,
-            s_avm_address_i       => qnice_disk1_address,
-            s_avm_writedata_i     => qnice_disk1_writedata,
-            s_avm_byteenable_i    => qnice_disk1_byteenable,
-            s_avm_burstcount_i    => qnice_disk1_burstcount,
-            s_avm_readdata_o      => qnice_disk1_readdata,
-            s_avm_readdatavalid_o => qnice_disk1_readdatavalid,
-            m_clk_i               => hr_clk_i,
-            m_rst_i               => hr_rst_i,
-            m_avm_waitrequest_i   => hr_disk1_waitrequest,
-            m_avm_write_o         => hr_disk1_write,
-            m_avm_read_o          => hr_disk1_read,
-            m_avm_address_o       => hr_disk1_address,
-            m_avm_writedata_o     => hr_disk1_writedata,
-            m_avm_byteenable_o    => hr_disk1_byteenable,
-            m_avm_burstcount_o    => hr_disk1_burstcount,
-            m_avm_readdata_i      => hr_disk1_readdata,
-            m_avm_readdatavalid_i => hr_disk1_readdatavalid
-         ); -- qnice2hr_d1_avm_fifo
+            qnice_clk_i               => qnice_clk_i,
+            qnice_rst_i               => qnice_rst_i,
+            qnice_addr_i              => qnice_dev_addr_i,
+            qnice_data_i              => qnice_dev_data_i,
+            qnice_ce_i                => qnice_pet_mount1_buf_ram_ce,
+            qnice_we_i                => qnice_pet_mount1_buf_ram_we,
+            qnice_data_o(15 downto 8) => qnice_pet_mount1_buf_dummy,  -- not used
+            qnice_data_o(7 downto 0)  => qnice_pet_mount1_buf_ram_data,
+            qnice_wait_o              => qnice_pet_mount1_buf_ram_wait,
+
+            hr_clk_i                  => hr_clk_i,
+            hr_rst_i                  => hr_rst_i,
+            hr_write_o                => hr_disk1_write,
+            hr_read_o                 => hr_disk1_read,
+            hr_address_o              => hr_disk1_address,
+            hr_writedata_o            => hr_disk1_writedata,
+            hr_byteenable_o           => hr_disk1_byteenable,
+            hr_burstcount_o           => hr_disk1_burstcount,
+            hr_readdata_i             => hr_disk1_readdata,
+            hr_readdatavalid_i        => hr_disk1_readdatavalid,
+            hr_waitrequest_i          => hr_disk1_waitrequest
+         ); -- i_mount_buf_wrapper0
 
    end generate Choose_Disk;        -- CFG_OMIT_8x50_DISK
 

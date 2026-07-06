@@ -141,7 +141,8 @@ begin
                   if cache_rd_hit_s = '1' then
                      s_avm_readdata_o      <= cache_data(to_integer(cache_offset_s));
                      s_avm_readdatavalid_o <= '1';
-                     if cache_offset_s = G_CACHE_SIZE/2-1 -- Removed for _rhi version: and s_avm_byteenable_i(G_DATA_SIZE/8-1) = '1'
+                     --if cache_offset_s = G_CACHE_SIZE/2-1 -- Removed for _rhi version with word-only access: and s_avm_byteenable_i(G_DATA_SIZE/8-1) = '1'
+                     if cache_offset_s = G_CACHE_SIZE/2-1 and s_avm_byteenable_i(G_DATA_SIZE/8-1) = '1'
                      then
                         -- Half the cache has now been read.
                         -- Invalidate the first half of the cache, and pre-emptively fill the rest.
@@ -149,7 +150,7 @@ begin
                         m_avm_read_o       <= '1';
                         m_avm_address_o    <= std_logic_vector(unsigned(cache_addr) + G_CACHE_SIZE);
                         m_avm_burstcount_o <= to_stdlogicvector(G_CACHE_SIZE/2, 8);
-                        m_avm_byteenable_o <= s_avm_byteenable_i;        -- Added by Rhialto; "11" or s_avm_byteenable_i
+                        m_avm_byteenable_o <= "11"; -- Added by Rhialto; "11" or s_avm_byteenable_i
                         cache_data(0 to G_CACHE_SIZE/2-1) <= cache_data(G_CACHE_SIZE/2 to G_CACHE_SIZE-1);
                         cache_addr         <= std_logic_vector(unsigned(cache_addr) + G_CACHE_SIZE/2);
                         cache_count        <= G_CACHE_SIZE/2;
@@ -161,7 +162,7 @@ begin
                      m_avm_read_o       <= '1';
                      m_avm_address_o    <= s_avm_address_i;
                      m_avm_burstcount_o <= to_stdlogicvector(G_CACHE_SIZE, 8);
-                     m_avm_byteenable_o <= s_avm_byteenable_i;        -- Added by Rhialto; "11" or s_avm_byteenable_i
+                     m_avm_byteenable_o <= "11"; -- Added by Rhialto; "11" or s_avm_byteenable_i
                      cache_addr         <= s_avm_address_i;
                      cache_count        <= 0;
                      rd_burstcount      <= s_avm_burstcount_i;
