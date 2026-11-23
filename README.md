@@ -42,7 +42,6 @@ This project is organized in 2 git repositories. The main one contains a snapsho
 * `cd MegaPET`
 * `git submodule init`      # to get the QNICE submodule
 * `git submodule update`
-* You may need to apply the patch `M2M/QNICE.patch` for the next step
 * `cd M2M/QNICE/tools; ./make-toolchain.sh`   
 * start Vivado, then open project `CORE/CORE-R6.xpr`, then "Generate Bitstream".
 
